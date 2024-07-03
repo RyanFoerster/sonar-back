@@ -1,0 +1,64 @@
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { InjectRepository } from '@nestjs/typeorm';
+import * as bcrypt from 'bcrypt';
+import { Repository } from 'typeorm';
+import { CreateUserDto } from './dtos/create-user.dto';
+import { User } from './entities/user.entity';
+import { UsernameException } from './exceptions/username.exception';
+import { EmailException } from './exceptions/email.exception';
+
+@Injectable()
+export class UsersService {
+  constructor(
+    @InjectRepository(User) private readonly usersRepository: Repository<User>,
+  ) {}
+
+  async create(createUserDto: CreateUserDto) {
+    if ((await this.findOneByUsername(createUserDto.username)) !== null) {
+      throw new UsernameException();
+    }
+
+    if ((await this.findOneByEmail(createUserDto.email)) !== null) {
+      throw new EmailException();
+    }
+
+    if(createUserDto.password !== createUserDto.confirmPassword) {
+      throw new UnauthorizedException("Passwords do not match");
+    }
+
+
+    const user = this.usersRepository.create(createUserDto);
+
+    const salt = await bcrypt.genSalt();
+    user.password = await bcrypt.hash(createUserDto.password, salt);
+
+    await this.usersRepository.save(user);
+
+    const { password, ...result } = user;
+    return result !== null;
+  }
+
+  async findOne(id: number) {
+    const user = await this.usersRepository.findOneBy({ id });
+
+    if (!user) return null;
+
+    return await this.usersRepository.findOne({
+      where: { email: user.email },
+    });
+  }
+
+  async findOneByEmail(email: string) {
+    return await this.usersRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.email = :email', { email })
+      .getOne();
+  }
+
+  async findOneByUsername(username: string): Promise<User> {
+    return await this.usersRepository.findOneBy({ username });
+  }
+
+
+}
