@@ -6,11 +6,13 @@ import { CreateUserDto } from './dtos/create-user.dto';
 import { User } from './entities/user.entity';
 import { UsernameException } from './exceptions/username.exception';
 import { EmailException } from './exceptions/email.exception';
+import { ComptePrincipalService } from "src/compte_principal/compte_principal.service";
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User) private readonly usersRepository: Repository<User>,
+    private readonly comptePrincipalService: ComptePrincipalService
   ) {}
 
   async create(createUserDto: CreateUserDto) {
@@ -27,12 +29,21 @@ export class UsersService {
     }
 
 
-    const user = this.usersRepository.create(createUserDto);
+    let user = this.usersRepository.create(createUserDto);
 
     const salt = await bcrypt.genSalt();
     user.password = await bcrypt.hash(createUserDto.password, salt);
 
-    await this.usersRepository.save(user);
+    user = await this.usersRepository.save(user);
+    console.log("User avant compte: " + JSON.stringify(user))
+
+    const comptePrincipal = await this.comptePrincipalService.create({username: user.username})
+    console.log("Compte principal: " + JSON.stringify(comptePrincipal))
+
+    user.comptePrincipal = comptePrincipal
+    console.log("User après compte: " + JSON.stringify(user))
+    
+    await this.usersRepository.save(user)
 
     const { password, ...result } = user;
     return result !== null;

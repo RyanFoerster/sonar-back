@@ -1,4 +1,5 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { ComptePrincipal } from 'src/compte_principal/entities/compte_principal.entity';
+import { Column, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
 export class User {
@@ -29,4 +30,7 @@ export class User {
   @Column({ unique: true })
   iban: string
 
+  @OneToOne(()=>ComptePrincipal)
+  @JoinColumn()
+  comptePrincipal: ComptePrincipal
 }
