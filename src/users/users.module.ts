@@ -6,6 +6,7 @@ import { UsersController } from './users.controller';
 import { ComptePrincipalModule } from 'src/compte_principal/compte_principal.module';
 import { ComptePrincipalService } from 'src/compte_principal/compte_principal.service';
 import { ComptePrincipal } from 'src/compte_principal/entities/compte_principal.entity';
+import { CompteGroupeModule } from 'src/compte_groupe/compte_groupe.module';
 
 @Module({
   providers: [UsersService],
