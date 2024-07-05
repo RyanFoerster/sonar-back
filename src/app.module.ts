@@ -7,6 +7,9 @@ import { AuthModule } from "./auth/auth.module";
 import { UsersModule } from "./users/users.module";
 import { ConfigModule } from "@nestjs/config";
 import { ComptePrincipalModule } from './compte_principal/compte_principal.module';
+import { CompteGroupeModule } from './compte_groupe/compte_groupe.module';
+import { DevtoolsModule } from '@nestjs/devtools-integration';
+import { UserSecondaryAccountModule } from './user-secondary-account/user-secondary-account.module';
 
 @Module({
   imports: [
@@ -15,6 +18,8 @@ import { ComptePrincipalModule } from './compte_principal/compte_principal.modul
     AuthModule,
     UsersModule,
     ComptePrincipalModule,
+    CompteGroupeModule,
+    UserSecondaryAccountModule,
   ],
   controllers: [AppController],
   providers: [AppService],
