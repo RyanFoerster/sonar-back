@@ -5,6 +5,8 @@ import { CompteGroupe } from "./entities/compte_groupe.entity";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { ComptePrincipalModule } from "src/compte_principal/compte_principal.module";
 import { ComptePrincipalService } from "src/compte_principal/compte_principal.service";
+import { UserSecondaryAccountModule } from "src/user-secondary-account/user-secondary-account.module";
+import { UsersModule } from "src/users/users.module";
 
 @Module({
   controllers: [CompteGroupeController],
@@ -12,7 +14,10 @@ import { ComptePrincipalService } from "src/compte_principal/compte_principal.se
   exports: [CompteGroupeService],
   imports: [
     TypeOrmModule.forFeature([CompteGroupe]),
-    forwardRef(() => ComptePrincipalModule)]
+    forwardRef(() => ComptePrincipalModule),
+    UserSecondaryAccountModule,
+    forwardRef(() => UsersModule),
+  ],
 })
 export class CompteGroupeModule {
 }

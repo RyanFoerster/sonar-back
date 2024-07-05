@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Request } from '@nestjs/common';
 import { CompteGroupeService } from './compte_groupe.service';
 import { CreateCompteGroupeDto } from './dto/create-compte_groupe.dto';
 import { UpdateCompteGroupeDto } from './dto/update-compte_groupe.dto';
@@ -8,8 +8,8 @@ export class CompteGroupeController {
   constructor(private readonly compteGroupeService: CompteGroupeService) {}
 
   @Post()
-  create(@Body() createCompteGroupeDto: CreateCompteGroupeDto) {
-    return this.compteGroupeService.create(createCompteGroupeDto);
+  create(@Body() createCompteGroupeDto: CreateCompteGroupeDto, @Request() request) {
+    return this.compteGroupeService.create(createCompteGroupeDto, request.user.id);
   }
 
   @Get()
