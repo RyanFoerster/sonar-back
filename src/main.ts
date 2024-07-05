@@ -10,7 +10,4 @@ async function bootstrap() {
 
   await app.listen(3000);
 }
-bootstrap().catch((error) => {
-  fs.writeFileSync('graph.json', PartialGraphHost.toString() ?? '')
-  process.exit(1)
-});
+bootstrap();

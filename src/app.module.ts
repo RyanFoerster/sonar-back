@@ -14,9 +14,6 @@ import { DevtoolsModule } from '@nestjs/devtools-integration';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRoot(config),
-    DevtoolsModule.register({
-      
-    }),
     AuthModule,
     UsersModule,
     ComptePrincipalModule,
