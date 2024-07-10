@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Request } from '@nestjs/common';
-import { CompteGroupeService } from './compte_groupe.service';
-import { CreateCompteGroupeDto } from './dto/create-compte_groupe.dto';
-import { UpdateCompteGroupeDto } from './dto/update-compte_groupe.dto';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Request } from "@nestjs/common";
+import { CompteGroupeService } from "./compte_groupe.service";
+import { CreateCompteGroupeDto } from "./dto/create-compte_groupe.dto";
+import { UpdateCompteGroupeDto } from "./dto/update-compte_groupe.dto";
 
 @Controller('compte-groupe')
 export class CompteGroupeController {

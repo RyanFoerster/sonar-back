@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Request } from '@nestjs/common';
-import { UserSecondaryAccountService } from './user-secondary-account.service';
-import { CreateUserSecondaryAccountDto } from './dto/create-user-secondary-account.dto';
-import { UpdateUserSecondaryAccountDto } from './dto/update-user-secondary-account.dto';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
+import { UserSecondaryAccountService } from "./user-secondary-account.service";
+import { CreateUserSecondaryAccountDto } from "./dto/create-user-secondary-account.dto";
+import { UpdateUserSecondaryAccountDto } from "./dto/update-user-secondary-account.dto";
 
 @Controller('user-secondary-account')
 export class UserSecondaryAccountController {

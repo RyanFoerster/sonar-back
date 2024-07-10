@@ -1,11 +1,11 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
-import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
-import { Repository } from 'typeorm';
-import { CreateUserDto } from './dtos/create-user.dto';
-import { User } from './entities/user.entity';
-import { UsernameException } from './exceptions/username.exception';
-import { EmailException } from './exceptions/email.exception';
+import { InjectRepository } from "@nestjs/typeorm";
+import * as bcrypt from "bcrypt";
+import { Repository } from "typeorm";
+import { CreateUserDto } from "./dtos/create-user.dto";
+import { User } from "./entities/user.entity";
+import { UsernameException } from "./exceptions/username.exception";
+import { EmailException } from "./exceptions/email.exception";
 import { ComptePrincipalService } from "src/compte_principal/compte_principal.service";
 
 @Injectable()

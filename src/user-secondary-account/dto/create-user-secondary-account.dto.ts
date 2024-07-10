@@ -1,5 +1,6 @@
-import { IsEnum, IsNumber, IsString } from "class-validator";
+import { IsEnum, IsNumber, IsObject } from "class-validator";
 import { User } from "src/users/entities/user.entity";
+import { CompteGroupe } from "../../compte_groupe/entities/compte_groupe.entity";
 
 export class CreateUserSecondaryAccountDto {
 
@@ -7,6 +8,9 @@ export class CreateUserSecondaryAccountDto {
 
   @IsNumber()
   secondary_account_id: number;
+
+  @IsObject()
+  group_account?: CompteGroupe
 
   @IsEnum({ADMIN: "ADMIN", VIEWER: "VIEWER", NONE: "NONE"})
   role_agenda?: 'ADMIN' | 'VIEWER' | 'NONE';

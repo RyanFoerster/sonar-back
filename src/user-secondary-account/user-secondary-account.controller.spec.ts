@@ -1,6 +1,6 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { UserSecondaryAccountController } from './user-secondary-account.controller';
-import { UserSecondaryAccountService } from './user-secondary-account.service';
+import { Test, TestingModule } from "@nestjs/testing";
+import { UserSecondaryAccountController } from "./user-secondary-account.controller";
+import { UserSecondaryAccountService } from "./user-secondary-account.service";
 
 describe('UserSecondaryAccountController', () => {
   let controller: UserSecondaryAccountController;

@@ -1,6 +1,6 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ComptePrincipalController } from './compte_principal.controller';
-import { ComptePrincipalService } from './compte_principal.service';
+import { Test, TestingModule } from "@nestjs/testing";
+import { ComptePrincipalController } from "./compte_principal.controller";
+import { ComptePrincipalService } from "./compte_principal.service";
 
 describe('ComptePrincipalController', () => {
   let controller: ComptePrincipalController;

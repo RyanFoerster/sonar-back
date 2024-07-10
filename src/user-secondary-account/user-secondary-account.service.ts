@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
-import { CreateUserSecondaryAccountDto } from './dto/create-user-secondary-account.dto';
-import { UpdateUserSecondaryAccountDto } from './dto/update-user-secondary-account.dto';
-import { UserSecondaryAccount } from './entities/user-secondary-account.entity';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Injectable } from "@nestjs/common";
+import { CreateUserSecondaryAccountDto } from "./dto/create-user-secondary-account.dto";
+import { UpdateUserSecondaryAccountDto } from "./dto/update-user-secondary-account.dto";
+import { UserSecondaryAccount } from "./entities/user-secondary-account.entity";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
 
 @Injectable()
 export class UserSecondaryAccountService {

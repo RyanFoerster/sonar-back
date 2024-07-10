@@ -1,6 +1,8 @@
-import { ComptePrincipal } from 'src/compte_principal/entities/compte_principal.entity';
-import { UserSecondaryAccount } from 'src/user-secondary-account/entities/user-secondary-account.entity';
-import { Column, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { ComptePrincipal } from "src/compte_principal/entities/compte_principal.entity";
+import { UserSecondaryAccount } from "src/user-secondary-account/entities/user-secondary-account.entity";
+import { Column, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Invoice } from "../../invoice/entities/invoice.entity";
+import { Client } from "../../clients/entities/client.entity";
 
 @Entity()
 export class User {
@@ -31,10 +33,21 @@ export class User {
   @Column({ unique: true })
   iban: string
 
-  @OneToOne(()=>ComptePrincipal)
+  @OneToOne(() => ComptePrincipal, {
+    eager: true
+  })
   @JoinColumn()
   comptePrincipal: ComptePrincipal
 
-  @OneToMany(()=> UserSecondaryAccount, (userSecondaryAccount) => userSecondaryAccount.user)
+  @OneToMany(()=> UserSecondaryAccount, (userSecondaryAccount) => userSecondaryAccount.user, {
+    eager: true
+  })
   userSecondaryAccounts: UserSecondaryAccount[];
+
+  @OneToMany((type) => Client, (client) => client.user, {
+    eager: true,
+    cascade: true,
+  })
+  clients: Client[];
+
 }

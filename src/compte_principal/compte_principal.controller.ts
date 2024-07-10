@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { ComptePrincipalService } from './compte_principal.service';
-import { CreateComptePrincipalDto } from './dto/create-compte_principal.dto';
-import { UpdateComptePrincipalDto } from './dto/update-compte_principal.dto';
+import { Body, Controller, Delete, Get, Param, Patch, Post } from "@nestjs/common";
+import { ComptePrincipalService } from "./compte_principal.service";
+import { CreateComptePrincipalDto } from "./dto/create-compte_principal.dto";
+import { UpdateComptePrincipalDto } from "./dto/update-compte_principal.dto";
 
 @Controller('compte-principal')
 export class ComptePrincipalController {

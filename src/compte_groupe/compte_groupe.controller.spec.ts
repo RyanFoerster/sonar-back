@@ -1,6 +1,6 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { CompteGroupeController } from './compte_groupe.controller';
-import { CompteGroupeService } from './compte_groupe.service';
+import { Test, TestingModule } from "@nestjs/testing";
+import { CompteGroupeController } from "./compte_groupe.controller";
+import { CompteGroupeService } from "./compte_groupe.service";
 
 describe('CompteGroupeController', () => {
   let controller: CompteGroupeController;
