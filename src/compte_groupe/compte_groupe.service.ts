@@ -7,7 +7,6 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { ComptePrincipalService } from "src/compte_principal/compte_principal.service";
 import { ComptePrincipal } from "src/compte_principal/entities/compte_principal.entity";
 import { UserSecondaryAccountService } from "src/user-secondary-account/user-secondary-account.service";
-import { UserSecondaryAccount } from "src/user-secondary-account/entities/user-secondary-account.entity";
 import { CreateUserSecondaryAccountDto } from "src/user-secondary-account/dto/create-user-secondary-account.dto";
 import { UsersService } from "src/users/users.service";
 
@@ -29,19 +28,20 @@ export class CompteGroupeService {
     }
 
     const compteGroupe = await this.compteGroupeRepository.save(createCompteGroupeDto);
-    const user = await this.userService.findOne(userId)
+    const user = await this.userService.findOne(userId);
     let userSecondaryAccount: CreateUserSecondaryAccountDto = {
       user,
       secondary_account_id: compteGroupe.id,
+      group_account: compteGroupe,
       role_agenda: "ADMIN",
       role_billing: "ADMIN",
       role_contract: "ADMIN",
       role_document: "ADMIN",
       role_gestion: "ADMIN",
       role_treasury: "ADMIN"
-    }
+    };
 
-    await this.userSecondaryAccountService.create(userSecondaryAccount)
+    await this.userSecondaryAccountService.create(userSecondaryAccount);
 
     return true;
   }
@@ -50,8 +50,8 @@ export class CompteGroupeService {
     return `This action returns all compteGroupe`;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} compteGroupe`;
+  async findOne(id: number) {
+    return this.compteGroupeRepository.findOneBy({ id });
   }
 
   findOneByUsername(username: string) {

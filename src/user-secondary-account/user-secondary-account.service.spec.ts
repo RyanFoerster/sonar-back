@@ -1,5 +1,5 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { UserSecondaryAccountService } from './user-secondary-account.service';
+import { Test, TestingModule } from "@nestjs/testing";
+import { UserSecondaryAccountService } from "./user-secondary-account.service";
 
 describe('UserSecondaryAccountService', () => {
   let service: UserSecondaryAccountService;

@@ -1,12 +1,11 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { CreateComptePrincipalDto } from './dto/create-compte_principal.dto';
-import { UpdateComptePrincipalDto } from './dto/update-compte_principal.dto';
-import { CreateUserDto } from 'src/users/dtos/create-user.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ComptePrincipal } from './entities/compte_principal.entity';
-import { Repository } from 'typeorm';
-import { CompteGroupeService } from 'src/compte_groupe/compte_groupe.service';
-import { CompteGroupe } from 'src/compte_groupe/entities/compte_groupe.entity';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { CreateComptePrincipalDto } from "./dto/create-compte_principal.dto";
+import { UpdateComptePrincipalDto } from "./dto/update-compte_principal.dto";
+import { InjectRepository } from "@nestjs/typeorm";
+import { ComptePrincipal } from "./entities/compte_principal.entity";
+import { Repository } from "typeorm";
+import { CompteGroupeService } from "src/compte_groupe/compte_groupe.service";
+import { CompteGroupe } from "src/compte_groupe/entities/compte_groupe.entity";
 
 @Injectable()
 export class ComptePrincipalService {
