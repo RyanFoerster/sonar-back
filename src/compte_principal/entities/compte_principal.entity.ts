@@ -1,6 +1,7 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { Invoice } from "../../invoice/entities/invoice.entity";
 import { Quote } from "../../quote/entities/quote.entity";
+import { Transaction } from "src/transaction/entities/transaction.entity";
 
 @Entity()
 export class ComptePrincipal {
@@ -18,5 +19,8 @@ export class ComptePrincipal {
 
   @OneToMany(() => Invoice, (invoice) => invoice.main_account, {nullable: true, eager: true})
   invoice: Invoice[];
+
+  @OneToMany(() => Transaction, (transaction) => transaction.senderPrincipal, {eager: true})
+  transactions: Transaction[]
 
 }

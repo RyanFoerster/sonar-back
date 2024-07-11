@@ -1,6 +1,5 @@
 export enum Status {
-  Draft = 'Draft',
-  Send = 'Send',
-  Consult = 'Consult',
-  Paid = 'Paid',
+  Pending = "pending",
+  Overdue = "overdue",
+  Paid = 'paid',
 }

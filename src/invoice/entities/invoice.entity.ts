@@ -34,7 +34,7 @@ export class Invoice {
   @Column()
   payment_deadline: Date;
 
-  @Column({ type: "enum", enum: ["paid", "pending", "overdue"], default: "pending" })
+  @Column()
   status: string;
 
   @ManyToOne(() => ComptePrincipal, (comptePrincipal) => comptePrincipal.invoice, { nullable: true })
@@ -51,4 +51,13 @@ export class Invoice {
 
   @ManyToOne(() => Quote, (quote) => quote.invoice)
   quote: Quote;
+
+  @Column({type: 'enum', enum: ['invoice', 'credit_note'],default: 'invoice',})
+  type: string; // Type de document (facture ou note de crédit)
+
+  @Column({ nullable: true })
+  linkedInvoiceId: number; // ID de la facture liée (pour les notes de crédit)
+
+  @Column({ type: "double precision", nullable: true })
+  creditNoteAmount: number; // Montant de la note de crédit
 }

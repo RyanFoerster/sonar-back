@@ -22,3 +22,7 @@ export class CreateInvoiceDto {
   @IsNumber()
   total: number;
 }
+export class CreateCreditNoteDto {
+  readonly linkedInvoiceId: number; // ID de la facture liée
+  readonly creditNoteAmount: number; // Montant de la note de crédit
+}
