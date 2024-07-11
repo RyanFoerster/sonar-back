@@ -23,7 +23,23 @@ export class ComptePrincipalService {
     }}
 
   findOne(id: number) {
-    return this.comptePrincipalRepository.findOneBy({id});
+    return this.comptePrincipalRepository.findOne({
+      where: {
+        id
+      }
+  });
+  }
+
+  findOneWithoutRelation(id: number){
+    return this.comptePrincipalRepository.findOne({
+      where: {
+        id
+      },
+      relations: {
+        invoice: false,
+        quote: false,
+      }
+    })
   }
 
   findOneByUsername(username: string){
@@ -31,6 +47,6 @@ export class ComptePrincipalService {
   }
 
   update(id: number, updateComptePrincipalDto: UpdateComptePrincipalDto) {
-    return `This action updates a #${id} comptePrincipal`;
+    return this.comptePrincipalRepository.update(id, updateComptePrincipalDto)
   }
 }

@@ -35,13 +35,10 @@ export class UsersService {
     user.password = await bcrypt.hash(createUserDto.password, salt);
 
     user = await this.usersRepository.save(user);
-    console.log("User avant compte: " + JSON.stringify(user))
 
     const comptePrincipal = await this.comptePrincipalService.create({username: user.username})
-    console.log("Compte principal: " + JSON.stringify(comptePrincipal))
 
     user.comptePrincipal = comptePrincipal
-    console.log("User après compte: " + JSON.stringify(user))
     
     await this.usersRepository.save(user)
 
@@ -55,7 +52,7 @@ export class UsersService {
     if (!user) return null;
 
     return await this.usersRepository.findOne({
-      where: { email: user.email },
+      where: { email: user.email }
     });
   }
 

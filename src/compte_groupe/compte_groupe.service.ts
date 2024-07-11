@@ -58,8 +58,12 @@ export class CompteGroupeService {
     return this.compteGroupeRepository.findOneBy({ username });
   }
 
-  update(id: number, updateCompteGroupeDto: UpdateCompteGroupeDto) {
-    return `This action updates a #${id} compteGroupe`;
+  async update(id: number, updateCompteGroupeDto: UpdateCompteGroupeDto) {
+    return this.compteGroupeRepository.update(id, updateCompteGroupeDto)
+  }
+
+  async save(updateCompteGroupeDto: UpdateCompteGroupeDto) {
+    return this.compteGroupeRepository.save(updateCompteGroupeDto)
   }
 
   remove(id: number) {

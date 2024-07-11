@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { CreateInvoiceDto } from "./dto/create-invoice.dto";
+import { CreateCreditNoteDto, CreateInvoiceDto } from "./dto/create-invoice.dto";
 import { UpdateInvoiceDto } from "./dto/update-invoice.dto";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Invoice } from "./entities/invoice.entity";
@@ -100,4 +100,26 @@ export class InvoiceService {
     }
 
   }
+async createCreditNote(
+  createCreditNoteDto: CreateCreditNoteDto,
+): Promise<Invoice> {
+  // Récupère la facture liée
+  const invoice = await this._invoiceRepository.findOneBy({id: createCreditNoteDto.linkedInvoiceId});
+
+  if (!invoice) {
+    throw new Error('Invoice not found'); // Vérifie si la facture existe
+  }
+
+  if (createCreditNoteDto.creditNoteAmount > invoice.total) {
+    throw new Error('Credit note amount exceeds invoice total amount'); // Vérifie que le montant de la note de crédit ne dépasse pas le total de la facture
+  } 
+
+  // Crée la note de crédit en utilisant les données fournies
+  const creditNote = this._invoiceRepository.create({
+    ...createCreditNoteDto,
+    type: 'credit_note',
+  });
+
+  return this._invoiceRepository.save(creditNote); // Sauvegarde la note de crédit dans la base de données
+}
 }

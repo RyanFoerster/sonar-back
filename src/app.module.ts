@@ -14,6 +14,7 @@ import { InvoiceModule } from "./invoice/invoice.module";
 import { ClientsModule } from "./clients/clients.module";
 import { QuoteModule } from './quote/quote.module';
 import { ScheduleModule } from "@nestjs/schedule";
+import { TransactionModule } from './transaction/transaction.module';
 
 @Module({
   imports: [
@@ -28,7 +29,8 @@ import { ScheduleModule } from "@nestjs/schedule";
     ProductModule,
     InvoiceModule,
     ClientsModule,
-    QuoteModule
+    QuoteModule,
+    TransactionModule,
   ],
   controllers: [AppController],
   providers: [AppService],
