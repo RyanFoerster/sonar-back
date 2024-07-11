@@ -55,7 +55,12 @@ export class InvoiceService {
     const currentQuotes: Quote[] = []
 
     for (const quote of quoteWithoutInvoice) {
-      if(quote.group_acceptance === true && quote.order_giver_acceptance === true) {
+      const serviceDate = new Date(quote.service_date);
+      const dateUnJourPlus = new Date(serviceDate.getTime() + (24 * 60 * 60 * 1000));
+      const sameDate = currentDate.getFullYear() === dateUnJourPlus.getFullYear() &&
+        currentDate.getMonth() === dateUnJourPlus.getMonth() &&
+        currentDate.getDate() === dateUnJourPlus.getDate()
+      if( sameDate && quote.group_acceptance === true && quote.order_giver_acceptance === true) {
         currentQuotes.push(quote);
       }
     }
