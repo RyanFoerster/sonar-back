@@ -33,6 +33,9 @@ export class User {
   @Column({ unique: true })
   iban: string
 
+  @Column({ default: false })
+  isActive: boolean
+
   @OneToOne(() => ComptePrincipal, {
     eager: true
   })
