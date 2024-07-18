@@ -33,6 +33,9 @@ export class User {
   @Column({ unique: true })
   iban: string
 
+  @Column({default: "USER"})
+  role: "USER" | "ADMIN" | "GUEST"
+
   @Column({ default: false })
   isActive: boolean
 

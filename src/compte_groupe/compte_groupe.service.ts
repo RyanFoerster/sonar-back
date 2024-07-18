@@ -47,7 +47,7 @@ export class CompteGroupeService {
   }
 
   findAll() {
-    return `This action returns all compteGroupe`;
+    return this.compteGroupeRepository.find();
   }
 
   async findOne(id: number) {
