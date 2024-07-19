@@ -1,11 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Request } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req, Request, UnauthorizedException } from "@nestjs/common";
 import { CompteGroupeService } from "./compte_groupe.service";
 import { CreateCompteGroupeDto } from "./dto/create-compte_groupe.dto";
 import { UpdateCompteGroupeDto } from "./dto/update-compte_groupe.dto";
+import { UsersService } from "src/users/users.service";
+import { User } from "src/users/entities/user.entity";
 
 @Controller('compte-groupe')
 export class CompteGroupeController {
-  constructor(private readonly compteGroupeService: CompteGroupeService) {}
+  constructor(private readonly compteGroupeService: CompteGroupeService, private readonly usersService: UsersService) {}
 
   @Post()
   create(@Body() createCompteGroupeDto: CreateCompteGroupeDto, @Request() request) {
@@ -13,8 +15,16 @@ export class CompteGroupeController {
   }
 
   @Get()
-  findAll() {
-    return this.compteGroupeService.findAll();
+  async findAll(@Req() req) {
+
+    const userConnected: User = await this.usersService.findOneByEmail(req.user.email)
+
+    if(userConnected.role === "ADMIN") {
+      return this.compteGroupeService.findAll()
+    } else {
+      throw new UnauthorizedException("Vous n'êtes pas autorisé a faire cela")
+    }
+
   }
 
   @Get(':id')

@@ -22,6 +22,9 @@ export class ComptePrincipalService {
       return this.comptePrincipalRepository.save(createComptePrincipalDto)
     }}
 
+  findAll() {
+    return this.comptePrincipalRepository.find(); }
+
   findOne(id: number) {
     return this.comptePrincipalRepository.findOne({
       where: {
