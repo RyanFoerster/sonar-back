@@ -19,7 +19,7 @@ export class ClientsService {
     let client: Client;
     client = await this.clientRepository.save(createClientDto);
     client.user = await this.userService.findOne(user.id);
-    return await this.clientRepository.update(client.id, client);
+    return await this.clientRepository.save(client);
   }
 
   async findAll() {
