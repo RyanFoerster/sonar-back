@@ -1,6 +1,4 @@
-import { ComptePrincipal } from "../../compte_principal/entities/compte_principal.entity";
-import { CompteGroupe } from "../../compte_groupe/entities/compte_groupe.entity";
-import { IsArray, IsBoolean, IsDate, IsEnum, IsNumber, IsObject } from "class-validator";
+import { IsArray, IsDate, IsNumber, IsString } from "class-validator";
 
 export class CreateQuoteDto {
 
@@ -25,4 +23,7 @@ export class CreateQuoteDto {
 
   @IsNumber()
   client_id: number;
+
+  @IsString()
+  comment: string
 }

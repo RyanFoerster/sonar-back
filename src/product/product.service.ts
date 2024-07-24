@@ -41,7 +41,7 @@ export class ProductService {
 
   async setTotal(product: Product | UpdateProductDto) {
     let productVat = product.price * product.vat;
-    let productTotal = product.price + productVat;
+    let productTotal = (+product.price) + (+productVat);
 
     return productTotal * product.quantity;
   }

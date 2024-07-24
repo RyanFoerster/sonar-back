@@ -47,10 +47,10 @@ export class Quote {
   @ManyToOne(() => CompteGroupe, (compteGroupe) => compteGroupe.quote, { nullable: true })
   group_account: CompteGroupe;
 
-  @OneToMany(() => Product, (product) => product.quote)
+  @OneToMany(() => Product, (product) => product.quote, {eager: true})
   products: Product[];
 
-  @ManyToOne(() => Client, (client) => client.quote)
+  @ManyToOne(() => Client, (client) => client.quote, {eager: true})
   client: Client;
 
   @OneToMany(() => Invoice, (invoice) => invoice.quote)
