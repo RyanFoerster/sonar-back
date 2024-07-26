@@ -41,6 +41,8 @@ export class ComptePrincipalService {
     });
   }
 
+
+
   findOneWithoutRelation(id: number) {
     return this.comptePrincipalRepository.findOne({
       where: {

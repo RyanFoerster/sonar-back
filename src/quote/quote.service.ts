@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { CreateQuoteDto } from "./dto/create-quote.dto";
 import { UpdateQuoteDto } from "./dto/update-quote.dto";
 import { Quote } from "./entities/quote.entity";
@@ -53,11 +53,27 @@ export class QuoteService {
   }
 
   findOne(id: number) {
+
+    Logger.debug("Id", id)
     return this.quoteRepository.findOneBy({ id });
   }
 
-  async update(id: number, updateQuoteDto: UpdateQuoteDto) {
-    return this.quoteRepository.update(id, updateQuoteDto);
+  findOneWithoutRelation(id: number) {
+    return this.quoteRepository.findOne(
+      {
+        where: {
+          id
+        },
+        relations: {
+          products: false,
+          client: false
+        }
+      }
+    )
+  }
+
+  async update(updateQuoteDto: UpdateQuoteDto) {
+    return this.quoteRepository.save(updateQuoteDto);
   }
 
   async updateQuoteGroupAcceptance(id: number){
