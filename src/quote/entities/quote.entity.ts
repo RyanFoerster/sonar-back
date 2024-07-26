@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 import { ComptePrincipal } from "../../compte_principal/entities/compte_principal.entity";
 import { CompteGroupe } from "../../compte_groupe/entities/compte_groupe.entity";
 import { Product } from "../../product/entities/product.entity";
@@ -53,7 +53,8 @@ export class Quote {
   @ManyToOne(() => Client, (client) => client.quote, {eager: true})
   client: Client;
 
-  @OneToMany(() => Invoice, (invoice) => invoice.quote)
+  @OneToOne(() => Invoice, {eager: true, nullable: true})
+  @JoinColumn()
   invoice: Invoice;
 
 

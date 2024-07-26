@@ -1,16 +1,18 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
 import { InvoiceService } from "./invoice.service";
-import { CreateCreditNoteDto, CreateInvoiceDto } from "./dto/create-invoice.dto";
+import { CreateCreditNoteDto } from "./dto/create-invoice.dto";
 import { UpdateInvoiceDto } from "./dto/update-invoice.dto";
 import { Invoice } from "./entities/invoice.entity";
+import { Quote } from "../quote/entities/quote.entity";
 
-@Controller('invoice')
+@Controller("invoice")
 export class InvoiceController {
-  constructor(private readonly invoiceService: InvoiceService) {}
+  constructor(private readonly invoiceService: InvoiceService) {
+  }
 
   @Post()
-  create(@Body() createInvoiceDto: CreateInvoiceDto, @Req() req) {
-    return this.invoiceService.create(createInvoiceDto, req.user);
+  create(@Body() quote: Quote, @Req() req, @Query() params: string) {
+    return this.invoiceService.create(quote, req.user, params);
   }
 
   @Get()
@@ -18,26 +20,26 @@ export class InvoiceController {
     return this.invoiceService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
+  @Get(":id")
+  findOne(@Param("id") id: string) {
     return this.invoiceService.findOne(+id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateInvoiceDto: UpdateInvoiceDto) {
+  @Patch(":id")
+  update(@Param("id") id: string, @Body() updateInvoiceDto: UpdateInvoiceDto) {
     return this.invoiceService.update(+id, updateInvoiceDto);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
+  @Delete(":id")
+  remove(@Param("id") id: string) {
     return this.invoiceService.remove(+id);
   }
 
-    // Route pour créer une note de crédit
-    @Post('credit-note')
-    createCreditNote(
-      @Body() createCreditNoteDto: CreateCreditNoteDto,
-    ): Promise<Invoice> {
-      return this.invoiceService.createCreditNote(createCreditNoteDto);
-    }
+  // Route pour créer une note de crédit
+  @Post("credit-note")
+  createCreditNote(
+    @Body() createCreditNoteDto: CreateCreditNoteDto
+  ): Promise<Invoice> {
+    return this.invoiceService.createCreditNote(createCreditNoteDto);
+  }
 }

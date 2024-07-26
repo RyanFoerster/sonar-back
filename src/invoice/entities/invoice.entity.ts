@@ -1,6 +1,15 @@
 import { User } from "../../users/entities/user.entity";
 import { PaiementMode } from "../enums/paiement_mode";
-import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  OneToMany,
+  OneToOne,
+  PrimaryGeneratedColumn
+} from "typeorm";
 import { Status } from "../enums/status";
 import { ComptePrincipal } from "../../compte_principal/entities/compte_principal.entity";
 import { CompteGroupe } from "../../compte_groupe/entities/compte_groupe.entity";
@@ -49,7 +58,8 @@ export class Invoice {
   @ManyToOne(() => Client, (client) => client.invoice)
   client: Client;
 
-  @ManyToOne(() => Quote, (quote) => quote.invoice)
+  @OneToOne(() => Quote)
+  @JoinColumn()
   quote: Quote;
 
   @Column({type: 'enum', enum: ['invoice', 'credit_note'],default: 'invoice',})

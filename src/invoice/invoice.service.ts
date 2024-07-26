@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { CreateCreditNoteDto, CreateInvoiceDto } from "./dto/create-invoice.dto";
 import { UpdateInvoiceDto } from "./dto/update-invoice.dto";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -20,14 +20,88 @@ export class InvoiceService {
     private quoteService: QuoteService,
     private clientService: ClientsService,
     private comptePrincipalService: ComptePrincipalService,
-    private compteGroupeService: CompteGroupeService,
-  ) {}
-
-  async create(createInvoiceDto: CreateInvoiceDto, user: User) {
-
-      return await this._invoiceRepository.save(createInvoiceDto);
-
+    private compteGroupeService: CompteGroupeService
+  ) {
   }
+
+  async create(quoteObject: any, user: User, params: any) {
+
+    let quote = quoteObject.quote
+    this.logger.debug("type of account", JSON.stringify(quote, null, 2));
+    let quoteFromDB = await this.quoteService.findOne(quote.id);
+    this.logger.warn("quoteFromDB", JSON.stringify(quoteFromDB.id));
+    let account
+
+
+    if (!quoteFromDB) {
+      this.logger.error("Quote not found", quote);
+      throw new BadRequestException("Aucun devis trouvé");
+    }
+
+    if (quoteFromDB.invoice !== null) {
+      this.logger.error("Invoice already exists", quoteFromDB.invoice);
+      throw new BadRequestException("Une facture existe déja");
+    }
+
+    this.logger.debug("Juste avant de créer la facture");
+    let invoice = await this.createInvoiceFromQuote(quoteFromDB);
+    this.logger.debug(JSON.stringify(invoice));
+
+    const invoiceCreated = await this._invoiceRepository.save(invoice);
+    this.logger.debug(JSON.stringify(invoiceCreated));
+
+    invoiceCreated.quote = quoteFromDB;
+    this.logger.debug("Devis attribuer a la facture", quote);
+
+    this.logger.debug("Avant de récupérer le client", user);
+    invoiceCreated.client = await this.clientService.findOne(quoteFromDB.client.id);
+
+    this.logger.debug("Avant de récupérer le main account", quoteFromDB.main_account);
+    if(params.type ===  "PRINCIPAL") {
+      account = await this.comptePrincipalService.findOne(params.account_id);
+      invoiceCreated.main_account = account
+    }
+
+    this.logger.debug("Avant de récupérer le group account", quoteFromDB.group_account);
+    if(params.type === "GROUP"){
+      account = await this.compteGroupeService.findOne(params.account_id);
+      invoiceCreated.main_account = account
+    }
+
+    this.logger.debug("Avant de update la facture", invoiceCreated.main_account);
+    invoiceCreated.quote = quoteFromDB;
+    await this._invoiceRepository.save(invoiceCreated);
+    quoteFromDB.status = "invoiced";
+    quoteFromDB.invoice = invoiceCreated
+    this.logger.debug("Avant de update le devis");
+    await this.quoteService.update( quoteFromDB);
+
+    return await this._invoiceRepository.findOneBy({ id: invoiceCreated.id });
+  }
+
+  async createInvoiceFromQuote(quote: Quote) {
+
+    const currentDate = new Date();
+
+    const invoice = new Invoice();
+    invoice.invoice_date = currentDate;
+    invoice.service_date = quote.service_date;
+
+// Calculer la date limite de paiement
+    const paymentDeadline = new Date(currentDate);
+    paymentDeadline.setDate(currentDate.getDate() + quote.payment_deadline);
+    invoice.payment_deadline = paymentDeadline;
+
+    invoice.price_htva = quote.price_htva;
+    invoice.total = quote.total;
+    invoice.total_vat_21 = quote.total_vat_21;
+    invoice.total_vat_6 = quote.total_vat_6;
+    invoice.status = "payment_pending";
+
+    return invoice;
+  }
+
+
   findAll() {
     return this._invoiceRepository.find({});
   }
@@ -50,76 +124,77 @@ export class InvoiceService {
   async createFacture() {
     const currentDate = new Date();
 
-    const quoteWithoutInvoice = await this.quoteService.findQuoteWithoutInvoice()
+    const quoteWithoutInvoice = await this.quoteService.findQuoteWithoutInvoice();
 
-    const currentQuotes: Quote[] = []
+    const currentQuotes: Quote[] = [];
 
     for (const quote of quoteWithoutInvoice) {
       const serviceDate = new Date(quote.service_date);
       const dateUnJourPlus = new Date(serviceDate.getTime() + (24 * 60 * 60 * 1000));
       const sameDate = currentDate.getFullYear() === dateUnJourPlus.getFullYear() &&
         currentDate.getMonth() === dateUnJourPlus.getMonth() &&
-        currentDate.getDate() === dateUnJourPlus.getDate()
-      if( sameDate && quote.group_acceptance === true && quote.order_giver_acceptance === true) {
+        currentDate.getDate() === dateUnJourPlus.getDate();
+      if (sameDate && quote.group_acceptance === true && quote.order_giver_acceptance === true) {
         currentQuotes.push(quote);
       }
     }
 
-    if(currentQuotes.length > 0) {
+    if (currentQuotes.length > 0) {
       for (const quote of currentQuotes) {
 
-        const invoice = new Invoice()
-        invoice.invoice_date = currentDate
-        invoice.service_date = quote.service_date
-        currentDate.setDate(currentDate.getDate() + quote.payment_deadline)
-        invoice.payment_deadline = currentDate
-        invoice.price_htva = quote.price_htva
-        invoice.total = quote.total
-        invoice.total_vat_21 = quote.total_vat_21
-        invoice.total_vat_6 = quote.total_vat_6
+        const invoice = new Invoice();
+        invoice.invoice_date = currentDate;
+        invoice.service_date = quote.service_date;
+        currentDate.setDate(currentDate.getDate() + quote.payment_deadline);
+        invoice.payment_deadline = currentDate;
+        invoice.price_htva = quote.price_htva;
+        invoice.total = quote.total;
+        invoice.total_vat_21 = quote.total_vat_21;
+        invoice.total_vat_6 = quote.total_vat_6;
 
         const invoiceCreated = await this._invoiceRepository.save(invoice);
         this.logger.debug(JSON.stringify(invoiceCreated));
         invoiceCreated.quote = await this.quoteService.findOne(quote.id);
-        invoiceCreated.client = await this.clientService.findOne(quote.client.id)
-        if(quote.main_account) {
-          invoiceCreated.main_account = await this.comptePrincipalService.findOne(quote.main_account.id)
+        invoiceCreated.client = await this.clientService.findOne(quote.client.id);
+        if (quote.main_account) {
+          invoiceCreated.main_account = await this.comptePrincipalService.findOne(quote.main_account.id);
         }
 
-        if(quote.group_account) {
-          invoiceCreated.group_account = await this.compteGroupeService.findOne(quote.group_account.id)
+        if (quote.group_account) {
+          invoiceCreated.group_account = await this.compteGroupeService.findOne(quote.group_account.id);
         }
         await this._invoiceRepository.update(invoiceCreated.id, invoiceCreated);
-        quote.status = "invoiced"
-        await this.quoteService.update(quote.id, quote)
+        quote.status = "invoiced";
+        await this.quoteService.update(quote);
       }
 
       this.logger.debug("Des factures ont été créees");
     } else {
-      this.logger.error("Aucune facture crée")
+      this.logger.error("Aucune facture crée");
     }
 
   }
-async createCreditNote(
-  createCreditNoteDto: CreateCreditNoteDto,
-): Promise<Invoice> {
-  // Récupère la facture liée
-  const invoice = await this._invoiceRepository.findOneBy({id: createCreditNoteDto.linkedInvoiceId});
 
-  if (!invoice) {
-    throw new Error('Invoice not found'); // Vérifie si la facture existe
+  async createCreditNote(
+    createCreditNoteDto: CreateCreditNoteDto
+  ): Promise<Invoice> {
+    // Récupère la facture liée
+    const invoice = await this._invoiceRepository.findOneBy({ id: createCreditNoteDto.linkedInvoiceId });
+
+    if (!invoice) {
+      throw new Error("Invoice not found"); // Vérifie si la facture existe
+    }
+
+    if (createCreditNoteDto.creditNoteAmount > invoice.total) {
+      throw new Error("Credit note amount exceeds invoice total amount"); // Vérifie que le montant de la note de crédit ne dépasse pas le total de la facture
+    }
+
+    // Crée la note de crédit en utilisant les données fournies
+    const creditNote = this._invoiceRepository.create({
+      ...createCreditNoteDto,
+      type: "credit_note"
+    });
+
+    return this._invoiceRepository.save(creditNote); // Sauvegarde la note de crédit dans la base de données
   }
-
-  if (createCreditNoteDto.creditNoteAmount > invoice.total) {
-    throw new Error('Credit note amount exceeds invoice total amount'); // Vérifie que le montant de la note de crédit ne dépasse pas le total de la facture
-  } 
-
-  // Crée la note de crédit en utilisant les données fournies
-  const creditNote = this._invoiceRepository.create({
-    ...createCreditNoteDto,
-    type: 'credit_note',
-  });
-
-  return this._invoiceRepository.save(creditNote); // Sauvegarde la note de crédit dans la base de données
-}
 }
