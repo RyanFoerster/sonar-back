@@ -59,7 +59,7 @@ export class ComptePrincipalService {
     return this.comptePrincipalRepository.findOneBy({ username });
   }
 
-  update(id: number, updateComptePrincipalDto: UpdateComptePrincipalDto) {
-    return this.comptePrincipalRepository.update(id, updateComptePrincipalDto);
+  update(updateComptePrincipalDto: UpdateComptePrincipalDto) {
+    return this.comptePrincipalRepository.save(updateComptePrincipalDto);
   }
 }

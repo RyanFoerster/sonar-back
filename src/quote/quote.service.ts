@@ -1,26 +1,32 @@
-import { Injectable, Logger } from "@nestjs/common";
-import { CreateQuoteDto } from "./dto/create-quote.dto";
-import { UpdateQuoteDto } from "./dto/update-quote.dto";
-import { Quote } from "./entities/quote.entity";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { ClientsService } from "../clients/clients.service";
-import { ProductService } from "../product/product.service";
-import { Product } from "../product/entities/product.entity";
-import { ComptePrincipalService } from "../compte_principal/compte_principal.service";
-import { CompteGroupeService } from "../compte_groupe/compte_groupe.service";
+import { Injectable, Logger } from '@nestjs/common';
+import { CreateQuoteDto } from './dto/create-quote.dto';
+import { UpdateQuoteDto } from './dto/update-quote.dto';
+import { Quote } from './entities/quote.entity';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { ClientsService } from '../clients/clients.service';
+import { ProductService } from '../product/product.service';
+import { Product } from '../product/entities/product.entity';
+import { ComptePrincipalService } from '../compte_principal/compte_principal.service';
+import { CompteGroupeService } from '../compte_groupe/compte_groupe.service';
 
 @Injectable()
 export class QuoteService {
-  constructor(@InjectRepository(Quote) private readonly quoteRepository: Repository<Quote>,
-              private clientService: ClientsService,
-              private productService: ProductService,
-              private comptePrincipalService: ComptePrincipalService,
-              private compteGroupeService: CompteGroupeService) {
-  }
+  constructor(
+    @InjectRepository(Quote)
+    private readonly quoteRepository: Repository<Quote>,
+    private clientService: ClientsService,
+    private productService: ProductService,
+    private comptePrincipalService: ComptePrincipalService,
+    private compteGroupeService: CompteGroupeService,
+  ) {}
 
   async create(createQuoteDto: CreateQuoteDto) {
+    Logger.debug(createQuoteDto);
+
     let quote: Quote = this.quoteRepository.create(createQuoteDto);
+
+    Logger.debug(JSON.stringify(quote, null, 2));
 
     quote.client = await this.clientService.findOne(createQuoteDto.client_id);
 
@@ -37,12 +43,20 @@ export class QuoteService {
 
     quote.total = quote.price_htva + quote.total_vat_21 + quote.total_vat_6;
 
-    if (quote.main_account !== null) {
-      quote.main_account = await this.comptePrincipalService.findOne(createQuoteDto.main_account_id);
+    Logger.debug(JSON.stringify(quote, null, 2));
+
+    Logger.debug(createQuoteDto.main_account_id);
+    Logger.debug(createQuoteDto.group_account_id);
+    if (createQuoteDto.main_account_id !== undefined) {
+      quote.main_account = await this.comptePrincipalService.findOne(
+        createQuoteDto.main_account_id,
+      );
     }
 
-    if (quote.group_account !== null) {
-      quote.group_account = await this.compteGroupeService.findOne(createQuoteDto.group_account_id);
+    if (createQuoteDto.group_account_id !== undefined) {
+      quote.group_account = await this.compteGroupeService.findOne(
+        createQuoteDto.group_account_id,
+      );
     }
 
     return this.quoteRepository.save(quote);
@@ -53,43 +67,40 @@ export class QuoteService {
   }
 
   findOne(id: number) {
-
-    Logger.debug("Id", id)
+    Logger.debug('Id', id);
     return this.quoteRepository.findOneBy({ id });
   }
 
   findOneWithoutRelation(id: number) {
-    return this.quoteRepository.findOne(
-      {
-        where: {
-          id
-        },
-        relations: {
-          products: false,
-          client: false
-        }
-      }
-    )
+    return this.quoteRepository.findOne({
+      where: {
+        id,
+      },
+      relations: {
+        products: false,
+        client: false,
+      },
+    });
   }
 
   async update(updateQuoteDto: UpdateQuoteDto) {
     return this.quoteRepository.save(updateQuoteDto);
   }
 
-  async updateQuoteGroupAcceptance(id: number){
-    const quote = await this.findOne(id)
-    quote.group_acceptance = true
-    if(quote.order_giver_acceptance === true) {
-      quote.status = 'accepted'
+  async updateQuoteGroupAcceptance(id: number) {
+    const quote = await this.findOne(id);
+    quote.group_acceptance = true;
+    if (quote.order_giver_acceptance === true) {
+      quote.status = 'accepted';
     }
     return await this.quoteRepository.save(quote);
   }
 
-  async updateOrderGiverAcceptance(id: number){
-    const quote = await this.findOne(id)
-    quote.order_giver_acceptance = true
-    if(quote.group_acceptance === true) {
-      quote.status = 'accepted'
+  async updateOrderGiverAcceptance(id: number) {
+    const quote = await this.findOne(id);
+    quote.order_giver_acceptance = true;
+    if (quote.group_acceptance === true) {
+      quote.status = 'accepted';
     }
     return await this.quoteRepository.save(quote);
   }
@@ -134,15 +145,13 @@ export class QuoteService {
   async findQuoteWithoutInvoice() {
     return this.quoteRepository.find({
       where: {
-        status: "accepted"
+        status: 'accepted',
       },
       relations: {
         client: true,
         group_account: true,
-        main_account: true
-      }
+        main_account: true,
+      },
     });
   }
-
-
 }
