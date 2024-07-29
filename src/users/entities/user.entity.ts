@@ -36,6 +36,9 @@ export class User {
   @Column({default: "USER"})
   role: "USER" | "ADMIN" | "GUEST"
 
+  @Column({nullable: true})
+  address?: string
+
   @Column({ default: false })
   isActive: boolean
 

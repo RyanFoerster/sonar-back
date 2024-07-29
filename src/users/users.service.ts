@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
 import { Repository } from "typeorm";
@@ -7,6 +7,7 @@ import { User } from "./entities/user.entity";
 import { UsernameException } from "./exceptions/username.exception";
 import { EmailException } from "./exceptions/email.exception";
 import { ComptePrincipalService } from "src/compte_principal/compte_principal.service";
+import { UpdateUserDto } from "./dtos/update-user.dto";
 
 @Injectable()
 export class UsersService {
@@ -27,7 +28,6 @@ export class UsersService {
     if(createUserDto.password !== createUserDto.confirmPassword) {
       throw new UnauthorizedException("Passwords do not match");
     }
-
 
     let user = this.usersRepository.create(createUserDto);
 
@@ -66,6 +66,32 @@ export class UsersService {
 
   async findOneByUsername(username: string): Promise<User> {
     return await this.usersRepository.findOneBy({ username });
+  }
+
+  async updateAddress(id: number, updateUserDto: UpdateUserDto) {
+
+    const user = await this.findOne(id);
+    const {username, name, firstName, numeroNational, telephone, email, iban, address} = updateUserDto;
+
+    if(!user) {
+      throw new BadRequestException()
+    }
+
+    user.address = address;
+    user.username = username
+    user.name = name;
+    user.email = email;
+    user.firstName = firstName
+    user.numeroNational = numeroNational
+    user.telephone = telephone
+    user.iban = iban
+
+    const principalAccount = user.comptePrincipal
+
+    principalAccount.username = username
+    await this.comptePrincipalService.update(principalAccount)
+
+    return await this.usersRepository.save(user)
   }
 
 

@@ -51,7 +51,7 @@ export class ComptePrincipalController {
     @Param('id') id: string,
     @Body() updateComptePrincipalDto: UpdateComptePrincipalDto,
   ) {
-    return this.comptePrincipalService.update(+id, updateComptePrincipalDto);
+    return this.comptePrincipalService.update(updateComptePrincipalDto);
   }
 
   @Delete(':id')

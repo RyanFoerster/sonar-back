@@ -2,6 +2,7 @@ import { Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "ty
 import { Invoice } from "../../invoice/entities/invoice.entity";
 import { Quote } from "../../quote/entities/quote.entity";
 import { Transaction } from "src/transaction/entities/transaction.entity";
+import { User } from "../../users/entities/user.entity";
 
 @Entity()
 export class ComptePrincipal {
@@ -22,5 +23,6 @@ export class ComptePrincipal {
 
   @OneToMany(() => Transaction, (transaction) => transaction.senderPrincipal, {eager: true})
   transactions: Transaction[]
+
 
 }
