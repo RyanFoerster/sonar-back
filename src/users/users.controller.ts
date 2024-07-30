@@ -1,6 +1,17 @@
-import { Body, Controller, Get, Logger, Patch, Post, Req, Request, UnauthorizedException } from "@nestjs/common";
-import { UsersService } from "./users.service";
-import { UpdateUserDto } from "./dtos/update-user.dto";
+import {
+  Body,
+  Controller,
+  Get,
+  Logger,
+  Patch,
+  Post,
+  Query,
+  Req,
+  Request,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { UsersService } from './users.service';
+import { UpdateUserDto } from './dtos/update-user.dto';
 
 @Controller('users')
 export class UsersController {
@@ -14,6 +25,16 @@ export class UsersController {
     } catch (e) {
       throw new UnauthorizedException(e.message);
     }
+  }
+
+  @Get('all')
+  async findAll() {
+    return this.usersService.findAll();
+  }
+
+  @Get('groups')
+  async findAllUsersGroup(@Request() req, @Query() params: string) {
+    return await this.usersService.findAllUsersGroup(params);
   }
 
   @Patch()
