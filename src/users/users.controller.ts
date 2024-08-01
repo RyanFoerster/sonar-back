@@ -2,16 +2,20 @@ import {
   Body,
   Controller,
   Get,
-  Logger,
+  Logger, Param,
   Patch,
   Post,
   Query,
   Req,
-  Request,
-  UnauthorizedException,
-} from '@nestjs/common';
+  Request, Res,
+  UnauthorizedException, UploadedFile, UseInterceptors
+} from "@nestjs/common";
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dtos/update-user.dto';
+import { FileInterceptor } from "@nestjs/platform-express";
+import { diskStorage } from "multer";
+import { extname, join } from "path";
+import { Response } from 'express';
 
 @Controller('users')
 export class UsersController {
@@ -40,5 +44,29 @@ export class UsersController {
   @Patch()
   async updateAddress(@Request() req, @Body() updateUserDto: UpdateUserDto) {
     return await this.usersService.updateAddress(req.user.id, updateUserDto);
+  }
+
+  @UseInterceptors(FileInterceptor('file', {
+    storage: diskStorage({
+      destination: './uploads', // Dossier où les fichiers seront enregistrés
+      filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + extname(file.originalname)); // Renommer le fichier
+      }
+    })
+  }))
+  @Post('profile-picture')
+  async uploadProfilePicture(@UploadedFile() file: Express.Multer.File, @Request() req) {
+    console.log(file);
+    const url = `${file.filename}`;
+    const user = await this.usersService.findOne(req.id)
+    user.profilePicture = url
+    return this.usersService.update(user)
+  }
+
+  @Get(':imgpath')
+  seeUploadedFile(@Param('imgpath') image, @Res() res: Response) {
+    const imagePath = join(process.cwd(), 'uploads', image);
+    return res.sendFile(imagePath);
   }
 }

@@ -53,6 +53,10 @@ export class UsersService {
     return result !== null;
   }
 
+  async update(updateUserDto: UpdateUserDto) {
+    return await this.usersRepository.save(updateUserDto);
+  }
+
   async findOne(id: number) {
     const user = await this.usersRepository.findOneBy({ id });
 
@@ -66,7 +70,11 @@ export class UsersService {
   async findAll() {
     return await this.usersRepository.find({
       select: {
+        id: true,
         email: true,
+        username: true,
+        firstName: true,
+        name: true
       },
       relations: {
         clients: false,
