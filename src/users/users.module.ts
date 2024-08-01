@@ -5,6 +5,7 @@ import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
 import { ComptePrincipalModule } from 'src/compte_principal/compte_principal.module';
 import { ComptePrincipal } from 'src/compte_principal/entities/compte_principal.entity';
+import { UserSecondaryAccountModule } from '../user-secondary-account/user-secondary-account.module';
 
 @Module({
   providers: [UsersService],
@@ -12,6 +13,7 @@ import { ComptePrincipal } from 'src/compte_principal/entities/compte_principal.
   imports: [
     TypeOrmModule.forFeature([User, ComptePrincipal]),
     forwardRef(() => ComptePrincipalModule),
+    forwardRef(() => UserSecondaryAccountModule),
   ],
   controllers: [UsersController],
 })

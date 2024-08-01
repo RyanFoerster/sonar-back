@@ -12,15 +12,21 @@ import { UserSecondaryAccountModule } from "./user-secondary-account/user-second
 import { ProductModule } from "./product/product.module";
 import { InvoiceModule } from "./invoice/invoice.module";
 import { ClientsModule } from "./clients/clients.module";
-import { QuoteModule } from './quote/quote.module';
+import { QuoteModule } from "./quote/quote.module";
 import { ScheduleModule } from "@nestjs/schedule";
-import { TransactionModule } from './transaction/transaction.module';
+import { TransactionModule } from "./transaction/transaction.module";
+import { ServeStaticModule } from "@nestjs/serve-static";
+import { join } from "path";
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     TypeOrmModule.forRoot(config),
     ScheduleModule.forRoot(),
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, "..", "uploads"), // Indiquez le chemin vers le dossier des fichiers uploadés
+      serveRoot: "/uploads" // Le préfixe de l'URL pour accéder aux fichiers
+    }),
     AuthModule,
     UsersModule,
     ComptePrincipalModule,
@@ -30,9 +36,10 @@ import { TransactionModule } from './transaction/transaction.module';
     InvoiceModule,
     ClientsModule,
     QuoteModule,
-    TransactionModule,
+    TransactionModule
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService]
 })
-export class AppModule {}
+export class AppModule {
+}

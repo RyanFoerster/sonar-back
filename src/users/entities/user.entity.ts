@@ -42,6 +42,9 @@ export class User {
   @Column({ default: false })
   isActive: boolean
 
+  @Column({nullable: true})
+  profilePicture: string
+
   @OneToOne(() => ComptePrincipal, {
     eager: true
   })

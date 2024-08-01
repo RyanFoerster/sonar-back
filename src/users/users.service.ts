@@ -1,19 +1,24 @@
-import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import * as bcrypt from "bcrypt";
-import { Repository } from "typeorm";
-import { CreateUserDto } from "./dtos/create-user.dto";
-import { User } from "./entities/user.entity";
-import { UsernameException } from "./exceptions/username.exception";
-import { EmailException } from "./exceptions/email.exception";
-import { ComptePrincipalService } from "src/compte_principal/compte_principal.service";
-import { UpdateUserDto } from "./dtos/update-user.dto";
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import * as bcrypt from 'bcrypt';
+import { Repository } from 'typeorm';
+import { CreateUserDto } from './dtos/create-user.dto';
+import { User } from './entities/user.entity';
+import { UsernameException } from './exceptions/username.exception';
+import { EmailException } from './exceptions/email.exception';
+import { ComptePrincipalService } from 'src/compte_principal/compte_principal.service';
+import { UpdateUserDto } from './dtos/update-user.dto';
+import { CompteGroupe } from '../compte_groupe/entities/compte_groupe.entity';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User) private readonly usersRepository: Repository<User>,
-    private readonly comptePrincipalService: ComptePrincipalService
+    private readonly comptePrincipalService: ComptePrincipalService,
   ) {}
 
   async create(createUserDto: CreateUserDto) {
@@ -25,8 +30,8 @@ export class UsersService {
       throw new EmailException();
     }
 
-    if(createUserDto.password !== createUserDto.confirmPassword) {
-      throw new UnauthorizedException("Passwords do not match");
+    if (createUserDto.password !== createUserDto.confirmPassword) {
+      throw new UnauthorizedException('Passwords do not match');
     }
 
     let user = this.usersRepository.create(createUserDto);
@@ -36,14 +41,20 @@ export class UsersService {
 
     user = await this.usersRepository.save(user);
 
-    const comptePrincipal = await this.comptePrincipalService.create({username: user.username})
+    const comptePrincipal = await this.comptePrincipalService.create({
+      username: user.username,
+    });
 
-    user.comptePrincipal = comptePrincipal
-    
-    await this.usersRepository.save(user)
+    user.comptePrincipal = comptePrincipal;
+
+    await this.usersRepository.save(user);
 
     const { password, ...result } = user;
     return result !== null;
+  }
+
+  async update(updateUserDto: UpdateUserDto) {
+    return await this.usersRepository.save(updateUserDto);
   }
 
   async findOne(id: number) {
@@ -52,7 +63,24 @@ export class UsersService {
     if (!user) return null;
 
     return await this.usersRepository.findOne({
-      where: { email: user.email }
+      where: { email: user.email },
+    });
+  }
+
+  async findAll() {
+    return await this.usersRepository.find({
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        firstName: true,
+        name: true
+      },
+      relations: {
+        clients: false,
+        comptePrincipal: false,
+        userSecondaryAccounts: false,
+      },
     });
   }
 
@@ -60,6 +88,7 @@ export class UsersService {
     return await this.usersRepository
       .createQueryBuilder('user')
       .addSelect('user.password')
+      .leftJoinAndSelect('user.userSecondaryAccounts', 'userSecondaryAccounts')
       .where('user.email = :email', { email })
       .getOne();
   }
@@ -68,31 +97,47 @@ export class UsersService {
     return await this.usersRepository.findOneBy({ username });
   }
 
+  async findAllUsersGroup(params: any) {
+    return await this.usersRepository.find({
+      where: {
+        userSecondaryAccounts: {
+          secondary_account_id: params.id,
+        },
+      },
+    });
+  }
+
   async updateAddress(id: number, updateUserDto: UpdateUserDto) {
-
     const user = await this.findOne(id);
-    const {username, name, firstName, numeroNational, telephone, email, iban, address} = updateUserDto;
+    const {
+      username,
+      name,
+      firstName,
+      numeroNational,
+      telephone,
+      email,
+      iban,
+      address,
+    } = updateUserDto;
 
-    if(!user) {
-      throw new BadRequestException()
+    if (!user) {
+      throw new BadRequestException();
     }
 
     user.address = address;
-    user.username = username
+    user.username = username;
     user.name = name;
     user.email = email;
-    user.firstName = firstName
-    user.numeroNational = numeroNational
-    user.telephone = telephone
-    user.iban = iban
+    user.firstName = firstName;
+    user.numeroNational = numeroNational;
+    user.telephone = telephone;
+    user.iban = iban;
 
-    const principalAccount = user.comptePrincipal
+    const principalAccount = user.comptePrincipal;
 
-    principalAccount.username = username
-    await this.comptePrincipalService.update(principalAccount)
+    principalAccount.username = username;
+    await this.comptePrincipalService.update(principalAccount);
 
-    return await this.usersRepository.save(user)
+    return await this.usersRepository.save(user);
   }
-
-
 }
