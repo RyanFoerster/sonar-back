@@ -2,10 +2,9 @@ import { Module } from "@nestjs/common";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import config from "../ormconfig";
 import { AuthModule } from "./auth/auth.module";
 import { UsersModule } from "./users/users.module";
-import { ConfigModule } from "@nestjs/config";
+import { ConfigModule, ConfigService } from "@nestjs/config";
 import { ComptePrincipalModule } from "./compte_principal/compte_principal.module";
 import { CompteGroupeModule } from "./compte_groupe/compte_groupe.module";
 import { UserSecondaryAccountModule } from "./user-secondary-account/user-secondary-account.module";
@@ -17,11 +16,38 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { TransactionModule } from "./transaction/transaction.module";
 import { ServeStaticModule } from "@nestjs/serve-static";
 import { join } from "path";
+import { JwtModule } from "@nestjs/jwt";
+import config from "./config/config";
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    TypeOrmModule.forRoot(config),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+      load: [config]
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        type: "postgres",
+        database: configService.get("database.database"),
+        host: configService.get("database.host"),
+        port: +configService.get("database.port"),
+        username: configService.get("database.username"),
+        password: configService.get("database.password"),
+        entities: [__dirname + "/**/*.entity{.ts,.js}"],
+        synchronize: true
+      }),
+      inject: [ConfigService]
+    }),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: async (configService: ConfigService) => ({
+        secret: configService.get("jwt.secret")
+      }),
+      inject: [ConfigService],
+      global: true
+    }),
     ScheduleModule.forRoot(),
     ServeStaticModule.forRoot({
       rootPath: join(__dirname, "..", "uploads"), // Indiquez le chemin vers le dossier des fichiers uploadés

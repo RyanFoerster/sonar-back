@@ -30,15 +30,7 @@ export class ComptePrincipalController {
 
   @Get()
   async findAll(@Req() req) {
-    const userConnected: User = await this.usersService.findOneByEmail(
-      req.user.email,
-    );
-
-    if (userConnected.role === 'ADMIN') {
-      return this.comptePrincipalService.findAll();
-    } else {
-      throw new UnauthorizedException("Vous n'êtes pas autorisé a faire cela");
-    }
+    return this.comptePrincipalService.findAll();
   }
 
   @Get(':id')

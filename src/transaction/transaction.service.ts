@@ -116,6 +116,58 @@ export class TransactionService {
     return transactions;
   }
 
+  findRecipientPrincipalTransactionById(id: number) {
+    return this.transactionRepository.createQueryBuilder('transaction')
+      .leftJoinAndSelect('transaction.senderPrincipal', 'senderPrincipal')
+      .leftJoinAndSelect('transaction.senderGroup', 'senderGroup')
+      .leftJoinAndSelect('transaction.recipientPrincipal', 'recipientPrincipal')
+      .leftJoinAndSelect('transaction.recipientGroup', 'recipientGroup')
+      .select([
+        'transaction', // Sélectionner toutes les colonnes de la table Transaction
+        'senderPrincipal.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
+        'senderPrincipal.username', // Exemple de colonne
+        'senderPrincipal.solde', // Exemple de colonne
+        'senderGroup.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
+        'senderGroup.username', // Exemple de colonne
+        'senderGroup.solde',
+        'recipientPrincipal.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
+        'recipientPrincipal.username', // Exemple de colonne
+        'recipientPrincipal.solde',
+        'recipientGroup.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
+        'recipientGroup.username', // Exemple de colonne
+        'recipientGroup.solde',
+        // Exemple de colonne
+      ])
+      .where("recipientPrincipal.id = :id", { id })
+      .getMany()
+  }
+
+  findSenderPrincipalTransactionById(id: number) {
+    return this.transactionRepository.createQueryBuilder('transaction')
+      .leftJoinAndSelect('transaction.senderPrincipal', 'senderPrincipal')
+      .leftJoinAndSelect('transaction.senderGroup', 'senderGroup')
+      .leftJoinAndSelect('transaction.recipientPrincipal', 'recipientPrincipal')
+      .leftJoinAndSelect('transaction.recipientGroup', 'recipientGroup')
+      .select([
+        'transaction', // Sélectionner toutes les colonnes de la table Transaction
+        'senderPrincipal.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
+        'senderPrincipal.username', // Exemple de colonne
+        'senderPrincipal.solde', // Exemple de colonne
+        'senderGroup.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
+        'senderGroup.username', // Exemple de colonne
+        'senderGroup.solde',
+        'recipientPrincipal.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
+        'recipientPrincipal.username', // Exemple de colonne
+        'recipientPrincipal.solde',
+        'recipientGroup.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
+        'recipientGroup.username', // Exemple de colonne
+        'recipientGroup.solde',
+        // Exemple de colonne
+      ])
+      .where("senderPrincipal.id = :id", { id })
+      .getMany()
+  }
+
   findOne(id: number) {
     return `This action returns a #${id} transaction`;
   }

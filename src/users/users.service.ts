@@ -22,35 +22,13 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto) {
-    if ((await this.findOneByUsername(createUserDto.username)) !== null) {
-      throw new UsernameException();
-    }
 
-    if ((await this.findOneByEmail(createUserDto.email)) !== null) {
-      throw new EmailException();
-    }
+    return await this.usersRepository.save(createUserDto);
 
-    if (createUserDto.password !== createUserDto.confirmPassword) {
-      throw new UnauthorizedException('Passwords do not match');
-    }
+  }
 
-    let user = this.usersRepository.create(createUserDto);
-
-    const salt = await bcrypt.genSalt();
-    user.password = await bcrypt.hash(createUserDto.password, salt);
-
-    user = await this.usersRepository.save(user);
-
-    const comptePrincipal = await this.comptePrincipalService.create({
-      username: user.username,
-    });
-
-    user.comptePrincipal = comptePrincipal;
-
-    await this.usersRepository.save(user);
-
-    const { password, ...result } = user;
-    return result !== null;
+  async createWithoutSaving(user: User) {
+    return this.usersRepository.create(user)
   }
 
   async update(updateUserDto: UpdateUserDto) {

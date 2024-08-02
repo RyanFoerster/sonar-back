@@ -1,32 +1,52 @@
-import { Body, Controller, Get, Post, Request, UseGuards } from "@nestjs/common";
-import { CreateUserDto } from "src/users/dtos/create-user.dto";
-import { UsersService } from "src/users/users.service";
+import { Body, Controller, Post, Put, Req } from "@nestjs/common";
 import { AuthService } from "./auth.service";
+import { SignupDto } from "./dto/signup.dto";
+import { LoginDto } from "./dto/login.dto";
+import { RefreshTokenDto } from "./dto/refresh-token.dto";
+import { ChangePasswordDto } from "./dto/change-password.dto";
+import { ForgotPasswordDto } from "./dto/forgot-password.dto";
+import { ResetPasswordDto } from "./dto/reset-password.dto";
 import { Public } from "./decorators/public.decorator";
-import { LocalAuthGuard } from "./guards/local-auth.guard";
 
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private authService: AuthService,
-    private userService: UsersService,
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
-  @UseGuards(LocalAuthGuard)
-  @Post('login')
+
   @Public()
-  async login(@Request() req) {
-    return this.authService.login(req.user);
-  }
-
   @Post('register')
-  @Public()
-  async register(@Body() createUserDto: CreateUserDto) {
-    return await this.userService.create(createUserDto);
+  async signUp(@Body() signupDto: SignupDto){
+    return this.authService.signup(signupDto);
   }
 
-  @Get('profile')
-  getProfile(@Request() req) {
-    return req.user;
+  @Public()
+  @Post('login')
+  async login(@Body() credentials: LoginDto){
+    return this.authService.login(credentials);
+  }
+
+  @Public()
+  @Post("refresh")
+  async refreshTokens(@Body() refreshTokenDto: RefreshTokenDto) {
+    return this.authService.refreshTokens(refreshTokenDto.refreshToken)
+  }
+
+  @Put('change-password')
+  async changePassword(@Body() changePasswordDto: ChangePasswordDto, @Req() req)  {
+    const {oldPassword, newPassword} = changePasswordDto;
+    return this.authService.changePassword(req.userId, oldPassword, newPassword);
+  }
+
+  @Public()
+  @Post("forgot-password")
+  async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(forgotPasswordDto.email);
+  }
+
+  @Public()
+  @Put("reset-password")
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    const {resetToken, newPassword} = resetPasswordDto;
+    return this.authService.resetPassword(newPassword, resetToken);
   }
 }
