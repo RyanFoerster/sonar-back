@@ -21,7 +21,7 @@ export class ComptePrincipal {
   @OneToMany(() => Invoice, (invoice) => invoice.main_account, {nullable: true, eager: true})
   invoice: Invoice[];
 
-  @OneToMany(() => Transaction, (transaction) => transaction.senderPrincipal, {eager: true})
+  @OneToMany(() => Transaction, (transaction) => transaction.senderPrincipal, )
   transactions: Transaction[]
 
 

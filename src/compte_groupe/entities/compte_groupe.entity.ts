@@ -33,9 +33,7 @@ export class CompteGroupe {
   })
   invoice: Invoice[];
 
-  @OneToMany(() => Transaction, (transaction) => transaction.senderPrincipal, {
-    eager: true,
-  })
+  @OneToMany(() => Transaction, (transaction) => transaction.senderPrincipal, )
   transactions: Transaction[];
 
   @OneToMany(
