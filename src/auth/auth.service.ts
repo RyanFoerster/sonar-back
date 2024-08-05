@@ -32,9 +32,9 @@ export class AuthService {
               private mailService: MailService) {
   }
 
-  async signup(signupDto: SignupDto) {
+  async signup(signupDto: SignupDto, id?: number) {
     const { email, username, password, confirmPassword, name, firstName, numeroNational, telephone, iban } = signupDto;
-
+    let admin = undefined
     // Check if email already exists
     const emailInUse = await this.usersService.findOneByEmail(email);
 
@@ -46,10 +46,16 @@ export class AuthService {
       throw new UsernameException();
     }
 
-    Logger.debug(password === confirmPassword)
-
     if(password === confirmPassword) {
       let user = await this.usersService.create(signupDto);
+
+      if(id !== undefined) {
+        admin = await this.usersService.findOne(id)
+        if(admin.role === "ADMIN"){
+          user.isActive = true
+        }
+      }
+
 
       const salt = await bcrypt.genSalt();
       user.password = await bcrypt.hash(signupDto.password, salt);
@@ -61,8 +67,9 @@ export class AuthService {
       });
 
       user.comptePrincipal = comptePrincipal;
-
+      comptePrincipal.user = user
       await this.usersService.create(user);
+      await this.comptePrincipalService.create(comptePrincipal)
 
       const { password, ...result } = user;
       return result !== null;

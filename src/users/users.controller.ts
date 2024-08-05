@@ -1,6 +1,6 @@
 import {
   Body,
-  Controller,
+  Controller, Delete,
   Get,
   Logger, Param,
   Patch,
@@ -16,6 +16,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { diskStorage } from "multer";
 import { extname, join } from "path";
 import { Response } from 'express';
+import { User } from "./entities/user.entity";
 
 @Controller('users')
 export class UsersController {
@@ -41,9 +42,29 @@ export class UsersController {
     return await this.usersService.findAllUsersGroup(params);
   }
 
+  @Get('pending')
+  async findAllPendingUser(@Request() req) {
+    const user = await this.findConnectedUser(req)
+    if(user.role !== "ADMIN") {
+      throw new UnauthorizedException("You do not have permission to perform this action.");
+    }
+
+    return await this.usersService.findAllPendingUser()
+  }
+
   @Patch()
   async updateAddress(@Request() req, @Body() updateUserDto: UpdateUserDto) {
     return await this.usersService.updateAddress(req.user.id, updateUserDto);
+  }
+
+  @Patch("toggleActive")
+  async toggleActiveUser(@Request() req, @Body() userToActive: User) {
+    const user = await this.findConnectedUser(req)
+    if(user.role !== "ADMIN") {
+      throw new UnauthorizedException("You do not have permission to perform this action.");
+    }
+
+    return await this.usersService.toggleActiveUser(userToActive)
   }
 
   @UseInterceptors(FileInterceptor('file', {
@@ -68,5 +89,14 @@ export class UsersController {
   seeUploadedFile(@Param('imgpath') image, @Res() res: Response) {
     const imagePath = join(process.cwd(), 'uploads', image);
     return res.sendFile(imagePath);
+  }
+
+  @Delete(':id')
+  async deleteUser(@Param('id') id: string, @Req() req) {
+    const user = await this.findConnectedUser(req)
+    if(user.role !== "ADMIN") {
+      throw new UnauthorizedException("You do not have permission to perform this action.");
+    }
+    return this.usersService.delete(+id)
   }
 }

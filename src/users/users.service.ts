@@ -1,8 +1,8 @@
 import {
   BadRequestException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+  Injectable, Logger,
+  UnauthorizedException
+} from "@nestjs/common";
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
@@ -117,5 +117,31 @@ export class UsersService {
     await this.comptePrincipalService.update(principalAccount);
 
     return await this.usersRepository.save(user);
+  }
+
+  async findAllPendingUser() {
+    return this.usersRepository.find({
+      where: {
+        isActive: false
+      }
+    })
+  }
+
+  async toggleActiveUser(user: User) {
+    user.isActive = true
+    Logger.debug(JSON.stringify(user, null, 2))
+    return await this.usersRepository.save(user);
+  }
+
+  async delete(id: number) {
+    const user = await this.usersRepository.findOne({
+      where: {
+        id
+      },
+      relations: ["comptePrincipal"]
+    });
+    if(user) {
+      return await this.usersRepository.remove(user)
+    }
   }
 }

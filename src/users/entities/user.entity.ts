@@ -36,8 +36,8 @@ export class User {
   @Column({default: "USER"})
   role: "USER" | "ADMIN" | "GUEST"
 
-  @Column({nullable: true})
-  address?: string
+  @Column()
+  address: string
 
   @Column({ default: false })
   isActive: boolean
@@ -46,13 +46,16 @@ export class User {
   profilePicture: string
 
   @OneToOne(() => ComptePrincipal, {
-    eager: true
+    eager: true,
+    cascade: ['insert', "update", "remove"],
+    onDelete: "CASCADE"
   })
   @JoinColumn()
   comptePrincipal: ComptePrincipal
 
   @OneToMany(()=> UserSecondaryAccount, (userSecondaryAccount) => userSecondaryAccount.user, {
-    eager: true
+    eager: true,
+    cascade: true
   })
   userSecondaryAccounts: UserSecondaryAccount[];
 

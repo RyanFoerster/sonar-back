@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Put, Req } from "@nestjs/common";
+import { Body, Controller, Post, Put, Request } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { SignupDto } from "./dto/signup.dto";
 import { LoginDto } from "./dto/login.dto";
@@ -15,8 +15,13 @@ export class AuthController {
 
   @Public()
   @Post('register')
-  async signUp(@Body() signupDto: SignupDto){
-    return this.authService.signup(signupDto);
+  async signUp(@Body() signupDto: SignupDto, @Request() req){
+    return this.authService.signup(signupDto, req.user?.id);
+  }
+
+  @Post('register-from-admin')
+  async signUpFromAdmin(@Body() signupDto: SignupDto, @Request() req){
+    return this.authService.signup(signupDto, req.user.id);
   }
 
   @Public()
@@ -32,9 +37,9 @@ export class AuthController {
   }
 
   @Put('change-password')
-  async changePassword(@Body() changePasswordDto: ChangePasswordDto, @Req() req)  {
+  async changePassword(@Body() changePasswordDto: ChangePasswordDto, @Request() req)  {
     const {oldPassword, newPassword} = changePasswordDto;
-    return this.authService.changePassword(req.userId, oldPassword, newPassword);
+    return this.authService.changePassword(req.user.id, oldPassword, newPassword);
   }
 
   @Public()

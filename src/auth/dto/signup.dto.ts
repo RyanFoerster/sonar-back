@@ -27,6 +27,9 @@ export class SignupDto {
   email: string;
 
   @IsString()
+  address: string
+
+  @IsString()
   name: string
 
   @IsString()
