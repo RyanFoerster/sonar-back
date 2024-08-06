@@ -1,35 +1,47 @@
 import { CompteGroupe } from "src/compte_groupe/entities/compte_groupe.entity";
 import { ComptePrincipal } from "src/compte_principal/entities/compte_principal.entity";
-import { Column, CreateDateColumn, Entity, JoinColumn, JoinTable, ManyToMany, ManyToOne, OneToMany, OneToOne, PrimaryColumn, PrimaryGeneratedColumn } from "typeorm";
+import {
+    Column,
+    CreateDateColumn,
+    Entity,
+    JoinColumn,
+    JoinTable,
+    ManyToMany,
+    ManyToOne,
+    PrimaryGeneratedColumn
+} from "typeorm";
 
 @Entity()
 export class Transaction {
-    @PrimaryGeneratedColumn()
-    id: number;
+  @PrimaryGeneratedColumn()
+  id: number;
 
-    @Column()
-    communication: string;
+  @Column()
+  communication: string;
 
-    @Column()
-    amount: number;
+  @Column()
+  amount: number;
 
-    @ManyToOne(() => CompteGroupe, (compteGroupe) => compteGroupe.transactions, {nullable: true})
-    @JoinColumn()
-    senderGroup: CompteGroupe;
+  @Column({ nullable: true })
+  type?: "SENDER" | "RECIPIENT";
 
-    @ManyToOne(() => ComptePrincipal, (comptePrincipal) => comptePrincipal.transactions, {nullable: true})
-    @JoinColumn()
-    senderPrincipal: ComptePrincipal;
+  @ManyToOne(() => CompteGroupe, (compteGroupe) => compteGroupe.transactions, { nullable: true, eager: true })
+  @JoinColumn()
+  senderGroup: CompteGroupe;
 
-    @ManyToMany(() => CompteGroupe, {cascade: true})
-    @JoinTable()
-    recipientGroup: CompteGroupe[];
+  @ManyToOne(() => ComptePrincipal, (comptePrincipal) => comptePrincipal.transactions, { nullable: true, eager: true })
+  @JoinColumn()
+  senderPrincipal: ComptePrincipal;
 
-    @ManyToMany(() => ComptePrincipal, {cascade: true})
-    @JoinTable()
-    recipientPrincipal: ComptePrincipal[];
+  @ManyToMany(() => CompteGroupe, { cascade: true, eager: true })
+  @JoinTable()
+  recipientGroup: CompteGroupe[];
 
-    @CreateDateColumn()
-    date: Date;
+  @ManyToMany(() => ComptePrincipal, { cascade: true, eager: true })
+  @JoinTable()
+  recipientPrincipal: ComptePrincipal[];
+
+  @CreateDateColumn()
+  date: Date;
 
 }

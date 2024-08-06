@@ -1,39 +1,29 @@
 import { Module } from "@nestjs/common";
-import { APP_GUARD } from "@nestjs/core";
-import { JwtModule } from "@nestjs/jwt";
-import { PassportModule } from "@nestjs/passport";
-import { TypeOrmModule } from "@nestjs/typeorm";
-import { User } from "src/users/entities/user.entity";
-import { UsersModule } from "src/users/users.module";
-import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
-import { JwtAuthGuard } from "./guards/jwt-auth.guard";
+import { AuthController } from "./auth.controller";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { RefreshToken } from "./entities/refresh-token.entity";
+import { ResetToken } from "./entities/reset-token.entity";
+import { MailService } from "../services/mail.services";
+import { APP_GUARD } from "@nestjs/core";
+import { JwtAuthGuard } from "../guards/auth.guard";
 import { JwtStrategy } from "./strategies/jwt.strategy";
-import { LocalStrategy } from "./strategies/local.strategy";
-import { jwtConstants } from "./constants/constants";
-import { ComptePrincipalModule } from "src/compte_principal/compte_principal.module";
+import { UsersModule } from "../users/users.module";
+import { ComptePrincipalModule } from "../compte_principal/compte_principal.module";
 
 @Module({
+  controllers: [AuthController],
   providers: [
+    AuthService,
+    MailService,
     {
       provide: APP_GUARD,
-      useClass: JwtAuthGuard,
+      useClass: JwtAuthGuard
     },
-    AuthService,
-    LocalStrategy,
     JwtStrategy,
   ],
-  imports: [
-    UsersModule,
-    PassportModule,
-    ComptePrincipalModule, // Assurez-vous que ComptePrincipalModule est importé
-    TypeOrmModule.forFeature([User]),
-    JwtModule.register({
-      secret: jwtConstants.secret,
-      signOptions: { expiresIn: '3600s' },
-    }),
-  ],
-  controllers: [AuthController],
   exports: [AuthService],
+  imports: [TypeOrmModule.forFeature([RefreshToken, ResetToken]), UsersModule, ComptePrincipalModule]  // Assurez-vous que cela est correct
 })
-export class AuthModule {}
+export class AuthModule {
+}

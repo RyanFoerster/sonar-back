@@ -20,7 +20,7 @@ export class UserSecondaryAccount {
   @ManyToOne(
     () => CompteGroupe,
     (groupAccount) => groupAccount.userSecondaryAccount,
-    { eager: true },
+    { eager: true, cascade: true },
   )
   group_account: CompteGroupe;
 
