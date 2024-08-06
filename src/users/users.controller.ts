@@ -47,6 +47,7 @@ export class UsersController {
     const user = await this.findConnectedUser(req)
     if(user.role !== "ADMIN") {
       throw new UnauthorizedException("You do not have permission to perform this action.");
+
     }
 
     return await this.usersService.findAllPendingUser()

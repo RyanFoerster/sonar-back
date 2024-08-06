@@ -17,6 +17,7 @@ import { TransactionModule } from "./transaction/transaction.module";
 import { ServeStaticModule } from "@nestjs/serve-static";
 import { join } from "path";
 import { JwtModule } from "@nestjs/jwt";
+import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
 import config from "./config/config";
 
 @Module({
@@ -62,7 +63,8 @@ import config from "./config/config";
     InvoiceModule,
     ClientsModule,
     QuoteModule,
-    TransactionModule
+    TransactionModule,
+    VirementSepaModule
   ],
   controllers: [AppController],
   providers: [AppService]

@@ -3,6 +3,7 @@ import { Invoice } from "../../invoice/entities/invoice.entity";
 import { Quote } from "../../quote/entities/quote.entity";
 import { Transaction } from "src/transaction/entities/transaction.entity";
 import { User } from "../../users/entities/user.entity";
+import { VirementSepa } from "../../virement-sepa/entities/virement-sepa.entity";
 
 @Entity()
 export class ComptePrincipal {
@@ -30,5 +31,6 @@ export class ComptePrincipal {
   @JoinColumn()
   user: User
 
-
+  @OneToMany(() => VirementSepa, (virementSepa) => virementSepa.comptePrincipal, {nullable: true, eager: true})
+  virementSepa?: VirementSepa[]
 }
