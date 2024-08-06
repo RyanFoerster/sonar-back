@@ -69,7 +69,7 @@ import config from "./config/config";
     TransactionModule,
     EventsModule,
     InvitationsModule,
-    CommentsModule
+    CommentsModule,
     VirementSepaModule
 
   ],
