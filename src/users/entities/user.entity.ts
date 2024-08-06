@@ -1,8 +1,11 @@
 import { ComptePrincipal } from "src/compte_principal/entities/compte_principal.entity";
 import { UserSecondaryAccount } from "src/user-secondary-account/entities/user-secondary-account.entity";
-import { Column, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToMany, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 import { Invoice } from "../../invoice/entities/invoice.entity";
 import { Client } from "../../clients/entities/client.entity";
+import { Event } from "src/event/entities/event.entity";
+import { Invitation } from "src/invitation/entities/invitation.entity";
+import { Comment } from "src/comment/entities/comment.entity";
 
 @Entity()
 export class User {
@@ -64,5 +67,14 @@ export class User {
     cascade: true,
   })
   clients: Client[];
+
+  @ManyToOne(() => Event, (event) => event.user)
+  event: Event;
+
+  @OneToMany(() => Invitation, (invitation)=> invitation.user)
+  invitation: Invitation;
+
+  @OneToMany(() => Comment, (comment) => comment.user)
+  comment: Comment;
 
 }

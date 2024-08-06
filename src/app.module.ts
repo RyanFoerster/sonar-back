@@ -16,6 +16,9 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { TransactionModule } from "./transaction/transaction.module";
 import { ServeStaticModule } from "@nestjs/serve-static";
 import { join } from "path";
+import { EventsModule } from "./event/event.module"; 
+import { InvitationsModule } from './invitation/invitation.module';
+import { CommentsModule } from './comment/comment.module';
 import { JwtModule } from "@nestjs/jwt";
 import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
 import config from "./config/config";
@@ -64,7 +67,11 @@ import config from "./config/config";
     ClientsModule,
     QuoteModule,
     TransactionModule,
+    EventsModule,
+    InvitationsModule,
+    CommentsModule
     VirementSepaModule
+
   ],
   controllers: [AppController],
   providers: [AppService]
