@@ -52,12 +52,12 @@ export class Client {
   @UpdateDateColumn({ nullable: true })
   updatedAt?: Date;
 
-  @ManyToOne((type) => User, (user) => user.clients, {})
+  @ManyToOne((type) => User, (user) => user.clients)
   user: User;
 
-  @OneToMany(() => Quote, (quote) => quote.client)
+  @OneToMany(() => Quote, (quote) => quote.client,{cascade: true})
   quote: Quote;
 
-  @OneToMany(() => Invoice, (invoice) => invoice.client)
+  @OneToMany(() => Invoice, (invoice) => invoice.client, {cascade: true})
   invoice: Invoice;
 }

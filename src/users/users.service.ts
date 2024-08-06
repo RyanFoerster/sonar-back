@@ -1,8 +1,8 @@
 import {
   BadRequestException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+  Injectable, Logger,
+  UnauthorizedException
+} from "@nestjs/common";
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
@@ -22,35 +22,13 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto) {
-    if ((await this.findOneByUsername(createUserDto.username)) !== null) {
-      throw new UsernameException();
-    }
 
-    if ((await this.findOneByEmail(createUserDto.email)) !== null) {
-      throw new EmailException();
-    }
+    return await this.usersRepository.save(createUserDto);
 
-    if (createUserDto.password !== createUserDto.confirmPassword) {
-      throw new UnauthorizedException('Passwords do not match');
-    }
+  }
 
-    let user = this.usersRepository.create(createUserDto);
-
-    const salt = await bcrypt.genSalt();
-    user.password = await bcrypt.hash(createUserDto.password, salt);
-
-    user = await this.usersRepository.save(user);
-
-    const comptePrincipal = await this.comptePrincipalService.create({
-      username: user.username,
-    });
-
-    user.comptePrincipal = comptePrincipal;
-
-    await this.usersRepository.save(user);
-
-    const { password, ...result } = user;
-    return result !== null;
+  async createWithoutSaving(user: User) {
+    return this.usersRepository.create(user)
   }
 
   async update(updateUserDto: UpdateUserDto) {
@@ -139,5 +117,31 @@ export class UsersService {
     await this.comptePrincipalService.update(principalAccount);
 
     return await this.usersRepository.save(user);
+  }
+
+  async findAllPendingUser() {
+    return this.usersRepository.find({
+      where: {
+        isActive: false
+      }
+    })
+  }
+
+  async toggleActiveUser(user: User) {
+    user.isActive = true
+    Logger.debug(JSON.stringify(user, null, 2))
+    return await this.usersRepository.save(user);
+  }
+
+  async delete(id: number) {
+    const user = await this.usersRepository.findOne({
+      where: {
+        id
+      },
+      relations: ["comptePrincipal"]
+    });
+    if(user) {
+      return await this.usersRepository.remove(user)
+    }
   }
 }
