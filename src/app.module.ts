@@ -17,6 +17,9 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { TransactionModule } from "./transaction/transaction.module";
 import { ServeStaticModule } from "@nestjs/serve-static";
 import { join } from "path";
+import { EventsModule } from "./event/event.module"; 
+import { InvitationsModule } from './invitation/invitation.module';
+import { CommentsModule } from './comment/comment.module';
 
 @Module({
   imports: [
@@ -36,7 +39,10 @@ import { join } from "path";
     InvoiceModule,
     ClientsModule,
     QuoteModule,
-    TransactionModule
+    TransactionModule,
+    EventsModule,
+    InvitationsModule,
+    CommentsModule
   ],
   controllers: [AppController],
   providers: [AppService]
