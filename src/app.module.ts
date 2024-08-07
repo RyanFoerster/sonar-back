@@ -33,7 +33,7 @@ import config from "./config/config";
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        type: "postgres",
+        type: "mysql",
         database: configService.get("database.database"),
         host: configService.get("database.host"),
         port: +configService.get("database.port"),
