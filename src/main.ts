@@ -10,7 +10,6 @@ async function bootstrap() {
   app.enableCors({
     origin: ['sonarartists.fr', 'https://www.sonarartists.fr'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    credentials: true,
   });
 
   await app.listen(process.env.PORT || 3000);
