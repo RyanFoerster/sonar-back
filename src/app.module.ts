@@ -36,6 +36,7 @@ import config from './config/config';
         type: 'postgres',
         url: configService.get('database.url'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        synchronize: true
       }),
       inject: [ConfigService],
     }),
