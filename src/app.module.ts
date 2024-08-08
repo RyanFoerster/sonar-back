@@ -35,11 +35,6 @@ import config from './config/config';
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
         url: configService.get('database.url'),
-        database: configService.get('database.database'),
-        host: configService.get('database.host'),
-        port: +configService.get('database.port'),
-        username: configService.get('database.username'),
-        password: configService.get('database.password'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
       }),
       inject: [ConfigService],
