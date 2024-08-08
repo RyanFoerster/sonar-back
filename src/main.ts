@@ -12,6 +12,9 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   });
 
+  console.log(process.env.PORT)
+  console.log(process.env.DB_URL)
+
   await app.listen(process.env.PORT || 3000);
 }
 bootstrap();
