@@ -15,6 +15,7 @@ async function bootstrap() {
 
 
   console.log(process.env.PORT)
+  console.log(process.env.JWT_SECRET)
   console.log(process.env.DATABASE_URL)
   console.log(process.env.SUPABASE_URL)
 
