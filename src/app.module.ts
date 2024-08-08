@@ -34,9 +34,7 @@ import config from './config/config';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        database: configService.get('database.database'),
-        host: configService.get('database.host'),
-        port: +configService.get('database.port'),
+        url: configService.get('supabase.url'),
         username: configService.get('database.username'),
         password: configService.get('database.password'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],

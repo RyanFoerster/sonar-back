@@ -5,11 +5,16 @@ export default () => ({
     secret: process.env.JWT_SECRET
   },
   database: {
-    database: process.env.DB_DATABASE,
-    host: process.env.DB_HOST,
-    port: +process.env.DB_PORT,
-    username: process.env.DB_USERNAME,
-    password: process.env.DB_PASSWORD,
+    database: process.env.DATABASE_DATABASE,
+    url: process.env.DATABASE_URL,
+    host: process.env.DATABASE_HOST,
+    port: +process.env.DATABASE_PORT,
+    username: process.env.DATABASE_USERNAME,
+    password: process.env.DATABASE_PASSWORD,
   },
+  supabase: {
+    url: process.env.SUBABASE_URL,
+    key: process.env.SUBABASE_KEY,
+  }
 
 })
