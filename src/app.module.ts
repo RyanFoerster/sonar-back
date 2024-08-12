@@ -22,9 +22,20 @@ import { CommentsModule } from './comment/comment.module';
 import { JwtModule } from '@nestjs/jwt';
 import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
 import config from './config/config';
+import {
+  GoogleDriveConfig,
+  GoogleDriveModule,
+} from 'nestjs-googledrive-upload';
+import { MulterModule } from '@nestjs/platform-express';
+import * as driveConfig from './config/drive-config.json';
 
 @Module({
   imports: [
+    GoogleDriveModule.register(
+      driveConfig as GoogleDriveConfig,
+      '1BE2dfBbQ76djrsp1jRkDlhsu8_jsVQC8',
+    ),
+
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
@@ -62,6 +73,9 @@ import config from './config/config';
       }),
       inject: [ConfigService],
       global: true,
+    }),
+    MulterModule.register({
+      dest: './uploads',
     }),
     ScheduleModule.forRoot(),
     ServeStaticModule.forRoot({

@@ -1,8 +1,9 @@
 import {
   BadRequestException,
-  Injectable, Logger,
-  UnauthorizedException
-} from "@nestjs/common";
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
@@ -13,22 +14,22 @@ import { EmailException } from './exceptions/email.exception';
 import { ComptePrincipalService } from 'src/compte_principal/compte_principal.service';
 import { UpdateUserDto } from './dtos/update-user.dto';
 import { CompteGroupe } from '../compte_groupe/entities/compte_groupe.entity';
+import { GoogleDriveService } from 'nestjs-googledrive-upload';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User) private readonly usersRepository: Repository<User>,
     private readonly comptePrincipalService: ComptePrincipalService,
+    private readonly googleDriveService: GoogleDriveService,
   ) {}
 
   async create(createUserDto: CreateUserDto) {
-
     return await this.usersRepository.save(createUserDto);
-
   }
 
   async createWithoutSaving(user: User) {
-    return this.usersRepository.create(user)
+    return this.usersRepository.create(user);
   }
 
   async update(updateUserDto: UpdateUserDto) {
@@ -52,7 +53,7 @@ export class UsersService {
         email: true,
         username: true,
         firstName: true,
-        name: true
+        name: true,
       },
       relations: {
         clients: false,
@@ -122,26 +123,33 @@ export class UsersService {
   async findAllPendingUser() {
     return this.usersRepository.find({
       where: {
-        isActive: false
-      }
-    })
+        isActive: false,
+      },
+    });
   }
 
   async toggleActiveUser(user: User) {
-    user.isActive = true
-    Logger.debug(JSON.stringify(user, null, 2))
+    user.isActive = true;
+    Logger.debug(JSON.stringify(user, null, 2));
     return await this.usersRepository.save(user);
   }
 
   async delete(id: number) {
     const user = await this.usersRepository.findOne({
       where: {
-        id
+        id,
       },
-      relations: ["comptePrincipal"]
+      relations: ['comptePrincipal'],
     });
-    if(user) {
-      return await this.usersRepository.remove(user)
+    if (user) {
+      return await this.usersRepository.remove(user);
     }
+  }
+
+  async updateProfilePicture(user: User, file: Express.Multer.File) {
+    const url = await this.googleDriveService.uploadImage(file);
+    Logger.debug(url);
+    user.profilePicture = url;
+    return await this.usersRepository.save(user);
   }
 }
