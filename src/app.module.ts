@@ -36,7 +36,16 @@ import config from './config/config';
         configService.get('stage') === 'prod'
           ? {
               type: 'postgres',
-              url: configService.get('supabase.url'),
+              ssl: configService.get('STAGE') === 'prod',
+              extra: {
+                ssl:
+                  configService.get('STAGE') === 'prod'
+                    ? { rejectUnauthorized: false }
+                    : null,
+              },
+              database: configService.get('database.database'),
+              host: configService.get('database.host'),
+              port: +configService.get('database.port'),
               username: configService.get('database.username'),
               password: configService.get('database.password'),
               entities: [__dirname + '/**/*.entity{.ts,.js}'],
@@ -56,7 +65,7 @@ import config from './config/config';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        secret: process.env.JWT_SECRET,
+        secret: configService.get('jwt.secret'),
       }),
       inject: [ConfigService],
       global: true,
