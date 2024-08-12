@@ -42,12 +42,15 @@ import config from './config/config';
               : null,
         },
         database: configService.get('database.database'),
-        host: configService.get('database.host'),
+        host:
+          configService.get('STAGE') === 'prod'
+            ? configService.get('database.host')
+            : 'localhost',
         port: +configService.get('database.port'),
         username: configService.get('database.username'),
         password: configService.get('database.password'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true,
+        synchronize: configService.get('STAGE') !== 'prod',
       }),
 
       inject: [ConfigService],
