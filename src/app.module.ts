@@ -32,34 +32,24 @@ import config from './config/config';
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) =>
-        configService.get('stage') === 'prod'
-          ? {
-              type: 'postgres',
-              ssl: configService.get('STAGE') === 'prod',
-              extra: {
-                ssl:
-                  configService.get('STAGE') === 'prod'
-                    ? { rejectUnauthorized: false }
-                    : null,
-              },
-              database: configService.get('database.database'),
-              host: configService.get('database.host'),
-              port: +configService.get('database.port'),
-              username: configService.get('database.username'),
-              password: configService.get('database.password'),
-              entities: [__dirname + '/**/*.entity{.ts,.js}'],
-              synchronize: true,
-            }
-          : {
-              type: 'postgres',
-              database: configService.get('database.database'),
-              host: configService.get('database.host'),
-              username: configService.get('database.username'),
-              password: configService.get('database.password'),
-              entities: [__dirname + '/**/*.entity{.ts,.js}'],
-              synchronize: true,
-            },
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        ssl: configService.get('STAGE') === 'prod',
+        extra: {
+          ssl:
+            configService.get('STAGE') === 'prod'
+              ? { rejectUnauthorized: false }
+              : null,
+        },
+        database: configService.get('database.database'),
+        host: configService.get('database.host'),
+        port: +configService.get('database.port'),
+        username: configService.get('database.username'),
+        password: configService.get('database.password'),
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        synchronize: true,
+      }),
+
       inject: [ConfigService],
     }),
     JwtModule.registerAsync({
