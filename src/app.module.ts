@@ -32,14 +32,25 @@ import config from './config/config';
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        url: configService.get('supabase.url'),
-        username: configService.get('database.username'),
-        password: configService.get('database.password'),
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true,
-      }),
+      useFactory: (configService: ConfigService) =>
+        configService.get('stage') === 'prod'
+          ? {
+              type: 'postgres',
+              url: configService.get('supabase.url'),
+              username: configService.get('database.username'),
+              password: configService.get('database.password'),
+              entities: [__dirname + '/**/*.entity{.ts,.js}'],
+              synchronize: true,
+            }
+          : {
+              type: 'postgres',
+              database: configService.get('database.database'),
+              host: configService.get('database.host'),
+              username: configService.get('database.username'),
+              password: configService.get('database.password'),
+              entities: [__dirname + '/**/*.entity{.ts,.js}'],
+              synchronize: true,
+            },
       inject: [ConfigService],
     }),
     JwtModule.registerAsync({
