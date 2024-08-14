@@ -62,7 +62,7 @@ export class Invoice {
   @JoinColumn()
   quote: Quote;
 
-  @Column({type: 'enum', enum: ['invoice', 'credit_note'],default: 'invoice',})
+  @Column({type: 'enum', enum: ['invoice', 'credit_note'],default: 'invoice'})
   type: string; // Type de document (facture ou note de crédit)
 
   @Column({ nullable: true })

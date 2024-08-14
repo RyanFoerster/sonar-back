@@ -42,4 +42,9 @@ export class InvoiceController {
   ): Promise<Invoice> {
     return this.invoiceService.createCreditNote(createCreditNoteDto);
   }
+
+  @Get("credit-note/:id")
+  findCreditNoteByInvoiceId(@Param("id") id: string) {
+    return this.invoiceService.findCreditNoteByInvoiceId(+id)
+  }
 }
