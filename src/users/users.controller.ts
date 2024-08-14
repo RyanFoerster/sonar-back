@@ -1,22 +1,28 @@
 import {
   Body,
-  Controller, Delete,
+  Controller,
+  Delete,
   Get,
-  Logger, Param,
+  Logger,
+  Param,
   Patch,
   Post,
   Query,
   Req,
-  Request, Res,
-  UnauthorizedException, UploadedFile, UseInterceptors
-} from "@nestjs/common";
+  Request,
+  Res,
+  UnauthorizedException,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dtos/update-user.dto';
-import { FileInterceptor } from "@nestjs/platform-express";
-import { diskStorage } from "multer";
-import { extname, join } from "path";
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname, join } from 'path';
 import { Response } from 'express';
-import { User } from "./entities/user.entity";
+import { User } from './entities/user.entity';
+import * as process from 'node:process';
 
 @Controller('users')
 export class UsersController {
@@ -44,13 +50,14 @@ export class UsersController {
 
   @Get('pending')
   async findAllPendingUser(@Request() req) {
-    const user = await this.findConnectedUser(req)
-    if(user.role !== "ADMIN") {
-      throw new UnauthorizedException("You do not have permission to perform this action.");
-
+    const user = await this.findConnectedUser(req);
+    if (user.role !== 'ADMIN') {
+      throw new UnauthorizedException(
+        'You do not have permission to perform this action.',
+      );
     }
 
-    return await this.usersService.findAllPendingUser()
+    return await this.usersService.findAllPendingUser();
   }
 
   @Patch()
@@ -58,32 +65,27 @@ export class UsersController {
     return await this.usersService.updateAddress(req.user.id, updateUserDto);
   }
 
-  @Patch("toggleActive")
+  @Patch('toggleActive')
   async toggleActiveUser(@Request() req, @Body() userToActive: User) {
-    const user = await this.findConnectedUser(req)
-    if(user.role !== "ADMIN") {
-      throw new UnauthorizedException("You do not have permission to perform this action.");
+    const user = await this.findConnectedUser(req);
+    if (user.role !== 'ADMIN') {
+      throw new UnauthorizedException(
+        'You do not have permission to perform this action.',
+      );
     }
 
-    return await this.usersService.toggleActiveUser(userToActive)
+    return await this.usersService.toggleActiveUser(userToActive);
   }
 
-  @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: './uploads', // Dossier où les fichiers seront enregistrés
-      filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + extname(file.originalname)); // Renommer le fichier
-      }
-    })
-  }))
+  @UseInterceptors(FileInterceptor('file'))
   @Post('profile-picture')
-  async uploadProfilePicture(@UploadedFile() file: Express.Multer.File, @Request() req) {
-    console.log(file);
-    const url = `${file.filename}`;
-    const user = await this.usersService.findOne(req.id)
-    user.profilePicture = url
-    return this.usersService.update(user)
+  async uploadProfilePicture(
+    @UploadedFile() file: Express.Multer.File,
+    @Request() req,
+  ) {
+    Logger.debug(process.env.DRIVE_CLIENT_EMAIL);
+    const user = await this.usersService.findOne(req.id);
+    return this.usersService.updateProfilePicture(user, file);
   }
 
   @Get(':imgpath')
@@ -94,10 +96,12 @@ export class UsersController {
 
   @Delete(':id')
   async deleteUser(@Param('id') id: string, @Req() req) {
-    const user = await this.findConnectedUser(req)
-    if(user.role !== "ADMIN") {
-      throw new UnauthorizedException("You do not have permission to perform this action.");
+    const user = await this.findConnectedUser(req);
+    if (user.role !== 'ADMIN') {
+      throw new UnauthorizedException(
+        'You do not have permission to perform this action.',
+      );
     }
-    return this.usersService.delete(+id)
+    return this.usersService.delete(+id);
   }
 }
