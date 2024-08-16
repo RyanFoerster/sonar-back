@@ -3,7 +3,7 @@ import { CreateCreditNoteDto, CreateInvoiceDto } from "./dto/create-invoice.dto"
 import { UpdateInvoiceDto } from "./dto/update-invoice.dto";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Invoice } from "./entities/invoice.entity";
-import { Repository } from "typeorm";
+import { DataSource, Repository } from 'typeorm';
 import { User } from "../users/entities/user.entity";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { QuoteService } from "../quote/quote.service";
@@ -20,7 +20,8 @@ export class InvoiceService {
     private quoteService: QuoteService,
     private clientService: ClientsService,
     private comptePrincipalService: ComptePrincipalService,
-    private compteGroupeService: CompteGroupeService
+    private compteGroupeService: CompteGroupeService,
+    private dataSource: DataSource
   ) {
   }
 
@@ -178,23 +179,36 @@ export class InvoiceService {
   async createCreditNote(
     createCreditNoteDto: CreateCreditNoteDto
   ): Promise<Invoice> {
+    return await this.dataSource.transaction(async manager => {
+      const invoice = await manager.findOneBy(Invoice, { id: createCreditNoteDto.linkedInvoiceId });
+
+      if (!invoice) {
+        throw new Error("Invoice not found"); // Vérifie si la facture existe
+      }
+
+      if (createCreditNoteDto.creditNoteAmount > invoice.total) {
+        throw new Error("Credit note amount exceeds invoice total amount"); // Vérifie que le montant de la note de crédit ne dépasse pas le total de la facture
+      }
+      Logger.debug(JSON.stringify(invoice, null, 2));
+      // Crée la note de crédit en utilisant les données fournies
+      let {id, ...invoiceWithoutId} = invoice
+      invoice.total -= createCreditNoteDto.creditNoteAmount
+      const creditNote = manager.create(Invoice, {
+        ...invoiceWithoutId,
+        ...createCreditNoteDto,
+        type: "credit_note"
+      });
+      await manager.save(invoice);
+      return manager.save(creditNote);
+    })
     // Récupère la facture liée
-    const invoice = await this._invoiceRepository.findOneBy({ id: createCreditNoteDto.linkedInvoiceId });
+    // Sauvegarde la note de crédit dans la base de données
+  }
 
-    if (!invoice) {
-      throw new Error("Invoice not found"); // Vérifie si la facture existe
-    }
-
-    if (createCreditNoteDto.creditNoteAmount > invoice.total) {
-      throw new Error("Credit note amount exceeds invoice total amount"); // Vérifie que le montant de la note de crédit ne dépasse pas le total de la facture
-    }
-
-    // Crée la note de crédit en utilisant les données fournies
-    const creditNote = this._invoiceRepository.create({
-      ...createCreditNoteDto,
+  findCreditNoteByInvoiceId(invoice_id: number) {
+    return this._invoiceRepository.findBy({
+      linkedInvoiceId: invoice_id,
       type: "credit_note"
-    });
-
-    return this._invoiceRepository.save(creditNote); // Sauvegarde la note de crédit dans la base de données
+    })
   }
 }
