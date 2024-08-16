@@ -22,12 +22,9 @@ import { CommentsModule } from './comment/comment.module';
 import { JwtModule } from '@nestjs/jwt';
 import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
 import config from './config/config';
-import {
-  GoogleDriveConfig,
-  GoogleDriveModule,
-} from 'nestjs-googledrive-upload';
+import { GoogleDriveConfig, GoogleDriveModule } from 'nestjs-googledrive-upload';
 import { MulterModule } from '@nestjs/platform-express';
-import * as driveConfig from './config/drive-config.json';
+import driveConfig from './config/drive.config';
 
 @Module({
   imports: [
@@ -100,4 +97,5 @@ import * as driveConfig from './config/drive-config.json';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule {
+}
