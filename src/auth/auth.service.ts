@@ -13,7 +13,6 @@ import { LoginDto } from "./dto/login.dto";
 import { JwtService } from "@nestjs/jwt";
 import { RefreshToken } from "./entities/refresh-token.entity";
 import { v4 as uuidv4 } from "uuid";
-import { nanoid } from "nanoid";
 import { ResetToken } from "./entities/reset-token.entity";
 import { MailService } from "../services/mail.services";
 import { UsersService } from "../users/users.service";
@@ -33,6 +32,9 @@ export class AuthService {
   }
 
   async signup(signupDto: SignupDto, id?: number) {
+
+    console.log("Je passe ici")
+
     const { email, username, password, confirmPassword, name, firstName, numeroNational, telephone, iban } = signupDto;
     let admin = undefined
     // Check if email already exists
@@ -131,7 +133,7 @@ export class AuthService {
       const expiryDate = new Date();
       expiryDate.setHours(expiryDate.getHours() + 1);
 
-      const resetToken = nanoid(64);
+      const resetToken = uuidv4();
       await this.resetTokenRepository.save({
         token: resetToken,
         userId: user.id,

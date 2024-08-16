@@ -80,6 +80,7 @@ export class VirementSepaService {
   }
 
   async findAll(userId: number) {
+    console.log(userId);
     const user = await this.usersService.findOne(userId);
 
     if (!user) {
@@ -90,32 +91,49 @@ export class VirementSepaService {
       throw new UnauthorizedException("Vous ne pouvez pas faire cela");
     }
 
-    return this.virementSepaRepository.find();
+    return this.virementSepaRepository.createQueryBuilder("virement")
+      .leftJoinAndSelect("virement.compteGroupe", "compteGroupe")
+      .leftJoinAndSelect("virement.comptePrincipal", "comptePrincipal")
+      .select([
+        "virement",
+        "compteGroupe.id",
+        "comptePrincipal.id"
+      ])
+      .getMany();
   }
 
   findOne(id: number) {
-    return this.virementSepaRepository.findOneBy({ id });
+    return this.virementSepaRepository.createQueryBuilder("virement")
+      .leftJoinAndSelect("virement.compteGroupe", "compteGroupe")
+      .leftJoinAndSelect("virement.comptePrincipal", "comptePrincipal")
+      .select([
+        "virement",
+        "compteGroupe.id",
+        "comptePrincipal.id"
+      ])
+      .where("virement.id = :id", { id })
+      .getOneOrFail()
   }
 
   async update(id: number, status?: "ACCEPTED" | "REJECTED") {
     let virement = await this.findOne(id);
-    if(status) {
+    if (status) {
       virement.status = status;
     }
 
-    if(virement.status === "REJECTED") {
-      Logger.debug(JSON.stringify(virement))
-      if(virement.comptePrincipal !== undefined) {
-        let account = await this.comptePrincipalService.findOne(virement.comptePrincipal.id)
-        account.solde += virement.amount_htva
-        await this.comptePrincipalService.update(account)
+    if (virement.status === "REJECTED") {
+      Logger.debug(JSON.stringify(virement, null, 2));
+      if (virement.comptePrincipal !== null) {
+        let account = await this.comptePrincipalService.findOne(virement.comptePrincipal.id);
+        account.solde += virement.amount_htva;
+        await this.comptePrincipalService.update(account);
       }
 
-      if(virement.compteGroupe !== undefined) {
-        let account = await this.compteGroupService.findOne(virement.compteGroupe.id)
-        account.solde += virement.amount_htva
-        Logger.debug(JSON.stringify(account, null, 2))
-        await this.compteGroupService.save(account)
+      if (virement.compteGroupe !== null) {
+        let account = await this.compteGroupService.findOne(virement.compteGroupe.id);
+        account.solde += virement.amount_htva;
+        Logger.debug(JSON.stringify(account, null, 2));
+        await this.compteGroupService.save(account);
       }
     }
 
