@@ -53,7 +53,7 @@ import { MeetModule } from './meet/meet.module';
         username: configService.get('database.username'),
         password: configService.get('database.password'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: configService.get('STAGE') !== 'prod',
+        synchronize: true,
       }),
 
       inject: [ConfigService],
