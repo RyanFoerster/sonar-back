@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
@@ -16,7 +16,8 @@ export class InvitationsService {
     private eventsRepository: Repository<Event>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
-  ) {}
+  ) {
+  }
 
   async create(createInvitationDto: CreateInvitationDto): Promise<Invitation> {
     const event = await this.eventsRepository.findOneBy({ id: createInvitationDto.eventId });
@@ -31,7 +32,7 @@ export class InvitationsService {
 
     const invitation = this.invitationsRepository.create({
       ...createInvitationDto,
-      status: createInvitationDto.status || 'invited',
+      status: 'invited',
       event,
       user,
     });
@@ -43,7 +44,7 @@ export class InvitationsService {
   }
 
   async findOne(id: number): Promise<Invitation> {
-    const invitation = await this.invitationsRepository.findOne({ where: { id }, relations: ['event', 'user'] });
+    const invitation = await this.invitationsRepository.findOne({ where: { id } });
     if (!invitation) {
       throw new NotFoundException(`Invitation #${id} not found`);
     }
@@ -58,11 +59,48 @@ export class InvitationsService {
     if (!invitation) {
       throw new NotFoundException(`Invitation #${id} not found`);
     }
+
+    const event = await this.eventsRepository.findOneBy({ id: invitation.event.id });
+    if (!event) {
+      throw new NotFoundException(`Event #${invitation.event.id} not found`);
+    }
+
+    if(!event.participants) {
+      event.participants = [];
+    }
+
+    event.participants.push(invitation.user);
+    event.user_status.push({user_id: invitation.user.id, status: "accepted"})
+    await this.invitationsRepository.save(invitation)
+    await this.eventsRepository.save(event)
     return await this.invitationsRepository.save(invitation);
   }
 
   async remove(id: number): Promise<void> {
     const invitation = await this.findOne(id);
     await this.invitationsRepository.remove(invitation);
+  }
+
+  async findByUserId(userId: number) {
+    Logger.debug(`Find invitations by userId ${userId}`);
+    return await this.invitationsRepository.createQueryBuilder('invitation')
+      .leftJoinAndSelect('invitation.user', 'user')
+      .leftJoinAndSelect('invitation.event', 'event')
+      .select([
+        'invitation.id',
+        'invitation.status',
+        'invitation.eventId',
+        'event.id',
+        'event.title',
+        'event.start_time',
+        'event.end_time',
+        'user.id',
+        'user.firstName',
+        'user.name',
+      ])
+      .where('user.id = :id', { id: userId })
+      .andWhere('invitation.status = :status', { status: 'invited' })  // Correction ici
+      .getMany();
+
   }
 }

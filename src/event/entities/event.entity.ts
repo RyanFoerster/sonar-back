@@ -2,7 +2,17 @@ import { CompteGroupe } from 'src/compte_groupe/entities/compte_groupe.entity';
 import { Invitation } from 'src/invitation/entities/invitation.entity';
 import { User } from 'src/users/entities/user.entity';
 import { Comment } from 'src/comment/entities/comment.entity';
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToOne, OneToMany } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinTable,
+  ManyToMany,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
 @Entity()
 export class Event {
@@ -24,17 +34,34 @@ export class Event {
   @Column({ nullable: true })
   end_time: Date;
 
-  @OneToMany(() => CompteGroupe, (compteGroupe) => compteGroupe.event)
-  group: CompteGroupe[];
+  @Column()
+  rendez_vous_date: Date;
 
-  @OneToMany(()=> User, (user)=> user.event)
-  user: User[];
+  @Column({ nullable: true, default: 'pending' })
+  status: 'pending' | 'confirmed' | 'canceled' | 'hidden';
 
-  @OneToMany(() => Invitation, (invitation) => invitation.event)
-  invitation: Invitation;
+  @Column({ nullable: true })
+  reason: string;
 
-  @OneToMany(() => Comment, (comment) => comment.event)
-  comment: Comment;
+  @Column({ nullable: true, type: 'json', default: [] })
+  user_status: { user_id: number, status: 'accepted' | 'refused' }[];
+
+  @ManyToOne(() => CompteGroupe, (compteGroupe) => compteGroupe.event)
+  group: CompteGroupe;
+
+  @ManyToMany(() => User)
+  @JoinTable()
+  organisateurs: User[];
+
+  @ManyToMany(() => User, { nullable: true })
+  @JoinTable()
+  participants: User[];
+
+  @OneToMany(() => Invitation, (invitation) => invitation.event, { nullable: true })
+  invitation: Invitation[];
+
+  @OneToMany(() => Comment, (comment) => comment.event, { nullable: true })
+  comments: Comment[];
 
   @CreateDateColumn()
   created_at: Date;

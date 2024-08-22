@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsInt, IsNotEmpty } from 'class-validator';
 
 export class CreateInvitationDto {
   @IsInt()
@@ -9,6 +9,4 @@ export class CreateInvitationDto {
   @IsNotEmpty()
   userId: number;
 
-  @IsOptional()
-  status?: string; // invited, accepted, declined
 }
