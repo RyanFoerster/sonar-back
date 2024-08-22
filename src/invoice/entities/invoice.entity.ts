@@ -52,10 +52,10 @@ export class Invoice {
   @ManyToOne(() => CompteGroupe, (compteGroupe) => compteGroupe.invoice, { nullable: true })
   group_account: CompteGroupe;
 
-  @OneToMany(() => Product, (product) => product.invoice)
+  @OneToMany(() => Product, (product) => product.invoice, {eager: true})
   products: Product[];
 
-  @ManyToOne(() => Client, (client) => client.invoice)
+  @ManyToOne(() => Client, (client) => client.invoice, {eager: true})
   client: Client;
 
   @OneToOne(() => Quote)

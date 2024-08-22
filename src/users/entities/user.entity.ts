@@ -6,6 +6,7 @@ import { Client } from "../../clients/entities/client.entity";
 import { Event } from "src/event/entities/event.entity";
 import { Invitation } from "src/invitation/entities/invitation.entity";
 import { Comment } from "src/comment/entities/comment.entity";
+import { Meet } from "src/meet/entities/meet.entity";
 
 @Entity()
 export class User {
@@ -68,13 +69,14 @@ export class User {
   })
   clients: Client[];
 
-  @ManyToOne(() => Event, (event) => event.user)
-  event: Event;
 
   @OneToMany(() => Invitation, (invitation)=> invitation.user)
   invitation: Invitation;
 
   @OneToMany(() => Comment, (comment) => comment.user)
   comment: Comment;
+
+  @ManyToMany((type) => Meet, (meet) => meet.user)
+  meet: Meet;
 
 }

@@ -10,7 +10,7 @@ export class Comment {
   @Column()
   content: string;
 
-  @ManyToOne(() => Event, (event) => event.comment)
+  @ManyToOne(() => Event, (event) => event.comments)
   event: Event;
 
   @ManyToOne(() => User, (user) => user.comment)

@@ -71,6 +71,9 @@ export class InvoiceService {
 
     this.logger.debug("Avant de update la facture", invoiceCreated.main_account);
     invoiceCreated.quote = quoteFromDB;
+    if(invoiceCreated.type !== "credit_note") {
+      invoiceCreated.products = quoteFromDB.products
+    }
     await this._invoiceRepository.save(invoiceCreated);
     quoteFromDB.status = "invoiced";
     quoteFromDB.invoice = invoiceCreated
@@ -192,13 +195,11 @@ export class InvoiceService {
       Logger.debug(JSON.stringify(invoice, null, 2));
       // Crée la note de crédit en utilisant les données fournies
       let {id, ...invoiceWithoutId} = invoice
-      invoice.total -= createCreditNoteDto.creditNoteAmount
       const creditNote = manager.create(Invoice, {
         ...invoiceWithoutId,
         ...createCreditNoteDto,
         type: "credit_note"
       });
-      await manager.save(invoice);
       return manager.save(creditNote);
     })
     // Récupère la facture liée
@@ -206,7 +207,8 @@ export class InvoiceService {
   }
 
   findCreditNoteByInvoiceId(invoice_id: number) {
-    return this._invoiceRepository.findBy({
+    Logger.debug(invoice_id)
+    return this._invoiceRepository.findOneBy({
       linkedInvoiceId: invoice_id,
       type: "credit_note"
     })

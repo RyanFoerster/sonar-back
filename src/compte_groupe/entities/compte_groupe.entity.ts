@@ -44,8 +44,10 @@ export class CompteGroupe {
     (userSecondaryAccount) => userSecondaryAccount.group_account,
   )
   userSecondaryAccount: UserSecondaryAccount[];
-  @ManyToOne(() => Event, (event) => event.group)
-  event: Event;
+
+  @OneToMany(() => Event, (event) => event.group)
+  event: Event[];
+
   @OneToMany(() => VirementSepa, (virementSepa) => virementSepa.compteGroupe, {nullable: true, eager: true})
   virementSepa?: VirementSepa[]
 
