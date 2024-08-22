@@ -24,6 +24,7 @@ import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
 import config from './config/config';
 import { GoogleDriveConfig, GoogleDriveModule } from 'nestjs-googledrive-upload';
 import { MulterModule } from '@nestjs/platform-express';
+import { MeetModule } from './meet/meet.module';
 import * as driveConfig from './config/drive-config.json';
 
 @Module({
@@ -93,6 +94,7 @@ import * as driveConfig from './config/drive-config.json';
     InvitationsModule,
     CommentsModule,
     VirementSepaModule,
+    MeetModule,
   ],
   controllers: [AppController],
   providers: [AppService],
