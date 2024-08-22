@@ -1,5 +1,5 @@
 // src/invitations/invitations.controller.ts
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req } from '@nestjs/common';
 import { InvitationsService } from './invitation.service'; 
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { UpdateInvitationDto } from './dto/update-invitation.dto';
@@ -15,13 +15,18 @@ export class InvitationsController {
   }
 
   @Get()
-  findAll(): Promise<Invitation[]> {
-    return this.invitationsService.findAll();
+  findAll(@Req() req: any): Promise<Invitation[]> {
+    return this.invitationsService.findByUserId(+req.user.id);
   }
 
   @Get(':id')
   findOne(@Param('id') id: number): Promise<Invitation> {
     return this.invitationsService.findOne(id);
+  }
+
+  @Get('user/all')
+  findByUserId(@Req() req: any): Promise<Invitation[]> {
+    return this.invitationsService.findByUserId(+req.user.id);
   }
 
   @Patch(':id')

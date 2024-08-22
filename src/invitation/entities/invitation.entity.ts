@@ -1,5 +1,5 @@
 // src/invitations/entities/invitation.entity.ts
-import { Entity, Column, PrimaryGeneratedColumn, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { Event } from 'src/event/entities/event.entity';
 import { User } from '../../users/entities/user.entity';
 
@@ -8,8 +8,8 @@ export class Invitation {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  status: string;
+  @Column({ default: 'invited' })
+  status: 'invited' | 'accepted' | 'refused';
 
   @ManyToOne(() => Event, (event) => event.invitation)
   event: Event;

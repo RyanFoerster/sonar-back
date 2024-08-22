@@ -24,7 +24,7 @@ import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
 import config from './config/config';
 import { GoogleDriveConfig, GoogleDriveModule } from 'nestjs-googledrive-upload';
 import { MulterModule } from '@nestjs/platform-express';
-import driveConfig from './config/drive.config';
+import * as driveConfig from './config/drive-config.json';
 
 @Module({
   imports: [

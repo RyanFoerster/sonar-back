@@ -68,8 +68,6 @@ export class User {
   })
   clients: Client[];
 
-  @ManyToOne(() => Event, (event) => event.user)
-  event: Event;
 
   @OneToMany(() => Invitation, (invitation)=> invitation.user)
   invitation: Invitation;
