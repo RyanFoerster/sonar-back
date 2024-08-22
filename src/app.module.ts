@@ -22,17 +22,11 @@ import { CommentsModule } from './comment/comment.module';
 import { JwtModule } from '@nestjs/jwt';
 import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
 import config from './config/config';
-import { GoogleDriveConfig, GoogleDriveModule } from 'nestjs-googledrive-upload';
 import { MulterModule } from '@nestjs/platform-express';
 import { MeetModule } from './meet/meet.module';
-import * as driveConfig from './config/drive-config.json';
 
 @Module({
   imports: [
-    GoogleDriveModule.register(
-      driveConfig as GoogleDriveConfig,
-      '1BE2dfBbQ76djrsp1jRkDlhsu8_jsVQC8',
-    ),
 
     ConfigModule.forRoot({
       isGlobal: true,
