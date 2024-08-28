@@ -22,17 +22,18 @@ import { CommentsModule } from './comment/comment.module';
 import { JwtModule } from '@nestjs/jwt';
 import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
 import config from './config/config';
-import { GoogleDriveConfig, GoogleDriveModule } from 'nestjs-googledrive-upload';
 import { MulterModule } from '@nestjs/platform-express';
 import { MeetModule } from './meet/meet.module';
-import * as driveConfig from './config/drive-config.json';
+import { HttpModule } from "@nestjs/axios";
+
+//import * as driveConfig from './config/drive-config.json';
 
 @Module({
   imports: [
-    GoogleDriveModule.register(
+    /*GoogleDriveModule.register(
       driveConfig as GoogleDriveConfig,
       '1BE2dfBbQ76djrsp1jRkDlhsu8_jsVQC8',
-    ),
+    ),*/
 
     ConfigModule.forRoot({
       isGlobal: true,
@@ -95,9 +96,9 @@ import * as driveConfig from './config/drive-config.json';
     CommentsModule,
     VirementSepaModule,
     MeetModule,
+    HttpModule
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {
-}
+export class AppModule {}

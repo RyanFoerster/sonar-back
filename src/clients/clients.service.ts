@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from '@nestjs/common';
 import { CreateClientDto } from "./dto/create-client.dto";
 import { UpdateClientDto } from "./dto/update-client.dto";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -17,7 +17,13 @@ export class ClientsService {
 
   async create(user: User, createClientDto: CreateClientDto) {
     let client: Client;
+
+
     client = await this.clientRepository.save(createClientDto);
+    Logger.debug(JSON.stringify(client, null, 2));
+    if(createClientDto.company_vat_number === '') {
+      client.company_vat_number = null;
+    }
     client.user = await this.userService.findOne(user.id);
     return await this.clientRepository.save(client);
   }

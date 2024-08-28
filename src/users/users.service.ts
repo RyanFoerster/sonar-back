@@ -21,7 +21,7 @@ export class UsersService {
   constructor(
     @InjectRepository(User) private readonly usersRepository: Repository<User>,
     private readonly comptePrincipalService: ComptePrincipalService,
-    private readonly googleDriveService: GoogleDriveService,
+    //private readonly googleDriveService: GoogleDriveService,
   ) {}
 
   async create(createUserDto: CreateUserDto) {
@@ -147,9 +147,9 @@ export class UsersService {
   }
 
   async updateProfilePicture(user: User, file: Express.Multer.File) {
-    const url = await this.googleDriveService.uploadImage(file);
+    /*const url = await this.googleDriveService.uploadImage(file);
     Logger.debug(url);
     user.profilePicture = url;
-    return await this.usersRepository.save(user);
+    return await this.usersRepository.save(user);*/
   }
 }

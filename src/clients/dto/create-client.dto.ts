@@ -28,10 +28,10 @@ export class CreateClientDto {
   postalCode: string;
 
   @IsNumber()
-  company_number: number;
+  company_number?: number;
 
   @IsString()
-  company_vat_number: string;
+  company_vat_number?: string;
 
   @CreateDateColumn()
   createdAt?: Date;

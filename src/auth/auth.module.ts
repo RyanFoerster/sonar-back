@@ -10,6 +10,7 @@ import { JwtAuthGuard } from "../guards/auth.guard";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 import { UsersModule } from "../users/users.module";
 import { ComptePrincipalModule } from "../compte_principal/compte_principal.module";
+import { HttpModule } from "@nestjs/axios";
 
 @Module({
   controllers: [AuthController],
@@ -23,7 +24,7 @@ import { ComptePrincipalModule } from "../compte_principal/compte_principal.modu
     JwtStrategy,
   ],
   exports: [AuthService],
-  imports: [TypeOrmModule.forFeature([RefreshToken, ResetToken]), UsersModule, ComptePrincipalModule]  // Assurez-vous que cela est correct
+  imports: [TypeOrmModule.forFeature([RefreshToken, ResetToken]), UsersModule, ComptePrincipalModule, HttpModule]  // Assurez-vous que cela est correct
 })
 export class AuthModule {
 }

@@ -40,10 +40,10 @@ export class Client {
   @Column()
   postalCode: string;
 
-  @Column()
+  @Column({nullable: true})
   company_number: number;
 
-  @Column()
+  @Column({nullable: true})
   company_vat_number: string;
 
   @CreateDateColumn()
