@@ -1,7 +1,7 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
-import { ConfigService } from "@nestjs/config";
-import { HttpService } from "@nestjs/axios";
+import { ConfigService } from '@nestjs/config';
+import { HttpService } from '@nestjs/axios';
 
 @Injectable()
 export class MailService {
@@ -14,11 +14,17 @@ export class MailService {
     },
   });
 
-  constructor(private readonly configService: ConfigService,
-              private readonly httpService: HttpService) {
-  }
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly httpService: HttpService,
+  ) {}
 
-  async sendPasswordResetEmail(to: string, token: string, firstName: string, name: string) {
+  async sendPasswordResetEmail(
+    to: string,
+    token: string,
+    firstName: string,
+    name: string,
+  ) {
     /*const resetLink = `http://yourapp.com/reset-password?token=${token}`;
     const mailOptions = {
       from: 'Auth-backend service',
@@ -28,25 +34,31 @@ export class MailService {
     }
 
     await this.transporter.sendMail(mailOptions);*/
-    Logger.debug("Je passe ici")
-    Logger.debug(this.configService.get('mailhub.api_key'))
-    try {
-      this.httpService.post(`https://api.mailhub.sh/v1/send`, {
-        layout_identifier: 'tp-dc76ec2fba7f4b04',
-        variables: {
-          firstName,
-          name,
-          resetToken: token,
-        },
-        from: '@sonarartistsapp@gmail.com',
-        to,
-        subject: 'Réinitialisation du mot de passe',
-        language: null,
-      }).subscribe(data => console.log(data))
 
+    const API_KEY = this.configService.get('stage') === 'prod' ? this.configService.get('mailhub.api_key_prod') : this.configService.get('mailhub.api_key_dev')
+
+    try {
+      fetch(`https://api.mailhub.sh/v1/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${API_KEY}`,
+        },
+        body: JSON.stringify({
+          layout_identifier: 'tp-dc76ec2fba7f4b04',
+          variables: {
+            firstName,
+            name,
+            resetToken: token,
+          },
+          from: 'info@sonarartists.fr',
+          to,
+          subject: 'Réinitialisation du mot de passe',
+          language: null,
+        }),
+      }).then((data) => console.log(data));
     } catch (error) {
       console.error('Error:', error);
     }
-    
   }
 }
