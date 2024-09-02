@@ -5,7 +5,8 @@ export default () => ({
     secret: process.env.JWT_SECRET,
   },
   mailhub: {
-    api_key: process.env.MAILHUB_API_KEY,
+    api_key_dev: process.env.MAILHUB_API_KEY_DEV,
+    api_key_prod: process.env.MAILHUB_API_KEY_PROD,
   },
   database: {
     database: process.env.DATABASE_DATABASE,
