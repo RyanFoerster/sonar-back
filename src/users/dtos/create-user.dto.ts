@@ -2,7 +2,7 @@ import { IsEmail, IsNumber, IsPhoneNumber, IsString, IsStrongPassword } from "cl
 
 export class CreateUserDto {
   @IsString()
-  username: string;
+  username?: string;
 
   @IsStrongPassword({
     minLength: 8,
@@ -11,7 +11,7 @@ export class CreateUserDto {
     minNumbers: 1,
     minSymbols: 1,
   })
-  password: string;
+  password?: string;
 
   @IsStrongPassword({
     minLength: 8,
@@ -20,23 +20,23 @@ export class CreateUserDto {
     minNumbers: 1,
     minSymbols: 1,
   })
-  confirmPassword: string;
+  confirmPassword?: string;
 
   @IsEmail()
-  email: string;
+  email?: string;
 
   @IsString()
-  name: string
+  name?: string
 
   @IsString()
-  firstName: string
+  firstName?: string
 
   @IsNumber()
-  numeroNational: string
+  numeroNational?: string
 
   @IsPhoneNumber()
-  telephone: string
+  telephone?: string
 
   @IsString()
-  iban: string
+  iban?: string
 }

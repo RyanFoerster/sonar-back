@@ -24,23 +24,23 @@ export class SignupDto {
   confirmPassword: string;
 
   @IsEmail()
-  email: string;
+  email?: string;
 
   @IsString()
-  address: string
+  address?: string
 
   @IsString()
-  name: string
+  name?: string
 
   @IsString()
-  firstName: string
+  firstName?: string
 
   @IsNumber()
-  numeroNational: string
+  numeroNational?: string
 
   @IsPhoneNumber()
-  telephone: string
+  telephone?: string
 
   @IsString()
-  iban: string
+  iban?: string
 }

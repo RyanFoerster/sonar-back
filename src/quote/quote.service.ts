@@ -22,11 +22,8 @@ export class QuoteService {
   ) {}
 
   async create(createQuoteDto: CreateQuoteDto) {
-    Logger.debug(createQuoteDto);
 
     let quote: Quote = this.quoteRepository.create(createQuoteDto);
-
-    Logger.debug(JSON.stringify(quote, null, 2));
 
     quote.client = await this.clientService.findOne(createQuoteDto.client_id);
 
@@ -43,10 +40,7 @@ export class QuoteService {
 
     quote.total = quote.price_htva + quote.total_vat_21 + quote.total_vat_6;
 
-    Logger.debug(JSON.stringify(quote, null, 2));
 
-    Logger.debug(createQuoteDto.main_account_id);
-    Logger.debug(createQuoteDto.group_account_id);
     if (createQuoteDto.main_account_id !== undefined) {
       quote.main_account = await this.comptePrincipalService.findOne(
         createQuoteDto.main_account_id,
@@ -57,6 +51,13 @@ export class QuoteService {
       quote.group_account = await this.compteGroupeService.findOne(
         createQuoteDto.group_account_id,
       );
+    }
+
+    if(!createQuoteDto.validation_deadline) {
+      const currentDate = new Date();
+      quote.validation_deadline = new Date(currentDate.getMonth() + 1);
+    } else {
+      quote.validation_deadline = createQuoteDto.validation_deadline;
     }
 
     return this.quoteRepository.save(quote);

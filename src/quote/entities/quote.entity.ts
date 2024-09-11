@@ -32,6 +32,9 @@ export class Quote {
   @Column({ default: 10 })
   payment_deadline: number;
 
+  @Column({nullable: true})
+  validation_deadline: Date;
+
   @Column({ type: "enum", enum: ["refused", "accepted", "invoiced", "cancelled", "pending", "pending_cancellation"], default: "pending" })
   status: string;
 
