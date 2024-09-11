@@ -21,7 +21,7 @@ export class CompteGroupe {
   @Column({ unique: true })
   username: string;
 
-  @Column({ default: 0 })
+  @Column({ default: 0, type: 'double precision' })
   solde?: number;
 
   @OneToMany(() => Quote, (quote) => quote.group_account, {
