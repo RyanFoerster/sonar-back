@@ -60,7 +60,7 @@ import { HttpModule } from "@nestjs/axios";
         username: configService.get('database.username'),
         password: configService.get('database.password'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true,
+        synchronize: configService.get('STAGE') !== 'prod',
       }),
 
       inject: [ConfigService],
