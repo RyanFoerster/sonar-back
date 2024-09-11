@@ -124,7 +124,7 @@ export class InvoiceService {
 
   private readonly logger = new Logger();
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  @Cron(CronExpression.EVERY_10_SECONDS)
   async createFacture() {
     const currentDate = new Date();
 
