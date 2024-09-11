@@ -13,13 +13,13 @@ export class User {
   @PrimaryGeneratedColumn()
   id?: number;
 
-  @Column({ unique: true, nullable: true })
+  @Column({ nullable: true })
   username: string;
 
   @Column({ select: false, nullable: true })
   password: string;
 
-  @Column({ unique: true, nullable: true })
+  @Column({ nullable: true })
   email: string;
 
   @Column({ nullable: true })
@@ -28,13 +28,13 @@ export class User {
   @Column( { nullable: true })
   firstName: string
 
-  @Column({ unique: true, nullable: true })
+  @Column({ nullable: true })
   numeroNational: string
 
-  @Column({ unique: true, nullable: true })
+  @Column({  nullable: true })
   telephone: string
 
-  @Column({ unique: true, nullable: true })
+  @Column({ nullable: true })
   iban: string
 
   @Column({default: "USER"})
