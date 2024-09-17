@@ -10,7 +10,8 @@ export class CreateInvoiceDto {
   @IsDate()
   payment_deadline: Date;
 
-
+  @IsDate()
+  validation_deadline: Date;
 
   @IsNumber()
   price_htva: number;

@@ -38,11 +38,11 @@ export class Quote {
   @Column({ type: "enum", enum: ["refused", "accepted", "invoiced", "cancelled", "pending", "pending_cancellation"], default: "pending" })
   status: string;
 
-  @Column({default: false})
-  group_acceptance: boolean;
+  @Column({default: "pending"})
+  group_acceptance: "accepted" | "refused" | "pending";
 
-  @Column({default: false})
-  order_giver_acceptance: boolean;
+  @Column({default: "pending"})
+  order_giver_acceptance: "accepted" | "refused" | "pending";
 
   @ManyToOne(() => ComptePrincipal, (comptePrincipal) => comptePrincipal.quote, { nullable: true })
   main_account: ComptePrincipal;

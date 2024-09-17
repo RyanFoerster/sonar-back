@@ -30,7 +30,7 @@ export class InvoiceService {
     let quote = quoteObject.quote
     this.logger.debug("type of account", JSON.stringify(quote, null, 2));
     let quoteFromDB = await this.quoteService.findOne(quote.id);
-    this.logger.warn("quoteFromDB", JSON.stringify(quoteFromDB.id));
+    this.logger.warn("quoteFromDB", JSON.stringify(quoteFromDB, null, 2));
     let account
 
 
@@ -95,6 +95,7 @@ export class InvoiceService {
     const paymentDeadline = new Date(currentDate);
     paymentDeadline.setDate(currentDate.getDate() + quote.payment_deadline);
     invoice.payment_deadline = paymentDeadline;
+    invoice.validation_deadline = quote.validation_deadline;
 
     invoice.price_htva = quote.price_htva;
     invoice.total = quote.total;
@@ -129,6 +130,7 @@ export class InvoiceService {
     const currentDate = new Date();
 
     const quoteWithoutInvoice = await this.quoteService.findQuoteWithoutInvoice();
+    Logger.debug(JSON.stringify(quoteWithoutInvoice, null, 2));
 
     const currentQuotes: Quote[] = [];
 
@@ -138,10 +140,12 @@ export class InvoiceService {
       const sameDate = currentDate.getFullYear() === dateUnJourPlus.getFullYear() &&
         currentDate.getMonth() === dateUnJourPlus.getMonth() &&
         currentDate.getDate() === dateUnJourPlus.getDate();
-      if (sameDate && quote.group_acceptance === true && quote.order_giver_acceptance === true) {
+      if (sameDate && quote.group_acceptance === "accepted" && quote.order_giver_acceptance === "accepted") {
         currentQuotes.push(quote);
       }
     }
+
+    Logger.debug("Current quotes", JSON.stringify(currentQuotes, null, 2));
 
     if (currentQuotes.length > 0) {
       for (const quote of currentQuotes) {
@@ -155,6 +159,8 @@ export class InvoiceService {
         invoice.total = quote.total;
         invoice.total_vat_21 = quote.total_vat_21;
         invoice.total_vat_6 = quote.total_vat_6;
+        invoice.validation_deadline = quote.validation_deadline;
+        invoice.status = "pending";
 
         const invoiceCreated = await this._invoiceRepository.save(invoice);
         this.logger.debug(JSON.stringify(invoiceCreated));
@@ -169,6 +175,7 @@ export class InvoiceService {
         }
         await this._invoiceRepository.update(invoiceCreated.id, invoiceCreated);
         quote.status = "invoiced";
+        quote.invoice = invoiceCreated;
         await this.quoteService.update(quote);
       }
 

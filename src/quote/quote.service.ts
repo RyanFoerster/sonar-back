@@ -9,19 +9,23 @@ import { ProductService } from '../product/product.service';
 import { Product } from '../product/entities/product.entity';
 import { ComptePrincipalService } from '../compte_principal/compte_principal.service';
 import { CompteGroupeService } from '../compte_groupe/compte_groupe.service';
+import { MailService } from "../services/mail.services";
+import { UsersService } from "../users/users.service";
 
 @Injectable()
 export class QuoteService {
   constructor(
     @InjectRepository(Quote)
     private readonly quoteRepository: Repository<Quote>,
+    private readonly usersService: UsersService,
     private clientService: ClientsService,
     private productService: ProductService,
     private comptePrincipalService: ComptePrincipalService,
     private compteGroupeService: CompteGroupeService,
+    private readonly mailService: MailService,
   ) {}
 
-  async create(createQuoteDto: CreateQuoteDto) {
+  async create(createQuoteDto: CreateQuoteDto, user_id: number) {
 
     let quote: Quote = this.quoteRepository.create(createQuoteDto);
 
@@ -60,7 +64,14 @@ export class QuoteService {
       quote.validation_deadline = createQuoteDto.validation_deadline;
     }
 
-    return this.quoteRepository.save(quote);
+    const userConnected = await this.usersService.findOne(user_id);
+
+    quote = await this.quoteRepository.save(quote);
+
+    await this.mailService.sendDevisAcceptationEmail(quote.client.email, quote.client.name, quote.id, "CLIENT");
+    await this.mailService.sendDevisAcceptationEmail(userConnected.email, userConnected.firstName, quote.id, "GROUP", userConnected.name);
+
+    return quote;
   }
 
   findAll() {
@@ -90,8 +101,8 @@ export class QuoteService {
 
   async updateQuoteGroupAcceptance(id: number) {
     const quote = await this.findOne(id);
-    quote.group_acceptance = true;
-    if (quote.order_giver_acceptance === true) {
+    quote.group_acceptance = "accepted";
+    if (quote.order_giver_acceptance === "accepted") {
       quote.status = 'accepted';
     }
     return await this.quoteRepository.save(quote);
@@ -99,12 +110,32 @@ export class QuoteService {
 
   async updateOrderGiverAcceptance(id: number) {
     const quote = await this.findOne(id);
-    quote.order_giver_acceptance = true;
-    if (quote.group_acceptance === true) {
+    quote.order_giver_acceptance = "accepted";
+    if (quote.group_acceptance === "accepted") {
       quote.status = 'accepted';
     }
     return await this.quoteRepository.save(quote);
   }
+
+  async updateQuoteGroupRejection(id: number) {
+    const quote = await this.findOne(id);
+    quote.group_acceptance = "refused";
+    if (quote.order_giver_acceptance === "refused") {
+      quote.status = 'refused';
+    }
+    return await this.quoteRepository.save(quote);
+  }
+
+  async updateOrderGiverRejection(id: number) {
+    const quote = await this.findOne(id);
+    quote.order_giver_acceptance = "refused";
+    if (quote.group_acceptance === "refused") {
+      quote.status = 'refused';
+    }
+    return await this.quoteRepository.save(quote);
+  }
+
+
 
   remove(id: number) {
     return `This action removes a #${id} quote`;
@@ -155,4 +186,6 @@ export class QuoteService {
       },
     });
   }
+
+
 }

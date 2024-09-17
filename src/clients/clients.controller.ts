@@ -33,4 +33,9 @@ export class ClientsController {
   remove(@Param('id') id: string) {
     return this.clientsService.remove(+id);
   }
+
+  @Get('bce/:vat')
+  checkBCE(@Param('vat') vat: string) {
+    return this.clientsService.checkBCE(+vat);
+  }
 }
