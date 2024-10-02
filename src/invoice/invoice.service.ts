@@ -78,7 +78,7 @@ export class InvoiceService {
     quoteFromDB.status = "invoiced";
     quoteFromDB.invoice = invoiceCreated
     this.logger.debug("Avant de update le devis");
-    await this.quoteService.update( quoteFromDB);
+    await this.quoteService.save( quoteFromDB);
 
     return await this._invoiceRepository.findOneBy({ id: invoiceCreated.id });
   }
@@ -176,7 +176,7 @@ export class InvoiceService {
         await this._invoiceRepository.update(invoiceCreated.id, invoiceCreated);
         quote.status = "invoiced";
         quote.invoice = invoiceCreated;
-        await this.quoteService.update(quote);
+        await this.quoteService.save(quote);
       }
 
       this.logger.debug("Des factures ont été créees");

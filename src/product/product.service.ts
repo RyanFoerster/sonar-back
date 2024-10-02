@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { CreateProductDto } from "./dto/create-product.dto";
 import { UpdateProductDto } from "./dto/update-product.dto";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -30,8 +30,12 @@ export class ProductService {
     return await this.productRepository.findOneBy({ id });
   }
 
-  async update(id: number, updateProductDto: UpdateProductDto) {
-    updateProductDto.total = await this.setTotal(updateProductDto);
+  // async update(id: number, updateProductDto: UpdateProductDto) {
+  //   updateProductDto.total = await this.setTotal(updateProductDto);
+  //   return this.productRepository.update(id, updateProductDto);
+  // }
+  async updateProduct(id: number, updateProductDto: UpdateProductDto) {
+    Logger.debug(`Updating product ${id} with ${JSON.stringify(updateProductDto, null, 2)}`);
     return this.productRepository.update(id, updateProductDto);
   }
 

@@ -46,6 +46,9 @@ export class Client {
   @Column({nullable: true})
   company_vat_number: string;
 
+  @Column({nullable: true})
+  national_number: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

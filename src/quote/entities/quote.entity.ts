@@ -44,6 +44,12 @@ export class Quote {
   @Column({default: "pending"})
   order_giver_acceptance: "accepted" | "refused" | "pending";
 
+  @Column({default: null, nullable: true})
+  comment: string;
+
+  @Column({default: false})
+  isVatIncluded: boolean;
+
   @ManyToOne(() => ComptePrincipal, (comptePrincipal) => comptePrincipal.quote, { nullable: true })
   main_account: ComptePrincipal;
 

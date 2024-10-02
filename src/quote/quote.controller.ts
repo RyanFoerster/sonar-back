@@ -23,8 +23,8 @@ export class QuoteController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateQuoteDto: UpdateQuoteDto) {
-    return this.quoteService.update(updateQuoteDto);
+  update(@Param('id') id: string, @Body() updateQuoteDto: UpdateQuoteDto, @Req() req) {
+    return this.quoteService.update(id, updateQuoteDto, req.user.id);
   }
 
   @Delete(':id')

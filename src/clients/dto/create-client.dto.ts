@@ -33,6 +33,9 @@ export class CreateClientDto {
   @IsString()
   company_vat_number?: string;
 
+  @IsString()
+  national_number?: string;
+
   @CreateDateColumn()
   createdAt?: Date;
 
