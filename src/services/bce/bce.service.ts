@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from "@nestjs/config";
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class BceService {
@@ -9,8 +9,6 @@ export class BceService {
 
   async checkBCE(vat: number) {
     const BCE_KEY = this.configService.get('bce.API_KEY');
-    console.log(this.configService.get('bce.API_KEY'));
-
     const response = await fetch(`${this.baseUrl}enterprise/${vat}`, {
       headers: {
         Authorization: `Bearer ${BCE_KEY}`,
@@ -18,14 +16,15 @@ export class BceService {
     });
     if (response.ok) {
       const data = await response.json();
-      if(data.Enterprise.active) {
+      if (data.Enterprise.active) {
         return await fetch(`${this.baseUrl}vat/${vat}`, {
           headers: {
             Authorization: `Bearer ${BCE_KEY}`,
           },
-        }).then(response => response.json());
+        }).then((response) => response.json());
       }
     } else {
+      console.log('error', response.headers);
       return false;
     }
   }

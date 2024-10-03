@@ -2,6 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
+import { User } from 'src/users/entities/user.entity';
+import { Quote } from 'src/quote/entities/quote.entity';
 
 @Injectable()
 export class MailService {
@@ -93,6 +95,49 @@ export class MailService {
           subject: "Demande d'acceptation de devis",
           language: null,
         }),
+      }).then((data) => console.log(data));
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  }
+
+  async sendInvoiceEmail(quote: Quote, user: User, pdfContent: any) {
+    const API_KEY =
+      this.configService.get('stage') === 'prod'
+        ? this.configService.get('mailhub.api_key_prod')
+        : this.configService.get('mailhub.api_key_dev');
+
+    Logger.debug('API_KEY', API_KEY);
+    try {
+      // Extraire le contenu base64 du Data URI
+      // const base64Content = pdfContent.split(',')[1];
+
+      const requestBody = {
+        layout_identifier: 'tp-5eded5ab563d474d',
+        variables: {
+          invoice_number: quote.invoice.id,
+          account_name: quote.main_account ? quote.main_account.username : '',
+        },
+        from: 'info@sonarartists.be',
+        to: 'ryanfoerster@outlook.be',
+        subject: `Facture ${quote.id} de ${quote.client.name}`,
+        language: null,
+        // attachments: [
+        //   {
+        //     filename: `facture_${quote.id}_${quote.client.name}.pdf`,
+        //     content: base64Content,
+        //     contentType: 'application/pdf',
+        //   },
+        // ],
+      };
+
+      fetch(`https://api.mailhub.sh/v1/send`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${API_KEY}`,
+        },
+        body: JSON.stringify(requestBody),
       }).then((data) => console.log(data));
     } catch (error) {
       console.error('Error:', error);

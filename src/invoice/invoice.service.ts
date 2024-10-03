@@ -1,16 +1,23 @@
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
-import { CreateCreditNoteDto, CreateInvoiceDto } from "./dto/create-invoice.dto";
-import { UpdateInvoiceDto } from "./dto/update-invoice.dto";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Invoice } from "./entities/invoice.entity";
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import {
+  CreateCreditNoteDto,
+  CreateInvoiceDto,
+} from './dto/create-invoice.dto';
+import { UpdateInvoiceDto } from './dto/update-invoice.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Invoice } from './entities/invoice.entity';
 import { DataSource, Repository } from 'typeorm';
-import { User } from "../users/entities/user.entity";
-import { Cron, CronExpression } from "@nestjs/schedule";
-import { QuoteService } from "../quote/quote.service";
-import { Quote } from "../quote/entities/quote.entity";
-import { ClientsService } from "../clients/clients.service";
-import { ComptePrincipalService } from "../compte_principal/compte_principal.service";
-import { CompteGroupeService } from "../compte_groupe/compte_groupe.service";
+import { User } from '../users/entities/user.entity';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { QuoteService } from '../quote/quote.service';
+import { Quote } from '../quote/entities/quote.entity';
+import { ClientsService } from '../clients/clients.service';
+import { ComptePrincipalService } from '../compte_principal/compte_principal.service';
+import { CompteGroupeService } from '../compte_groupe/compte_groupe.service';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { MailService } from 'src/services/mail.services';
+import { UsersService } from 'src/users/users.service';
 
 @Injectable()
 export class InvoiceService {
@@ -21,77 +28,70 @@ export class InvoiceService {
     private clientService: ClientsService,
     private comptePrincipalService: ComptePrincipalService,
     private compteGroupeService: CompteGroupeService,
-    private dataSource: DataSource
-  ) {
-  }
+    private dataSource: DataSource,
+    private mailService: MailService,
+    private usersService: UsersService,
+  ) {}
 
   async create(quoteObject: any, user: User, params: any) {
-
-    let quote = quoteObject.quote
-    this.logger.debug("type of account", JSON.stringify(quote, null, 2));
+    let quote = quoteObject.quote;
     let quoteFromDB = await this.quoteService.findOne(quote.id);
-    this.logger.warn("quoteFromDB", JSON.stringify(quoteFromDB, null, 2));
-    let account
+    let account;
+    let userFromDB = await this.usersService.findOne(user.id);
 
+    if (!userFromDB) {
+      throw new BadRequestException('Aucun utilisateur trouvé');
+    }
 
     if (!quoteFromDB) {
-      this.logger.error("Quote not found", quote);
-      throw new BadRequestException("Aucun devis trouvé");
+      throw new BadRequestException('Aucun devis trouvé');
     }
 
     if (quoteFromDB.invoice !== null) {
-      this.logger.error("Invoice already exists", quoteFromDB.invoice);
-      throw new BadRequestException("Une facture existe déja");
+      throw new BadRequestException('Une facture existe déja');
     }
 
-    this.logger.debug("Juste avant de créer la facture");
     let invoice = await this.createInvoiceFromQuote(quoteFromDB);
-    this.logger.debug(JSON.stringify(invoice));
 
     const invoiceCreated = await this._invoiceRepository.save(invoice);
-    this.logger.debug(JSON.stringify(invoiceCreated));
 
     invoiceCreated.quote = quoteFromDB;
-    this.logger.debug("Devis attribuer a la facture", quote);
 
-    this.logger.debug("Avant de récupérer le client", user);
-    invoiceCreated.client = await this.clientService.findOne(quoteFromDB.client.id);
+    invoiceCreated.client = await this.clientService.findOne(
+      quoteFromDB.client.id,
+    );
 
-    this.logger.debug("Avant de récupérer le main account", quoteFromDB.main_account);
-    if(params.type ===  "PRINCIPAL") {
+    if (params.type === 'PRINCIPAL') {
       account = await this.comptePrincipalService.findOne(params.account_id);
-      invoiceCreated.main_account = account
+      invoiceCreated.main_account = account;
     }
 
-    this.logger.debug("Avant de récupérer le group account", quoteFromDB.group_account);
-    if(params.type === "GROUP"){
+    if (params.type === 'GROUP') {
       account = await this.compteGroupeService.findOne(params.account_id);
-      invoiceCreated.main_account = account
+      invoiceCreated.group_account = account;
     }
 
-    this.logger.debug("Avant de update la facture", invoiceCreated.main_account);
     invoiceCreated.quote = quoteFromDB;
-    if(invoiceCreated.type !== "credit_note") {
-      invoiceCreated.products = quoteFromDB.products
+    if (invoiceCreated.type !== 'credit_note') {
+      invoiceCreated.products = quoteFromDB.products;
     }
     await this._invoiceRepository.save(invoiceCreated);
-    quoteFromDB.status = "invoiced";
-    quoteFromDB.invoice = invoiceCreated
-    this.logger.debug("Avant de update le devis");
-    await this.quoteService.save( quoteFromDB);
-
+    quoteFromDB.status = 'invoiced';
+    quoteFromDB.invoice = invoiceCreated;
+    await this.quoteService.save(quoteFromDB);
+    const pdf = this.generateInvoicePDF(quoteFromDB, userFromDB);
+    this.mailService.sendInvoiceEmail(quoteFromDB, userFromDB, pdf);
     return await this._invoiceRepository.findOneBy({ id: invoiceCreated.id });
   }
 
   async createInvoiceFromQuote(quote: Quote) {
-
     const currentDate = new Date();
 
     const invoice = new Invoice();
     invoice.invoice_date = currentDate;
     invoice.service_date = quote.service_date;
 
-// Calculer la date limite de paiement
+    // Calculer la date limite de paiement
     const paymentDeadline = new Date(currentDate);
     paymentDeadline.setDate(currentDate.getDate() + quote.payment_deadline);
     invoice.payment_deadline = paymentDeadline;
@@ -101,11 +101,78 @@ export class InvoiceService {
     invoice.total = quote.total;
     invoice.total_vat_21 = quote.total_vat_21;
     invoice.total_vat_6 = quote.total_vat_6;
-    invoice.status = "payment_pending";
+    invoice.status = 'payment_pending';
 
     return invoice;
   }
 
+  generateInvoicePDF(quote: Quote, user: User) {
+    const doc = new jsPDF();
+    const invoice = quote.invoice;
+
+    // Ajouter le logo
+    // const logoUrl = '/assets/images/Groupe-30.png';
+    // doc.addImage(logoUrl, 'PNG', 10, 10, 50, 20);
+
+    // Informations sur l'utilisateur (alignées à gauche)
+    doc.setFontSize(12);
+    doc.text(`Créé par: ${user.firstName} ${user.name}`, 10, 40);
+    doc.text(`Email: ${user.email}`, 10, 50);
+    doc.text(`Téléphone: ${user.telephone}`, 10, 60);
+
+    // Informations sur le client (alignées à droite)
+    const clientInfo = [
+      `Client: ${quote.client.name}`,
+      `Email: ${quote.client.email}`,
+      `Téléphone: ${quote.client.phone}`,
+      `Adresse: ${quote.client.street} ${quote.client.number}, ${quote.client.city}, ${quote.client.country}, ${quote.client.postalCode}`,
+    ];
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    clientInfo.forEach((line, index) => {
+      const textWidth = doc.getTextWidth(line);
+      doc.text(line, pageWidth - textWidth - 10, 40 + index * 10);
+    });
+
+    // Tableau pour les informations sur le devis
+    const invoiceData = [
+      ['Date de la facture', invoice.invoice_date.toLocaleString()],
+      ['Date de service', invoice.service_date.toLocaleString()],
+      ['Total HTVA', `${invoice.price_htva.toFixed(2)} €`],
+      ['Total TVA 6%', `${invoice.total_vat_6.toFixed(2)} €`],
+      ['Total TVA 21%', `${invoice.total_vat_21.toFixed(2)} €`],
+      ['Total TTC', `${invoice.total.toFixed(2)} €`],
+    ];
+
+    let yPosition = 100;
+    autoTable(doc, {
+      head: [['Information', 'Valeur']],
+      body: invoiceData,
+      startY: yPosition,
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [100, 100, 100] },
+    });
+
+    // Mettre à jour la position Y après le premier tableau
+    yPosition = (doc as any).lastAutoTable.finalY + 10;
+
+    // Tableau pour les détails des produits
+    const productData = quote.products.map((product) => [
+      product.description,
+      `Quantité: ${product.quantity}`,
+      `Prix: ${product.price.toFixed(2)} €`,
+    ]);
+
+    autoTable(doc, {
+      head: [['Produit', 'Quantité', 'Prix']],
+      body: productData,
+      startY: yPosition,
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [100, 100, 100] },
+    });
+
+    return doc.output('datauristring');
+  }
 
   findAll() {
     return this._invoiceRepository.find({});
@@ -129,27 +196,34 @@ export class InvoiceService {
   async createFacture() {
     const currentDate = new Date();
 
-    const quoteWithoutInvoice = await this.quoteService.findQuoteWithoutInvoice();
+    const quoteWithoutInvoice =
+      await this.quoteService.findQuoteWithoutInvoice();
     Logger.debug(JSON.stringify(quoteWithoutInvoice, null, 2));
 
     const currentQuotes: Quote[] = [];
 
     for (const quote of quoteWithoutInvoice) {
       const serviceDate = new Date(quote.service_date);
-      const dateUnJourPlus = new Date(serviceDate.getTime() + (24 * 60 * 60 * 1000));
-      const sameDate = currentDate.getFullYear() === dateUnJourPlus.getFullYear() &&
+      const dateUnJourPlus = new Date(
+        serviceDate.getTime() + 24 * 60 * 60 * 1000,
+      );
+      const sameDate =
+        currentDate.getFullYear() === dateUnJourPlus.getFullYear() &&
         currentDate.getMonth() === dateUnJourPlus.getMonth() &&
         currentDate.getDate() === dateUnJourPlus.getDate();
-      if (sameDate && quote.group_acceptance === "accepted" && quote.order_giver_acceptance === "accepted") {
+      if (
+        sameDate &&
+        quote.group_acceptance === 'accepted' &&
+        quote.order_giver_acceptance === 'accepted'
+      ) {
         currentQuotes.push(quote);
       }
     }
 
-    Logger.debug("Current quotes", JSON.stringify(currentQuotes, null, 2));
+    Logger.debug('Current quotes', JSON.stringify(currentQuotes, null, 2));
 
     if (currentQuotes.length > 0) {
       for (const quote of currentQuotes) {
-
         const invoice = new Invoice();
         invoice.invoice_date = currentDate;
         invoice.service_date = quote.service_date;
@@ -160,64 +234,70 @@ export class InvoiceService {
         invoice.total_vat_21 = quote.total_vat_21;
         invoice.total_vat_6 = quote.total_vat_6;
         invoice.validation_deadline = quote.validation_deadline;
-        invoice.status = "pending";
+        invoice.status = 'pending';
 
         const invoiceCreated = await this._invoiceRepository.save(invoice);
         this.logger.debug(JSON.stringify(invoiceCreated));
         invoiceCreated.quote = await this.quoteService.findOne(quote.id);
-        invoiceCreated.client = await this.clientService.findOne(quote.client.id);
+        invoiceCreated.client = await this.clientService.findOne(
+          quote.client.id,
+        );
         if (quote.main_account) {
-          invoiceCreated.main_account = await this.comptePrincipalService.findOne(quote.main_account.id);
+          invoiceCreated.main_account =
+            await this.comptePrincipalService.findOne(quote.main_account.id);
         }
 
         if (quote.group_account) {
-          invoiceCreated.group_account = await this.compteGroupeService.findOne(quote.group_account.id);
+          invoiceCreated.group_account = await this.compteGroupeService.findOne(
+            quote.group_account.id,
+          );
         }
         await this._invoiceRepository.update(invoiceCreated.id, invoiceCreated);
-        quote.status = "invoiced";
+        quote.status = 'invoiced';
         quote.invoice = invoiceCreated;
         await this.quoteService.save(quote);
       }
 
-      this.logger.debug("Des factures ont été créees");
+      this.logger.debug('Des factures ont été créees');
     } else {
-      this.logger.error("Aucune facture crée");
+      this.logger.error('Aucune facture crée');
     }
-
   }
 
   async createCreditNote(
-    createCreditNoteDto: CreateCreditNoteDto
+    createCreditNoteDto: CreateCreditNoteDto,
   ): Promise<Invoice> {
-    return await this.dataSource.transaction(async manager => {
-      const invoice = await manager.findOneBy(Invoice, { id: createCreditNoteDto.linkedInvoiceId });
+    return await this.dataSource.transaction(async (manager) => {
+      const invoice = await manager.findOneBy(Invoice, {
+        id: createCreditNoteDto.linkedInvoiceId,
+      });
 
       if (!invoice) {
-        throw new Error("Invoice not found"); // Vérifie si la facture existe
+        throw new Error('Invoice not found'); // Vérifie si la facture existe
       }
 
       if (createCreditNoteDto.creditNoteAmount > invoice.total) {
-        throw new Error("Credit note amount exceeds invoice total amount"); // Vérifie que le montant de la note de crédit ne dépasse pas le total de la facture
+        throw new Error('Credit note amount exceeds invoice total amount'); // Vérifie que le montant de la note de crédit ne dépasse pas le total de la facture
       }
       Logger.debug(JSON.stringify(invoice, null, 2));
       // Crée la note de crédit en utilisant les données fournies
-      let {id, ...invoiceWithoutId} = invoice
+      let { id, ...invoiceWithoutId } = invoice;
       const creditNote = manager.create(Invoice, {
         ...invoiceWithoutId,
         ...createCreditNoteDto,
-        type: "credit_note"
+        type: 'credit_note',
       });
       return manager.save(creditNote);
-    })
+    });
     // Récupère la facture liée
     // Sauvegarde la note de crédit dans la base de données
   }
 
   findCreditNoteByInvoiceId(invoice_id: number) {
-    Logger.debug(invoice_id)
+    Logger.debug(invoice_id);
     return this._invoiceRepository.findOneBy({
       linkedInvoiceId: invoice_id,
-      type: "credit_note"
-    })
+      type: 'credit_note',
+    });
   }
 }

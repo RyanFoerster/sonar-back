@@ -1,7 +1,18 @@
-import { Body, Controller, Delete, Get, Logger, Param, Patch, Post, Put } from "@nestjs/common";
-import { ProductService } from "./product.service";
-import { CreateProductDto } from "./dto/create-product.dto";
-import { UpdateProductDto } from "./dto/update-product.dto";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Logger,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Query,
+} from '@nestjs/common';
+import { ProductService } from './product.service';
+import { CreateProductDto } from './dto/create-product.dto';
+import { UpdateProductDto } from './dto/update-product.dto';
 
 @Controller('product')
 export class ProductController {
@@ -29,9 +40,17 @@ export class ProductController {
   // }
 
   @Put('update/:id')
-  update(@Param('id') id: string, @Body() updateProductDto: UpdateProductDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateProductDto: UpdateProductDto,
+    @Query('tvaIncluded') tvaIncluded: boolean,
+  ) {
     Logger.debug(`updateProduct id: ${id}`);
-    return this.productService.updateProduct(+id, updateProductDto);
+    return this.productService.updateProduct(
+      +id,
+      updateProductDto,
+      tvaIncluded,
+    );
   }
 
   @Delete(':id')

@@ -1,8 +1,17 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Request } from "@nestjs/common";
-import { ClientsService } from "./clients.service";
-import { CreateClientDto } from "./dto/create-client.dto";
-import { UpdateClientDto } from "./dto/update-client.dto";
-import { User } from "../users/entities/user.entity";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Request,
+} from '@nestjs/common';
+import { ClientsService } from './clients.service';
+import { CreateClientDto } from './dto/create-client.dto';
+import { UpdateClientDto } from './dto/update-client.dto';
+import { User } from '../users/entities/user.entity';
 
 @Controller('clients')
 export class ClientsController {
@@ -35,7 +44,7 @@ export class ClientsController {
   }
 
   @Get('bce/:vat')
-  checkBCE(@Param('vat') vat: string) {
-    return this.clientsService.checkBCE(+vat);
+  checkBCE(@Param('vat') vat: number) {
+    return this.clientsService.checkBCE(vat);
   }
 }
