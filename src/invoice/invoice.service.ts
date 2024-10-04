@@ -171,7 +171,7 @@ export class InvoiceService {
       headStyles: { fillColor: [100, 100, 100] },
     });
 
-    return doc.output('datauristring');
+    return doc.output('arraybuffer');
   }
 
   findAll() {

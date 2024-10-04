@@ -107,7 +107,6 @@ export class MailService {
         ? this.configService.get('mailhub.api_key_prod')
         : this.configService.get('mailhub.api_key_dev');
 
-    Logger.debug('API_KEY', API_KEY);
     try {
       // Extraire le contenu base64 du Data URI
       // const base64Content = pdfContent.split(',')[1];
@@ -118,24 +117,25 @@ export class MailService {
           invoice_number: quote.invoice.id,
           account_name: quote.main_account ? quote.main_account.username : '',
         },
-        from: 'info@sonarartists.be',
+        from: 'info@sonarartists.fr',
         to: 'ryanfoerster@outlook.be',
-        subject: `Facture ${quote.id} de ${quote.client.name}`,
+        subject: `Facture de ${quote.client.name}`,
         language: null,
-        // attachments: [
-        //   {
-        //     filename: `facture_${quote.id}_${quote.client.name}.pdf`,
-        //     content: base64Content,
-        //     contentType: 'application/pdf',
-        //   },
-        // ],
+        attachments: [
+          {
+            filename: `facture_${quote.id}_${quote.client.name}.pdf`,
+            content: pdfContent,
+            contentType: 'application/pdf',
+          },
+        ],
       };
 
       fetch(`https://api.mailhub.sh/v1/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${API_KEY}`,
+          // Authorization: `Bearer ${API_KEY}`,
+          Authorization: `Bearer mh_live_65df249bc37d49aaa3505171f790c70dc5d6fa7fa76441f0ba921ae7e304f9fd`,
         },
         body: JSON.stringify(requestBody),
       }).then((data) => console.log(data));
