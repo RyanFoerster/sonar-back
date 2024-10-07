@@ -13,34 +13,34 @@ export class User {
   @PrimaryGeneratedColumn()
   id?: number;
 
-  @Column({ unique: true })
+  @Column({ nullable: true })
   username: string;
 
-  @Column({ select: false })
+  @Column({ select: false, nullable: true })
   password: string;
 
-  @Column({ unique: true })
+  @Column({ nullable: true })
   email: string;
 
-  @Column()
+  @Column({ nullable: true })
   name: string
 
-  @Column()
+  @Column( { nullable: true })
   firstName: string
 
-  @Column({ unique: true })
+  @Column({ nullable: true })
   numeroNational: string
 
-  @Column({ unique: true })
+  @Column({  nullable: true })
   telephone: string
 
-  @Column({ unique: true })
+  @Column({ nullable: true })
   iban: string
 
   @Column({default: "USER"})
   role: "USER" | "ADMIN" | "GUEST"
 
-  @Column()
+  @Column({ nullable: true })
   address: string
 
   @Column({ default: false })

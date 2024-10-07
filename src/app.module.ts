@@ -24,7 +24,8 @@ import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
 import config from './config/config';
 import { MulterModule } from '@nestjs/platform-express';
 import { MeetModule } from './meet/meet.module';
-import { HttpModule } from "@nestjs/axios";
+import { HttpModule } from '@nestjs/axios';
+import { BceService } from './services/bce/bce.service';
 
 //import * as driveConfig from './config/drive-config.json';
 
@@ -60,7 +61,7 @@ import { HttpModule } from "@nestjs/axios";
         username: configService.get('database.username'),
         password: configService.get('database.password'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: configService.get('STAGE') !== 'prod',
+        synchronize: true,
       }),
 
       inject: [ConfigService],
@@ -96,9 +97,9 @@ import { HttpModule } from "@nestjs/axios";
     CommentsModule,
     VirementSepaModule,
     MeetModule,
-    HttpModule
+    HttpModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, BceService],
 })
 export class AppModule {}

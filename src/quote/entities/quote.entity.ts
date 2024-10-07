@@ -32,14 +32,23 @@ export class Quote {
   @Column({ default: 10 })
   payment_deadline: number;
 
+  @Column({nullable: true})
+  validation_deadline: Date;
+
   @Column({ type: "enum", enum: ["refused", "accepted", "invoiced", "cancelled", "pending", "pending_cancellation"], default: "pending" })
   status: string;
 
-  @Column({default: false})
-  group_acceptance: boolean;
+  @Column({default: "pending"})
+  group_acceptance: "accepted" | "refused" | "pending";
+
+  @Column({default: "pending"})
+  order_giver_acceptance: "accepted" | "refused" | "pending";
+
+  @Column({default: null, nullable: true})
+  comment: string;
 
   @Column({default: false})
-  order_giver_acceptance: boolean;
+  isVatIncluded: boolean;
 
   @ManyToOne(() => ComptePrincipal, (comptePrincipal) => comptePrincipal.quote, { nullable: true })
   main_account: ComptePrincipal;

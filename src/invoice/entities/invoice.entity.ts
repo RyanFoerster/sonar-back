@@ -44,6 +44,9 @@ export class Invoice {
   payment_deadline: Date;
 
   @Column()
+  validation_deadline: Date;
+
+  @Column()
   status: string;
 
   @ManyToOne(() => ComptePrincipal, (comptePrincipal) => comptePrincipal.invoice, { nullable: true })

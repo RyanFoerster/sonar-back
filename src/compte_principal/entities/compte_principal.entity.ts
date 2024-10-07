@@ -24,7 +24,7 @@ export class ComptePrincipal {
   @Column({ unique: true })
   username: string;
 
-  @Column({ default: 0 })
+  @Column({ default: 0, type: 'double precision' })
   solde?: number;
 
   @OneToMany(() => Quote, (quote) => quote.main_account, {nullable: true, eager: true, cascade: true})

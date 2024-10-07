@@ -29,4 +29,7 @@ export default () => ({
     client_x509_cert_url: process.env.GOOGLE_CLIENT_X509,
     universe_domain: process.env.GOOGLE_CLIENT_UNIVERSE_DOMAIN,
   },
+  bce: {
+    API_KEY: process.env.BCE_API_KEY,
+  }
 });
