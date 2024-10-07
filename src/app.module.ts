@@ -60,6 +60,10 @@ import { BceService } from './services/bce/bce.service';
         port: +configService.get('database.port'),
         username: configService.get('database.username'),
         password: configService.get('database.password'),
+        url:
+          configService.get('STAGE') === 'prod'
+            ? configService.get('DATABASE_URL')
+            : '',
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: true,
       }),
