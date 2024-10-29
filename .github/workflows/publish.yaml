@@ -19,7 +19,6 @@ jobs:
       - name: Build Docker Image
         id: build-image
         run: |
-          ls -la
           docker build -t ${{ secrets.DOCKER_USERNAME }}/sonar-back:latest .
       - name: push the docker image
         id: push-image
@@ -33,7 +32,7 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
             cd sonar-back
-            git pull origin master
+            git pull
 
       - name: Run the docker compose
         uses: appleboy/ssh-action@master
