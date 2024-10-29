@@ -32,6 +32,7 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
+            pwd
             docker pull ${{ secrets.DOCKER_USERNAME }}/sonar-back:latest
 
       - name: Run the docker compose
