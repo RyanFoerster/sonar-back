@@ -1,8 +1,6 @@
 services:
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: dimagin/sonar-back:latest
     restart: unless-stopped
     ports:
       - '8090:3000'
