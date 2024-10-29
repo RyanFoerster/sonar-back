@@ -45,13 +45,10 @@ import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         type: 'postgres',
-        // ssl: configService.get('STAGE') === 'prod',
-        // extra: {
-        //   ssl:
-        //     configService.get('STAGE') === 'prod'
-        //       ? { rejectUnauthorized: false }
-        //       : null,
-        // },
+        ssl: false,
+        extra: {
+          ssl: false,
+        },
         database: configService.get('database.database'),
         host:
           configService.get('STAGE') === 'prod'
