@@ -1,0 +1,17 @@
+services:
+  web:
+    image: sonar-back:latest
+    ports:
+      - '3000:3000'
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+  db:
+    image: postgres
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_DB: sonar-db
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
