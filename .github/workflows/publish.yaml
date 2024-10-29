@@ -33,7 +33,6 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
             docker pull ${{ secrets.DOCKER_USERNAME }}/sonar-back:latest
-            cd /home/root/
             docker-compose down
             docker-compose up -d
 
