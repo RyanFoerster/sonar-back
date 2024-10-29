@@ -3,6 +3,8 @@ services:
     image: sonar-back:latest
     ports:
       - '3000:3000'
+    env_file:
+      - /home/bruno/.env
     volumes:
       - .:/app
     depends_on:
