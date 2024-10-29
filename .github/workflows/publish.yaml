@@ -25,24 +25,22 @@ jobs:
         id: push-image
         run: docker push ${{ secrets.DOCKER_USERNAME }}/sonar-back:latest
 
-      - name: Deploy to VPS
+      - name: Pull the repository
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
-            docker pull ${{ secrets.DOCKER_USERNAME }}/sonar-back:latest
+            git pull origin master
+
+      - name: Run the docker compose
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            cd sonar-back
             docker compose down
             docker compose up -d
-
-      # - name: Run the docker compose
-      #   uses: appleboy/ssh-action@master
-      #   with:
-      #     host: ${{ secrets.SSH_HOST }}
-      #     username: ${{ secrets.SSH_USERNAME }}
-      #     password: ${{ secrets.SSH_PASSWORD }}
-      #     script: |
-      #       pwd
-      #       docker compose down
-      #       docker compose up -d
