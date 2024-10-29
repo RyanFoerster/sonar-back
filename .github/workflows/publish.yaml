@@ -25,15 +25,15 @@ jobs:
         id: push-image
         run: docker push ${{ secrets.DOCKER_USERNAME }}/sonar-back:latest
 
-      # - name: Pull the repository
-      #   uses: appleboy/ssh-action@master
-      #   with:
-      #     host: ${{ secrets.SSH_HOST }}
-      #     username: ${{ secrets.SSH_USERNAME }}
-      #     password: ${{ secrets.SSH_PASSWORD }}
-      #     script: |
-      #       cd sonar-back
-      #       git pull origin master
+      - name: Pull the repository
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          password: ${{ secrets.SSH_PASSWORD }}
+          script: |
+            cd sonar-back
+            git pull origin master
 
       - name: Run the docker compose
         uses: appleboy/ssh-action@master
