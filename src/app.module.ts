@@ -65,7 +65,7 @@ import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
             ? configService.get('DATABASE_URL')
             : '',
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true,
+        synchronize: false,
       }),
 
       inject: [ConfigService],
