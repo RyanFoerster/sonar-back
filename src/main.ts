@@ -1,7 +1,7 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import * as express from 'express';
+import { AppModule } from './app.module';
 
 const server = express();
 
@@ -16,8 +16,9 @@ export const createNestServer = async (expressInstance: express.Express) => {
   );
 
   app.enableCors({
-    origin: true,
+    origin: ['http://localhost:3000', 'https://sonarartists.fr'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    credentials: true,
   });
 
   await app.init();
