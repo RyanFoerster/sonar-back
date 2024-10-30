@@ -16,7 +16,7 @@ export const createNestServer = async (expressInstance: express.Express) => {
   );
 
   app.enableCors({
-    origin: ['http://localhost:3000', 'https://sonarartists.fr'],
+    origin: ['http://localhost:3000', 'http://sonarartists.fr'],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true,
   });
