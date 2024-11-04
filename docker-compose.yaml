@@ -7,7 +7,7 @@ services:
     env_file:
       - .env
     volumes:
-      - .:/app
+      - .:/app:rw
     depends_on:
       - db
     networks:
