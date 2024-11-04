@@ -1,31 +1,38 @@
+import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
+
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ComptePrincipalModule } from './compte_principal/compte_principal.module';
-import { CompteGroupeModule } from './compte_groupe/compte_groupe.module';
-import { UserSecondaryAccountModule } from './user-secondary-account/user-secondary-account.module';
-import { ProductModule } from './product/product.module';
-import { InvoiceModule } from './invoice/invoice.module';
-import { ClientsModule } from './clients/clients.module';
-import { QuoteModule } from './quote/quote.module';
+import { JwtModule } from '@nestjs/jwt';
+import { MulterModule } from '@nestjs/platform-express';
 import { ScheduleModule } from '@nestjs/schedule';
-import { TransactionModule } from './transaction/transaction.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
+import { ClientsModule } from './clients/clients.module';
+import { CommentsModule } from './comment/comment.module';
+import { CompteGroupeModule } from './compte_groupe/compte_groupe.module';
+import { ComptePrincipalModule } from './compte_principal/compte_principal.module';
+import config from './config/config';
 import { EventsModule } from './event/event.module';
 import { InvitationsModule } from './invitation/invitation.module';
-import { CommentsModule } from './comment/comment.module';
-import { JwtModule } from '@nestjs/jwt';
-import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
-import config from './config/config';
-import { MulterModule } from '@nestjs/platform-express';
+import { InvoiceModule } from './invoice/invoice.module';
 import { MeetModule } from './meet/meet.module';
-import { HttpModule } from '@nestjs/axios';
+import { ProductModule } from './product/product.module';
+import { QuoteModule } from './quote/quote.module';
 import { BceService } from './services/bce/bce.service';
+import { TransactionModule } from './transaction/transaction.module';
+import { UserSecondaryAccountModule } from './user-secondary-account/user-secondary-account.module';
+import { UsersModule } from './users/users.module';
+import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
 
 //import * as driveConfig from './config/drive-config.json';
 
@@ -56,6 +63,7 @@ import { BceService } from './services/bce/bce.service';
           database: configService.get('database.database'),
           host:
             configService.get('STAGE') === 'prod'
+
               ? configService.get('database.host')
               : 'localhost',
           port: +configService.get('database.port'),
@@ -71,6 +79,7 @@ import { BceService } from './services/bce/bce.service';
 
         return config as TypeOrmModuleOptions;
       },
+
 
       inject: [ConfigService],
     }),
