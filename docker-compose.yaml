@@ -1,13 +1,13 @@
 services:
   web:
-    image: dimagin/sonar-back:latest
+    image: sonar-back:v1
     restart: unless-stopped
     ports:
       - '8090:3000'
     env_file:
       - .env
     volumes:
-      - .:/app:rwz
+      - web-data:/app:rwz
     depends_on:
       - db
     networks:
@@ -32,3 +32,4 @@ networks:
 
 volumes:
   db-data:
+  web-data:
