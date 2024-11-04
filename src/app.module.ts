@@ -1,5 +1,12 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
+
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
+import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { MulterModule } from '@nestjs/platform-express';
@@ -43,30 +50,36 @@ import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        ssl: configService.get('STAGE') === 'prod',
-        extra: {
-          ssl:
+      useFactory: (configService: ConfigService) => {
+        const config = {
+          type: 'postgres',
+          // ssl: configService.get('STAGE') === 'prod',
+          // extra: {
+          //   ssl:
+          //     configService.get('STAGE') === 'prod'
+          //       ? { rejectUnauthorized: false }
+          //       : null,
+          // },
+          database: configService.get('database.database'),
+          host:
             configService.get('STAGE') === 'prod'
-              ? { rejectUnauthorized: false }
-              : null,
-        },
-        database: configService.get('database.database'),
-        host:
-          configService.get('STAGE') === 'prod'
-            ? configService.get('database.host')
-            : 'localhost',
-        port: +configService.get('database.port'),
-        username: configService.get('database.username'),
-        password: configService.get('database.password'),
-        url:
-          configService.get('STAGE') === 'prod'
-            ? configService.get('DATABASE_URL')
-            : '',
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: false,
-      }),
+
+              ? configService.get('database.host')
+              : 'localhost',
+          port: +configService.get('database.port'),
+          username: configService.get('database.username'),
+          password: configService.get('database.password'),
+          url:
+            configService.get('STAGE') === 'prod'
+              ? configService.get('DATABASE_URL')
+              : '',
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          synchronize: false,
+        };
+
+        return config as TypeOrmModuleOptions;
+      },
+
 
       inject: [ConfigService],
     }),

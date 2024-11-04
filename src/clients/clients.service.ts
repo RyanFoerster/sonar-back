@@ -19,8 +19,26 @@ export class ClientsService {
 
   async create(user: User, createClientDto: CreateClientDto) {
     let client: Client;
+    let clientFromDB = await this.clientRepository.findOneBy({
+      company_vat_number: createClientDto.company_vat_number,
+    });
 
-    client = await this.clientRepository.save(createClientDto);
+    if (!clientFromDB) {
+      clientFromDB = await this.clientRepository.findOneBy({
+        company_number: createClientDto.company_number,
+      });
+    }
+
+    if (clientFromDB) {
+      clientFromDB = await this.clientRepository.merge(
+        clientFromDB,
+        createClientDto,
+      );
+      client = clientFromDB;
+    } else {
+      client = await this.clientRepository.save(createClientDto);
+    }
+
     Logger.debug(JSON.stringify(client, null, 2));
     if (createClientDto.company_vat_number === '') {
       client.company_vat_number = null;

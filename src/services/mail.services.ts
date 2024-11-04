@@ -1,9 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as nodemailer from 'nodemailer';
 import { ConfigService } from '@nestjs/config';
-import { HttpService } from '@nestjs/axios';
-import { User } from 'src/users/entities/user.entity';
-import { Quote } from 'src/quote/entities/quote.entity';
+import * as nodemailer from 'nodemailer';
+import { Quote } from '../quote/entities/quote.entity';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class MailService {

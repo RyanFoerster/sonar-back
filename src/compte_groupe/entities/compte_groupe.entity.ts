@@ -1,17 +1,10 @@
-import {
-  Column,
-  Entity, JoinColumn,
-  ManyToOne,
-  OneToMany, OneToOne,
-  PrimaryGeneratedColumn
-} from "typeorm";
-import { Quote } from '../../quote/entities/quote.entity';
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
+import { Event } from '../../event/entities/event.entity';
 import { Invoice } from '../../invoice/entities/invoice.entity';
-import { Transaction } from 'src/transaction/entities/transaction.entity';
+import { Quote } from '../../quote/entities/quote.entity';
+import { Transaction } from '../../transaction/entities/transaction.entity';
 import { UserSecondaryAccount } from '../../user-secondary-account/entities/user-secondary-account.entity';
-import { Event } from 'src/event/entities/event.entity';
-import { VirementSepa } from "../../virement-sepa/entities/virement-sepa.entity";
-
+import { VirementSepa } from '../../virement-sepa/entities/virement-sepa.entity';
 
 @Entity()
 export class CompteGroupe {
@@ -23,6 +16,12 @@ export class CompteGroupe {
 
   @Column({ default: 0, type: 'double precision' })
   solde?: number;
+
+  @Column({ default: 1 })
+  next_invoice_number: number;
+
+  @Column({ default: 1 })
+  next_quote_number: number;
 
   @OneToMany(() => Quote, (quote) => quote.group_account, {
     nullable: true,
@@ -36,7 +35,7 @@ export class CompteGroupe {
   })
   invoice: Invoice[];
 
-  @OneToMany(() => Transaction, (transaction) => transaction.senderPrincipal, )
+  @OneToMany(() => Transaction, (transaction) => transaction.senderPrincipal)
   transactions: Transaction[];
 
   @OneToMany(
@@ -48,7 +47,9 @@ export class CompteGroupe {
   @OneToMany(() => Event, (event) => event.group)
   event: Event[];
 
-  @OneToMany(() => VirementSepa, (virementSepa) => virementSepa.compteGroupe, {nullable: true, eager: true})
-  virementSepa?: VirementSepa[]
-
+  @OneToMany(() => VirementSepa, (virementSepa) => virementSepa.compteGroupe, {
+    nullable: true,
+    eager: true,
+  })
+  virementSepa?: VirementSepa[];
 }

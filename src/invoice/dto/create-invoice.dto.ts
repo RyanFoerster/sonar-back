@@ -1,4 +1,4 @@
-import { IsDate, IsNumber } from "class-validator";
+import { IsDate, IsNumber } from 'class-validator';
 
 export class CreateInvoiceDto {
   @IsDate()
@@ -28,4 +28,5 @@ export class CreateInvoiceDto {
 export class CreateCreditNoteDto {
   readonly linkedInvoiceId: number; // ID de la facture liée
   readonly creditNoteAmount: number; // Montant de la note de crédit
+  readonly products_ids: number[]; // ID des produits liés
 }

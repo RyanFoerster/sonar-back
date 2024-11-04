@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { Quote } from './entities/quote.entity';
@@ -11,6 +16,7 @@ import { ComptePrincipalService } from '../compte_principal/compte_principal.ser
 import { CompteGroupeService } from '../compte_groupe/compte_groupe.service';
 import { MailService } from '../services/mail.services';
 import { UsersService } from '../users/users.service';
+import { Cron, CronExpression } from '@nestjs/schedule';
 
 @Injectable()
 export class QuoteService {
@@ -26,8 +32,32 @@ export class QuoteService {
   ) {}
 
   async create(createQuoteDto: CreateQuoteDto, user_id: number) {
-    Logger.debug(`[QuotesService] Create a quote for user ${user_id} with ${JSON.stringify(createQuoteDto, null, 2)}`);
+    Logger.debug(
+      `[QuotesService] Create a quote for user ${user_id} with ${JSON.stringify(createQuoteDto, null, 2)}`,
+    );
     let quote: Quote = this.quoteRepository.create(createQuoteDto);
+
+    if (createQuoteDto.main_account_id !== undefined) {
+      const account = await this.comptePrincipalService.findOne(
+        createQuoteDto.main_account_id,
+      );
+      quote.main_account = account;
+      quote.quote_number = account.next_quote_number;
+
+      account.next_quote_number += 1;
+      await this.comptePrincipalService.save(account);
+    }
+
+    if (createQuoteDto.group_account_id !== undefined) {
+      const account = await this.compteGroupeService.findOne(
+        createQuoteDto.group_account_id,
+      );
+      quote.group_account = account;
+      quote.quote_number = account.next_quote_number;
+
+      account.next_quote_number += 1;
+      await this.compteGroupeService.save(account);
+    }
 
     quote.client = await this.clientService.findOne(createQuoteDto.client_id);
 
@@ -45,17 +75,17 @@ export class QuoteService {
 
     quote.total = quote.price_htva + quote.total_vat_21 + quote.total_vat_6;
 
-    if (createQuoteDto.main_account_id !== undefined) {
-      quote.main_account = await this.comptePrincipalService.findOne(
-        createQuoteDto.main_account_id,
-      );
-    }
+    // if (createQuoteDto.main_account_id !== undefined) {
+    //   quote.main_account = await this.comptePrincipalService.findOne(
+    //     createQuoteDto.main_account_id,
+    //   );
+    // }
 
-    if (createQuoteDto.group_account_id !== undefined) {
-      quote.group_account = await this.compteGroupeService.findOne(
-        createQuoteDto.group_account_id,
-      );
-    }
+    // if (createQuoteDto.group_account_id !== undefined) {
+    //   quote.group_account = await this.compteGroupeService.findOne(
+    //     createQuoteDto.group_account_id,
+    //   );
+    // }
 
     if (!createQuoteDto.validation_deadline) {
       const currentDate = new Date();
@@ -86,7 +116,7 @@ export class QuoteService {
   }
 
   findAll() {
-    return `This action returns all quote`;
+    return this.quoteRepository.find({ relations: { products: false } });
   }
 
   findOne(id: number) {
@@ -110,9 +140,9 @@ export class QuoteService {
   }
 
   async update(id: string, updateQuoteDto: UpdateQuoteDto, user_id: number) {
-    let quote: Quote = await this.findOne(+id)
+    let quote: Quote = await this.findOne(+id);
 
-    if(!quote) {
+    if (!quote) {
       throw new NotFoundException('Quote not found');
     }
 
@@ -152,6 +182,8 @@ export class QuoteService {
     }
 
     const userConnected = await this.usersService.findOne(user_id);
+    quote.group_acceptance = 'pending';
+    quote.order_giver_acceptance = 'pending';
 
     quote = await this.quoteRepository.save(quote);
 
@@ -178,6 +210,12 @@ export class QuoteService {
     if (quote.order_giver_acceptance === 'accepted') {
       quote.status = 'accepted';
     }
+
+    if (quote.validation_deadline.getTime() < new Date().getTime()) {
+      quote.validation_deadline = new Date(
+        new Date().getTime() + 10 * 24 * 60 * 60 * 1000,
+      );
+    }
     return await this.quoteRepository.save(quote);
   }
 
@@ -186,6 +224,12 @@ export class QuoteService {
     quote.order_giver_acceptance = 'accepted';
     if (quote.group_acceptance === 'accepted') {
       quote.status = 'accepted';
+    }
+
+    if (quote.validation_deadline.getTime() < new Date().getTime()) {
+      quote.validation_deadline = new Date(
+        new Date().getTime() + 10 * 24 * 60 * 60 * 1000,
+      );
     }
     return await this.quoteRepository.save(quote);
   }
@@ -212,7 +256,7 @@ export class QuoteService {
     return `This action removes a #${id} quote`;
   }
 
-  async setTotalHtva(products: Product[], ) {
+  async setTotalHtva(products: Product[]) {
     let total = 0;
     for (const product of products) {
       total += product.price_htva;
@@ -254,6 +298,98 @@ export class QuoteService {
         client: true,
         group_account: true,
         main_account: true,
+      },
+    });
+  }
+
+  async updateReportDate(id: number, report_date: Date) {
+    const quote = await this.findOne(id);
+    if (quote.status !== 'accepted') {
+      quote.validation_deadline = report_date;
+      const quoteUpdated = await this.quoteRepository.save(quote);
+      return quoteUpdated ? true : false;
+    } else {
+      throw new BadRequestException('Quote already accepted');
+    }
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  async checkQuoteValidationDate() {
+    const quotes = await this.findQuoteInPending();
+
+    for (const quote of quotes) {
+      if (quote.validation_deadline.getTime() < new Date().getTime()) {
+        if (
+          quote.group_acceptance !== 'pending' ||
+          quote.order_giver_acceptance !== 'pending'
+        ) {
+          quote.group_acceptance = 'pending';
+          quote.order_giver_acceptance = 'pending';
+          await this.quoteRepository.save(quote);
+        }
+      }
+    }
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  async sendReminderEmailLessThan2Days() {
+    const quotes = await this.findQuoteInPending();
+    for (const quote of quotes) {
+      // Check if the quote validation deadline is less than 2 days
+      if (
+        quote.status === 'pending' &&
+        quote.validation_deadline.getTime() <
+          new Date().getTime() + 2 * 24 * 60 * 60 * 1000
+      ) {
+        if (quote.group_acceptance === 'pending') {
+          await this.mailService.sendDevisAcceptationEmail(
+            quote.client.email,
+            quote.client.name,
+            quote.id,
+            'GROUP',
+          );
+        }
+        if (quote.order_giver_acceptance === 'pending') {
+          await this.mailService.sendDevisAcceptationEmail(
+            quote.client.email,
+            quote.client.name,
+            quote.id,
+            'CLIENT',
+          );
+        }
+      }
+    }
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  async sendReminderEmailLessThan1Day() {
+    const quotes = await this.findQuoteInPending();
+    for (const quote of quotes) {
+      if (quote.validation_deadline.getTime() < new Date().getTime()) {
+        if (quote.group_acceptance === 'pending') {
+          await this.mailService.sendDevisAcceptationEmail(
+            quote.client.email,
+            quote.client.name,
+            quote.id,
+            'GROUP',
+          );
+        }
+        if (quote.order_giver_acceptance === 'pending') {
+          await this.mailService.sendDevisAcceptationEmail(
+            quote.client.email,
+            quote.client.name,
+            quote.id,
+            'CLIENT',
+          );
+        }
+      }
+    }
+  }
+
+  findQuoteInPending() {
+    return this.quoteRepository.find({
+      where: {
+        status: 'pending',
       },
     });
   }

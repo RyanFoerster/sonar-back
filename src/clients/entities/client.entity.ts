@@ -5,11 +5,11 @@ import {
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
-  UpdateDateColumn
-} from "typeorm";
-import { User } from "../../users/entities/user.entity";
-import { Invoice } from "../../invoice/entities/invoice.entity";
-import { Quote } from "../../quote/entities/quote.entity";
+  UpdateDateColumn,
+} from 'typeorm';
+import { User } from '../../users/entities/user.entity';
+import { Invoice } from '../../invoice/entities/invoice.entity';
+import { Quote } from '../../quote/entities/quote.entity';
 
 @Entity()
 export class Client {
@@ -40,13 +40,13 @@ export class Client {
   @Column()
   postalCode: string;
 
-  @Column({nullable: true})
-  company_number: number;
+  @Column({ nullable: true })
+  company_number: string;
 
-  @Column({nullable: true})
+  @Column({ nullable: true })
   company_vat_number: string;
 
-  @Column({nullable: true})
+  @Column({ nullable: true })
   national_number: string;
 
   @CreateDateColumn()
@@ -58,9 +58,9 @@ export class Client {
   @ManyToOne((type) => User, (user) => user.clients)
   user: User;
 
-  @OneToMany(() => Quote, (quote) => quote.client,{cascade: true})
+  @OneToMany(() => Quote, (quote) => quote.client, { cascade: true })
   quote: Quote;
 
-  @OneToMany(() => Invoice, (invoice) => invoice.client, {cascade: true})
+  @OneToMany(() => Invoice, (invoice) => invoice.client, { cascade: true })
   invoice: Invoice;
 }

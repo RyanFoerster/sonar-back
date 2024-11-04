@@ -1,6 +1,13 @@
 // src/invitations/entities/invitation.entity.ts
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
-import { Event } from 'src/event/entities/event.entity';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
+import { Event } from '../../event/entities/event.entity';
 import { User } from '../../users/entities/user.entity';
 
 @Entity()
