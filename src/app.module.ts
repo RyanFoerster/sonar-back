@@ -39,34 +39,31 @@ import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => {
-        const config = {
-          type: 'postgres',
-          // ssl: configService.get('STAGE') === 'prod',
-          // extra: {
-          //   ssl:
-          //     configService.get('STAGE') === 'prod'
-          //       ? { rejectUnauthorized: false }
-          //       : null,
-          // },
-          database: configService.get('database.database'),
-          host:
+      useFactory: (configService: ConfigService) => ({
+        type: 'postgres',
+        ssl: configService.get('STAGE') === 'prod',
+        extra: {
+          ssl:
             configService.get('STAGE') === 'prod'
-              ? configService.get('database.host')
-              : 'localhost',
-          port: +configService.get('database.port'),
-          username: configService.get('database.username'),
-          password: configService.get('database.password'),
-          url:
-            configService.get('STAGE') === 'prod'
-              ? configService.get('DATABASE_URL')
-              : '',
-          entities: [__dirname + '/**/*.entity{.ts,.js}'],
-          synchronize: true,
-        };
-
-        return config as TypeOrmModuleOptions;
-      },
+              ? { rejectUnauthorized: false }
+              : null,
+        },
+        database: configService.get('database.database'),
+        host:
+          configService.get('STAGE') === 'prod'
+            ? configService.get('database.host')
+            : 'localhost',
+        port: +configService.get('database.port'),
+        username: configService.get('database.username'),
+        password: configService.get('database.password'),
+        url:
+          configService.get('STAGE') === 'prod'
+            ? configService.get('DATABASE_URL')
+            : '',
+        entities: [__dirname + '/**/*.entity{.ts,.js}'],
+        synchronize: true,
+        logging: true,
+      }),
 
       inject: [ConfigService],
     }),
