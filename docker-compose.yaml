@@ -8,6 +8,7 @@ services:
       - .env
     volumes:
       - web-data:/app:rwz
+      - db-data:/app/db:rw
     depends_on:
       - db
     networks:
@@ -22,7 +23,7 @@ services:
       POSTGRES_USER: sonar
       POSTGRES_PASSWORD: sonar
     volumes:
-      - ./data:/var/lib/postgresql/data:rwz
+      - db-data:/var/lib/postgresql/data:rw
     networks:
       - sonar
 
