@@ -5,7 +5,7 @@ import { Repository } from 'typeorm';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { Comment } from './entities/comment.entity';
-import { Event } from 'src/event/entities/event.entity'; 
+import { Event } from '../event/entities/event.entity';
 import { User } from '../users/entities/user.entity';
 
 @Injectable()
@@ -20,12 +20,18 @@ export class CommentsService {
   ) {}
 
   async create(createCommentDto: CreateCommentDto): Promise<Comment> {
-    const event = await this.eventsRepository.findOneBy({ id: createCommentDto.eventId });
+    const event = await this.eventsRepository.findOneBy({
+      id: createCommentDto.eventId,
+    });
     if (!event) {
-      throw new NotFoundException(`Event #${createCommentDto.eventId} not found`);
+      throw new NotFoundException(
+        `Event #${createCommentDto.eventId} not found`,
+      );
     }
 
-    const user = await this.usersRepository.findOneBy({ id: createCommentDto.userId });
+    const user = await this.usersRepository.findOneBy({
+      id: createCommentDto.userId,
+    });
     if (!user) {
       throw new NotFoundException(`User #${createCommentDto.userId} not found`);
     }
@@ -43,14 +49,20 @@ export class CommentsService {
   }
 
   async findOne(id: number): Promise<Comment> {
-    const comment = await this.commentsRepository.findOne({ where: { id }, relations: ['event', 'user'] });
+    const comment = await this.commentsRepository.findOne({
+      where: { id },
+      relations: ['event', 'user'],
+    });
     if (!comment) {
       throw new NotFoundException(`Comment #${id} not found`);
     }
     return comment;
   }
 
-  async update(id: number, updateCommentDto: UpdateCommentDto): Promise<Comment> {
+  async update(
+    id: number,
+    updateCommentDto: UpdateCommentDto,
+  ): Promise<Comment> {
     const comment = await this.commentsRepository.preload({
       id,
       ...updateCommentDto,

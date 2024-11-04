@@ -13,7 +13,9 @@ export class ProductService {
   ) {}
   async create(createProductDto: CreateProductDto) {
     createProductDto.total = await this.setTotal(createProductDto);
-
+    Logger.debug(
+      `Creating product with ${JSON.stringify(createProductDto, null, 2)}`,
+    );
     let product = this.productRepository.create(createProductDto);
 
     product.price_htva = product.price * product.quantity;
@@ -27,7 +29,10 @@ export class ProductService {
   }
 
   async findOne(id: number) {
-    return await this.productRepository.findOneBy({ id });
+    return await this.productRepository.findOne({
+      where: { id },
+      relations: ['quote'],
+    });
   }
 
   // async update(id: number, updateProductDto: UpdateProductDto) {
@@ -59,9 +64,11 @@ export class ProductService {
   }
 
   async setTotal(product: Product | UpdateProductDto) {
+    Logger.debug(
+      `Setting total for product with ${JSON.stringify(product, null, 2)}`,
+    );
     let productVat = product.price * product.vat;
     let productTotal = +product.price + +productVat;
-
     return productTotal * product.quantity;
   }
 }

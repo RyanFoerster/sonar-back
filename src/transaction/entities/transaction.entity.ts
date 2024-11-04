@@ -1,15 +1,15 @@
-import { CompteGroupe } from "src/compte_groupe/entities/compte_groupe.entity";
-import { ComptePrincipal } from "src/compte_principal/entities/compte_principal.entity";
+import { CompteGroupe } from '../../compte_groupe/entities/compte_groupe.entity';
+import { ComptePrincipal } from '../../compte_principal/entities/compte_principal.entity';
 import {
-    Column,
-    CreateDateColumn,
-    Entity,
-    JoinColumn,
-    JoinTable,
-    ManyToMany,
-    ManyToOne,
-    PrimaryGeneratedColumn
-} from "typeorm";
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  JoinTable,
+  ManyToMany,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 
 @Entity()
 export class Transaction {
@@ -23,13 +23,20 @@ export class Transaction {
   amount: number;
 
   @Column({ nullable: true })
-  type?: "SENDER" | "RECIPIENT";
+  type?: 'SENDER' | 'RECIPIENT';
 
-  @ManyToOne(() => CompteGroupe, (compteGroupe) => compteGroupe.transactions, { nullable: true, eager: true })
+  @ManyToOne(() => CompteGroupe, (compteGroupe) => compteGroupe.transactions, {
+    nullable: true,
+    eager: true,
+  })
   @JoinColumn()
   senderGroup: CompteGroupe;
 
-  @ManyToOne(() => ComptePrincipal, (comptePrincipal) => comptePrincipal.transactions, { nullable: true, eager: true })
+  @ManyToOne(
+    () => ComptePrincipal,
+    (comptePrincipal) => comptePrincipal.transactions,
+    { nullable: true, eager: true },
+  )
   @JoinColumn()
   senderPrincipal: ComptePrincipal;
 
@@ -43,5 +50,4 @@ export class Transaction {
 
   @CreateDateColumn()
   date: Date;
-
 }

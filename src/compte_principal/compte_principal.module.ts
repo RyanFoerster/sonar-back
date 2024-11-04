@@ -3,8 +3,8 @@ import { ComptePrincipalService } from './compte_principal.service';
 import { ComptePrincipalController } from './compte_principal.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ComptePrincipal } from './entities/compte_principal.entity';
-import { CompteGroupeModule } from 'src/compte_groupe/compte_groupe.module';
-import { UsersModule } from 'src/users/users.module';
+import { CompteGroupeModule } from '../compte_groupe/compte_groupe.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   controllers: [ComptePrincipalController],

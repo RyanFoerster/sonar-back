@@ -3,8 +3,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
-import { ComptePrincipalModule } from 'src/compte_principal/compte_principal.module';
-import { ComptePrincipal } from 'src/compte_principal/entities/compte_principal.entity';
+import { ComptePrincipalModule } from '../compte_principal/compte_principal.module';
+import { ComptePrincipal } from '../compte_principal/entities/compte_principal.entity';
 import { UserSecondaryAccountModule } from '../user-secondary-account/user-secondary-account.module';
 
 @Module({

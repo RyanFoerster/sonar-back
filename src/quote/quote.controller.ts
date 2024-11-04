@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Req } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Req,
+} from '@nestjs/common';
 import { QuoteService } from './quote.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
@@ -23,7 +32,11 @@ export class QuoteController {
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateQuoteDto: UpdateQuoteDto, @Req() req) {
+  update(
+    @Param('id') id: string,
+    @Body() updateQuoteDto: UpdateQuoteDto,
+    @Req() req,
+  ) {
     return this.quoteService.update(id, updateQuoteDto, req.user.id);
   }
 
@@ -34,23 +47,32 @@ export class QuoteController {
 
   @Patch(':id/group_acceptance')
   updateQuoteGroupAcceptance(@Param('id') id: string) {
-    return this.quoteService.updateQuoteGroupAcceptance(+id)
+    return this.quoteService.updateQuoteGroupAcceptance(+id);
   }
 
   @Patch(':id/order_giver_acceptance')
   updateOrderGiverAcceptance(@Param('id') id: string) {
-    return this.quoteService.updateOrderGiverAcceptance(+id)
+    return this.quoteService.updateOrderGiverAcceptance(+id);
   }
 
   @Patch(':id/group_rejection')
   updateQuoteGroupRejection(@Param('id') id: string) {
-    return this.quoteService.updateQuoteGroupRejection(+id)
+    return this.quoteService.updateQuoteGroupRejection(+id);
   }
 
   @Patch(':id/order_giver_rejection')
   updateOrderGiverRejection(@Param('id') id: string) {
-    return this.quoteService.updateOrderGiverRejection(+id)
+    return this.quoteService.updateOrderGiverRejection(+id);
   }
 
-
+  @Patch(':id/report_date')
+  updateReportDate(
+    @Param('id') id: string,
+    @Body() updateReportDateDto: { report_date: Date },
+  ): Promise<boolean> {
+    return this.quoteService.updateReportDate(
+      +id,
+      updateReportDateDto.report_date,
+    );
+  }
 }

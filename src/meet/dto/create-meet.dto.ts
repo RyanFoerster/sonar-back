@@ -1,5 +1,4 @@
-import { IsString, IsDate, IsArray } from 'class-validator';
-import { User } from 'src/users/entities/user.entity';
+import { IsArray, IsDate, IsString } from 'class-validator';
 
 export class CreateMeetDto {
   @IsString()

@@ -1,23 +1,27 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { Product } from '@/product/entities/product.entity';
+import { ProductService } from '@/product/product.service';
 import {
-  CreateCreditNoteDto,
-  CreateInvoiceDto,
-} from './dto/create-invoice.dto';
-import { UpdateInvoiceDto } from './dto/update-invoice.dto';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Invoice } from './entities/invoice.entity';
-import { DataSource, Repository } from 'typeorm';
-import { User } from '../users/entities/user.entity';
+  BadRequestException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { QuoteService } from '../quote/quote.service';
-import { Quote } from '../quote/entities/quote.entity';
-import { ClientsService } from '../clients/clients.service';
-import { ComptePrincipalService } from '../compte_principal/compte_principal.service';
-import { CompteGroupeService } from '../compte_groupe/compte_groupe.service';
+import { InjectRepository } from '@nestjs/typeorm';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { MailService } from 'src/services/mail.services';
-import { UsersService } from 'src/users/users.service';
+import { DataSource, Repository } from 'typeorm';
+import { ClientsService } from '../clients/clients.service';
+import { CompteGroupeService } from '../compte_groupe/compte_groupe.service';
+import { ComptePrincipalService } from '../compte_principal/compte_principal.service';
+import { Quote } from '../quote/entities/quote.entity';
+import { QuoteService } from '../quote/quote.service';
+import { MailService } from '../services/mail.services';
+import { User } from '../users/entities/user.entity';
+import { UsersService } from '../users/users.service';
+import { CreateCreditNoteDto } from './dto/create-invoice.dto';
+import { UpdateInvoiceDto } from './dto/update-invoice.dto';
+import { Invoice } from './entities/invoice.entity';
 
 @Injectable()
 export class InvoiceService {
@@ -31,6 +35,7 @@ export class InvoiceService {
     private dataSource: DataSource,
     private mailService: MailService,
     private usersService: UsersService,
+    private productService: ProductService,
   ) {}
 
   async create(quoteObject: any, user: User, params: any) {
@@ -52,8 +57,34 @@ export class InvoiceService {
     }
 
     let invoice = await this.createInvoiceFromQuote(quoteFromDB);
+    Logger.debug('Params', JSON.stringify(params, null, 2));
+
+    if (params.type === 'PRINCIPAL') {
+      account = await this.comptePrincipalService.findOne(params.account_id);
+      invoice.main_account = account;
+      invoice.invoice_number = account.next_invoice_number;
+      Logger.debug('Invoice number', invoice.invoice_number);
+      Logger.debug('Account', JSON.stringify(account, null, 2));
+
+      // Incrémenter et mettre à jour le prochain numéro de facture
+      account.next_invoice_number += 1;
+      await this.comptePrincipalService.save(account);
+    }
+
+    if (params.type === 'GROUP') {
+      account = await this.compteGroupeService.findOne(params.account_id);
+      invoice.group_account = account;
+      invoice.invoice_number = account.next_invoice_number;
+
+      // Incrémenter et mettre à jour le prochain numéro de facture
+      account.next_invoice_number += 1;
+      await this.compteGroupeService.save(account);
+    }
+
+    Logger.debug('Invoice', JSON.stringify(invoice, null, 2));
 
     const invoiceCreated = await this._invoiceRepository.save(invoice);
+    Logger.debug('Invoice created', JSON.stringify(invoiceCreated, null, 2));
 
     invoiceCreated.quote = quoteFromDB;
 
@@ -82,6 +113,10 @@ export class InvoiceService {
     const pdf = this.generateInvoicePDF(quoteFromDB, userFromDB);
     this.mailService.sendInvoiceEmail(quoteFromDB, userFromDB, pdf);
     return await this._invoiceRepository.findOneBy({ id: invoiceCreated.id });
+  }
+
+  async save(invoice: Invoice) {
+    return await this._invoiceRepository.save(invoice);
   }
 
   async createInvoiceFromQuote(quote: Quote) {
@@ -174,7 +209,13 @@ export class InvoiceService {
     return doc.output('arraybuffer');
   }
 
-  findAll() {
+  async findAll(user_id: number) {
+    const user = await this.usersService.findOne(user_id);
+    if (user.role !== 'ADMIN') {
+      throw new UnauthorizedException(
+        "Vous n'êtes pas autorisé à accéder à cette ressource",
+      );
+    }
     return this._invoiceRepository.find({});
   }
 
@@ -272,6 +313,15 @@ export class InvoiceService {
         id: createCreditNoteDto.linkedInvoiceId,
       });
 
+      const products = [];
+      for (const productId of createCreditNoteDto.products_ids) {
+        const product = await this.productService.findOne(productId);
+        Logger.debug('Product', JSON.stringify(product, null, 2));
+        if (product.quote === null) {
+          products.push(product); // Si le produit n'est pas lié à un devis, on l'ajoute à la note de crédit car il n'a pas été facturé
+        }
+      }
+
       if (!invoice) {
         throw new Error('Invoice not found'); // Vérifie si la facture existe
       }
@@ -282,15 +332,61 @@ export class InvoiceService {
       Logger.debug(JSON.stringify(invoice, null, 2));
       // Crée la note de crédit en utilisant les données fournies
       let { id, ...invoiceWithoutId } = invoice;
+      invoiceWithoutId.products = products;
       const creditNote = manager.create(Invoice, {
         ...invoiceWithoutId,
         ...createCreditNoteDto,
         type: 'credit_note',
       });
       return manager.save(creditNote);
+      // return null;
     });
     // Récupère la facture liée
     // Sauvegarde la note de crédit dans la base de données
+  }
+
+  async createCreditNoteWithoutInvoice(
+    createCreditNoteDto: any,
+  ): Promise<Invoice> {
+    return await this.dataSource.transaction(async (manager) => {
+      let creditNote: Invoice = manager.create(Invoice, createCreditNoteDto);
+
+      creditNote.client = await this.clientService.findOne(
+        createCreditNoteDto.client_id,
+      );
+
+      let products: Product[] = [];
+      for (const productId of createCreditNoteDto.products_id) {
+        let product = await this.productService.findOne(productId);
+        products.push(product);
+      }
+
+      creditNote.products = products;
+
+      Logger.debug('Products', JSON.stringify(creditNote.products, null, 2));
+      creditNote.price_htva = await this.setTotalHtva(creditNote.products);
+      creditNote.total_vat_6 = await this.setTotalTva6(creditNote.products);
+      creditNote.total_vat_21 = await this.setTotalTva21(creditNote.products);
+
+      creditNote.total =
+        creditNote.price_htva +
+        creditNote.total_vat_21 +
+        creditNote.total_vat_6;
+
+      if (createCreditNoteDto.main_account_id !== undefined) {
+        creditNote.main_account = await this.comptePrincipalService.findOne(
+          createCreditNoteDto.main_account_id,
+        );
+      }
+
+      return null;
+
+      // return await manager.save(Invoice, {
+      //   ...creditNote,
+      //   type: 'credit_note',
+      //   status: 'credit_note',
+      // });
+    });
   }
 
   findCreditNoteByInvoiceId(invoice_id: number) {
@@ -299,5 +395,40 @@ export class InvoiceService {
       linkedInvoiceId: invoice_id,
       type: 'credit_note',
     });
+  }
+
+  async setTotalHtva(products: Product[]) {
+    let total = 0;
+    for (const product of products) {
+      total += product.price_htva;
+    }
+
+    Logger.debug('Total HTVA', total);
+
+    return total;
+  }
+
+  async setTotalTva6(products: Product[]) {
+    let total = 0;
+
+    for (const product of products) {
+      if (product.vat === 0.06) {
+        total += product.tva_amount;
+      }
+    }
+
+    return total;
+  }
+
+  async setTotalTva21(products: Product[]) {
+    let total = 0;
+
+    for (const product of products) {
+      if (product.vat === 0.21) {
+        total += product.tva_amount;
+      }
+    }
+
+    return total;
   }
 }

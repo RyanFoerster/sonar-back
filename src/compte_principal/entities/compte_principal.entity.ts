@@ -1,19 +1,20 @@
 import {
   BeforeInsert,
   Column,
-  Entity, getManager,
+  Entity,
+  getManager,
   JoinColumn,
   ManyToOne,
   OneToMany,
   OneToOne,
   PrimaryColumn,
-  PrimaryGeneratedColumn
-} from "typeorm";
-import { Invoice } from "../../invoice/entities/invoice.entity";
-import { Quote } from "../../quote/entities/quote.entity";
-import { Transaction } from "src/transaction/entities/transaction.entity";
-import { User } from "../../users/entities/user.entity";
-import { VirementSepa } from "../../virement-sepa/entities/virement-sepa.entity";
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { Invoice } from '../../invoice/entities/invoice.entity';
+import { Quote } from '../../quote/entities/quote.entity';
+import { Transaction } from '../../transaction/entities/transaction.entity';
+import { User } from '../../users/entities/user.entity';
+import { VirementSepa } from '../../virement-sepa/entities/virement-sepa.entity';
 import { v4 as uuidv4 } from 'uuid';
 
 @Entity()
@@ -27,23 +28,41 @@ export class ComptePrincipal {
   @Column({ default: 0, type: 'double precision' })
   solde?: number;
 
-  @OneToMany(() => Quote, (quote) => quote.main_account, {nullable: true, eager: true, cascade: true})
+  @Column({ default: 1 })
+  next_invoice_number: number;
+
+  @Column({ default: 1 })
+  next_quote_number: number;
+
+  @OneToMany(() => Quote, (quote) => quote.main_account, {
+    nullable: true,
+    eager: true,
+    cascade: true,
+  })
   quote: Quote[];
 
-  @OneToMany(() => Invoice, (invoice) => invoice.main_account, {nullable: true, eager: true, cascade: true})
+  @OneToMany(() => Invoice, (invoice) => invoice.main_account, {
+    nullable: true,
+    eager: true,
+    cascade: true,
+  })
   invoice: Invoice[];
 
-  @OneToMany(() => Transaction, (transaction) => transaction.senderPrincipal, {cascade: true})
-  transactions: Transaction[]
+  @OneToMany(() => Transaction, (transaction) => transaction.senderPrincipal, {
+    cascade: true,
+  })
+  transactions: Transaction[];
 
   @OneToOne(() => User, {
-    onDelete: "CASCADE"
+    onDelete: 'CASCADE',
   })
   @JoinColumn()
-  user: User
+  user: User;
 
-  @OneToMany(() => VirementSepa, (virementSepa) => virementSepa.comptePrincipal, {nullable: true, eager: true})
-  virementSepa?: VirementSepa[]
-
-
+  @OneToMany(
+    () => VirementSepa,
+    (virementSepa) => virementSepa.comptePrincipal,
+    { nullable: true, eager: true },
+  )
+  virementSepa?: VirementSepa[];
 }

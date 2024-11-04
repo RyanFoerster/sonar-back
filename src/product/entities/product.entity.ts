@@ -1,7 +1,13 @@
-import { Column, Entity, ManyToMany, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
-import { Invoice } from "../../invoice/entities/invoice.entity";
-import { CompteGroupe } from "../../compte_groupe/entities/compte_groupe.entity";
-import { Quote } from "../../quote/entities/quote.entity";
+import {
+  Column,
+  Entity,
+  ManyToMany,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { Invoice } from '../../invoice/entities/invoice.entity';
+import { CompteGroupe } from '../../compte_groupe/entities/compte_groupe.entity';
+import { Quote } from '../../quote/entities/quote.entity';
 
 @Entity()
 export class Product {

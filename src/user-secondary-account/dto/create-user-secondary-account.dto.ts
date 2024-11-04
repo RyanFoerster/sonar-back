@@ -1,5 +1,5 @@
 import { IsEnum, IsNumber, IsObject } from 'class-validator';
-import { User } from 'src/users/entities/user.entity';
+import { User } from '../../users/entities/user.entity';
 import { CompteGroupe } from '../../compte_groupe/entities/compte_groupe.entity';
 
 export class CreateUserSecondaryAccountDto {

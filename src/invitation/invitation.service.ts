@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { CreateInvitationDto } from './dto/create-invitation.dto';
 import { UpdateInvitationDto } from './dto/update-invitation.dto';
 import { Invitation } from './entities/invitation.entity';
-import { Event } from 'src/event/entities/event.entity';
+import { Event } from '../event/entities/event.entity';
 import { User } from '../users/entities/user.entity';
 
 @Injectable()
@@ -16,18 +16,25 @@ export class InvitationsService {
     private eventsRepository: Repository<Event>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
-  ) {
-  }
+  ) {}
 
   async create(createInvitationDto: CreateInvitationDto): Promise<Invitation> {
-    const event = await this.eventsRepository.findOneBy({ id: createInvitationDto.eventId });
+    const event = await this.eventsRepository.findOneBy({
+      id: createInvitationDto.eventId,
+    });
     if (!event) {
-      throw new NotFoundException(`Event #${createInvitationDto.eventId} not found`);
+      throw new NotFoundException(
+        `Event #${createInvitationDto.eventId} not found`,
+      );
     }
 
-    const user = await this.usersRepository.findOneBy({ id: createInvitationDto.userId });
+    const user = await this.usersRepository.findOneBy({
+      id: createInvitationDto.userId,
+    });
     if (!user) {
-      throw new NotFoundException(`User #${createInvitationDto.userId} not found`);
+      throw new NotFoundException(
+        `User #${createInvitationDto.userId} not found`,
+      );
     }
 
     const invitation = this.invitationsRepository.create({
@@ -40,18 +47,25 @@ export class InvitationsService {
   }
 
   async findAll(): Promise<Invitation[]> {
-    return await this.invitationsRepository.find({ relations: ['event', 'user'] });
+    return await this.invitationsRepository.find({
+      relations: ['event', 'user'],
+    });
   }
 
   async findOne(id: number): Promise<Invitation> {
-    const invitation = await this.invitationsRepository.findOne({ where: { id } });
+    const invitation = await this.invitationsRepository.findOne({
+      where: { id },
+    });
     if (!invitation) {
       throw new NotFoundException(`Invitation #${id} not found`);
     }
     return invitation;
   }
 
-  async update(id: number, updateInvitationDto: UpdateInvitationDto): Promise<Invitation> {
+  async update(
+    id: number,
+    updateInvitationDto: UpdateInvitationDto,
+  ): Promise<Invitation> {
     const invitation = await this.invitationsRepository.preload({
       id,
       ...updateInvitationDto,
@@ -60,19 +74,21 @@ export class InvitationsService {
       throw new NotFoundException(`Invitation #${id} not found`);
     }
 
-    const event = await this.eventsRepository.findOneBy({ id: invitation.event.id });
+    const event = await this.eventsRepository.findOneBy({
+      id: invitation.event.id,
+    });
     if (!event) {
       throw new NotFoundException(`Event #${invitation.event.id} not found`);
     }
 
-    if(!event.participants) {
+    if (!event.participants) {
       event.participants = [];
     }
 
     event.participants.push(invitation.user);
-    event.user_status.push({user_id: invitation.user.id, status: "accepted"})
-    await this.invitationsRepository.save(invitation)
-    await this.eventsRepository.save(event)
+    event.user_status.push({ user_id: invitation.user.id, status: 'accepted' });
+    await this.invitationsRepository.save(invitation);
+    await this.eventsRepository.save(event);
     return await this.invitationsRepository.save(invitation);
   }
 
@@ -83,7 +99,8 @@ export class InvitationsService {
 
   async findByUserId(userId: number) {
     Logger.debug(`Find invitations by userId ${userId}`);
-    return await this.invitationsRepository.createQueryBuilder('invitation')
+    return await this.invitationsRepository
+      .createQueryBuilder('invitation')
       .leftJoinAndSelect('invitation.user', 'user')
       .leftJoinAndSelect('invitation.event', 'event')
       .select([
@@ -99,8 +116,7 @@ export class InvitationsService {
         'user.name',
       ])
       .where('user.id = :id', { id: userId })
-      .andWhere('invitation.status = :status', { status: 'invited' })  // Correction ici
+      .andWhere('invitation.status = :status', { status: 'invited' }) // Correction ici
       .getMany();
-
   }
 }

@@ -11,7 +11,7 @@ import { CreateUserDto } from './dtos/create-user.dto';
 import { User } from './entities/user.entity';
 import { UsernameException } from './exceptions/username.exception';
 import { EmailException } from './exceptions/email.exception';
-import { ComptePrincipalService } from 'src/compte_principal/compte_principal.service';
+import { ComptePrincipalService } from '../compte_principal/compte_principal.service';
 import { UpdateUserDto } from './dtos/update-user.dto';
 import { CompteGroupe } from '../compte_groupe/entities/compte_groupe.entity';
 import { GoogleDriveService } from 'nestjs-googledrive-upload';

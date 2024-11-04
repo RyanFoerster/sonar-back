@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
@@ -43,30 +43,34 @@ import { BceService } from './services/bce/bce.service';
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        ssl: configService.get('STAGE') === 'prod',
-        extra: {
-          ssl:
+      useFactory: (configService: ConfigService) => {
+        const config = {
+          type: 'postgres',
+          // ssl: configService.get('STAGE') === 'prod',
+          // extra: {
+          //   ssl:
+          //     configService.get('STAGE') === 'prod'
+          //       ? { rejectUnauthorized: false }
+          //       : null,
+          // },
+          database: configService.get('database.database'),
+          host:
             configService.get('STAGE') === 'prod'
-              ? { rejectUnauthorized: false }
-              : null,
-        },
-        database: configService.get('database.database'),
-        host:
-          configService.get('STAGE') === 'prod'
-            ? configService.get('database.host')
-            : 'localhost',
-        port: +configService.get('database.port'),
-        username: configService.get('database.username'),
-        password: configService.get('database.password'),
-        url:
-          configService.get('STAGE') === 'prod'
-            ? configService.get('DATABASE_URL')
-            : '',
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true,
-      }),
+              ? configService.get('database.host')
+              : 'localhost',
+          port: +configService.get('database.port'),
+          username: configService.get('database.username'),
+          password: configService.get('database.password'),
+          url:
+            configService.get('STAGE') === 'prod'
+              ? configService.get('DATABASE_URL')
+              : '',
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          synchronize: false,
+        };
+
+        return config as TypeOrmModuleOptions;
+      },
 
       inject: [ConfigService],
     }),
