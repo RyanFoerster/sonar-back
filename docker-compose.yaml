@@ -22,10 +22,13 @@ services:
       POSTGRES_USER: sonar
       POSTGRES_PASSWORD: sonar
     volumes:
-      - ./data:/var/lib/postgresql/data:rw
+      - db-data:/var/lib/postgresql/data:rw
     networks:
       - sonar
 
 networks:
   sonar:
     driver: bridge
+
+volumes:
+  db-data:
