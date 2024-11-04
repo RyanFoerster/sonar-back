@@ -1,12 +1,11 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { CompteGroupeService } from '../compte_groupe/compte_groupe.service';
+import { CompteGroupe } from '../compte_groupe/entities/compte_groupe.entity';
+import { Repository } from 'typeorm';
 import { CreateComptePrincipalDto } from './dto/create-compte_principal.dto';
 import { UpdateComptePrincipalDto } from './dto/update-compte_principal.dto';
-import { InjectRepository } from '@nestjs/typeorm';
 import { ComptePrincipal } from './entities/compte_principal.entity';
-import { Repository } from 'typeorm';
-import { CompteGroupeService } from 'src/compte_groupe/compte_groupe.service';
-import { CompteGroupe } from 'src/compte_groupe/entities/compte_groupe.entity';
-import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class ComptePrincipalService {
@@ -29,6 +28,10 @@ export class ComptePrincipalService {
     }
   }
 
+  async save(comptePrincipal: ComptePrincipal) {
+    return await this.comptePrincipalRepository.save(comptePrincipal);
+  }
+
   findAll() {
     return this.comptePrincipalRepository.find();
   }
@@ -40,8 +43,6 @@ export class ComptePrincipalService {
       },
     });
   }
-
-
 
   findOneWithoutRelation(id: number) {
     return this.comptePrincipalRepository.findOne({

@@ -1,11 +1,12 @@
-import { Injectable } from "@nestjs/common";
-import { CreateClientDto } from "./dto/create-client.dto";
-import { UpdateClientDto } from "./dto/update-client.dto";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { Client } from "./entities/client.entity";
-import { UsersService } from "../users/users.service";
-import { User } from "../users/entities/user.entity";
+import { Injectable, Logger } from '@nestjs/common';
+import { CreateClientDto } from './dto/create-client.dto';
+import { UpdateClientDto } from './dto/update-client.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Client } from './entities/client.entity';
+import { UsersService } from '../users/users.service';
+import { User } from '../users/entities/user.entity';
+import { BceService } from '../services/bce/bce.service';
 
 @Injectable()
 export class ClientsService {
@@ -13,36 +14,41 @@ export class ClientsService {
     @InjectRepository(Client)
     private readonly clientRepository: Repository<Client>,
     private readonly userService: UsersService,
+    private readonly bceService: BceService,
   ) {}
 
   async create(user: User, createClientDto: CreateClientDto) {
     let client: Client;
-    client = await this.clientRepository.save(createClientDto);
+    let clientFromDB = await this.clientRepository.findOneBy({
+      company_vat_number: createClientDto.company_vat_number,
+    });
+
+    if (!clientFromDB) {
+      clientFromDB = await this.clientRepository.findOneBy({
+        company_number: createClientDto.company_number,
+      });
+    }
+
+    if (clientFromDB) {
+      clientFromDB = await this.clientRepository.merge(
+        clientFromDB,
+        createClientDto,
+      );
+      client = clientFromDB;
+    } else {
+      client = await this.clientRepository.save(createClientDto);
+    }
+
+    Logger.debug(JSON.stringify(client, null, 2));
+    if (createClientDto.company_vat_number === '') {
+      client.company_vat_number = null;
+    }
     client.user = await this.userService.findOne(user.id);
     return await this.clientRepository.save(client);
   }
 
   async findAll() {
-    return await this.clientRepository.find(/*{
-      relations: {
-        user: true,
-      },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        address: true,
-        city: true,
-        country: true,
-        postalCode: true,
-        user: {
-          id: true,
-          email: true,
-          username: true,
-        },
-      },
-    }*/);
+    return await this.clientRepository.find();
   }
 
   async findOne(id: number) {
@@ -56,5 +62,12 @@ export class ClientsService {
 
   async remove(id: number) {
     return await this.clientRepository.delete(id);
+  }
+
+  async checkBCE(vat: number) {
+    console.log(vat);
+    const response = await this.bceService.checkBCE(vat);
+    console.log(response);
+    return await this.bceService.checkBCE(vat);
   }
 }

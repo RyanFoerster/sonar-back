@@ -7,11 +7,13 @@ import { ClientsModule } from "../clients/clients.module";
 import { ProductModule } from "../product/product.module";
 import { ComptePrincipalModule } from "../compte_principal/compte_principal.module";
 import { CompteGroupeModule } from "../compte_groupe/compte_groupe.module";
+import { MailService } from "../services/mail.services";
+import { UsersModule } from "../users/users.module";
 
 @Module({
   controllers: [QuoteController],
-  providers: [QuoteService],
+  providers: [QuoteService, MailService],
   exports: [QuoteService],
-  imports: [TypeOrmModule.forFeature([Quote]), ClientsModule, ProductModule, ComptePrincipalModule, CompteGroupeModule],
+  imports: [TypeOrmModule.forFeature([Quote]), ClientsModule, ProductModule, ComptePrincipalModule, CompteGroupeModule, UsersModule],
 })
 export class QuoteModule {}

@@ -1,13 +1,6 @@
-import { User } from 'src/users/entities/user.entity';
-import {
-  Column,
-  Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToOne,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { CompteGroupe } from '../../compte_groupe/entities/compte_groupe.entity';
+import { User } from '../../users/entities/user.entity';
 
 @Entity()
 export class UserSecondaryAccount {

@@ -1,7 +1,6 @@
-import { IsArray, IsDate, IsNumber, IsString } from "class-validator";
+import { IsArray, IsBoolean, IsDate, IsNumber, IsString } from "class-validator";
 
 export class CreateQuoteDto {
-
   @IsDate()
   quote_date: Date;
 
@@ -10,6 +9,12 @@ export class CreateQuoteDto {
 
   @IsNumber()
   payment_deadline: number;
+
+  @IsDate()
+  validation_deadline: Date;
+
+  @IsBoolean()
+  isVatIncluded?: boolean;
 
   @IsNumber()
   main_account_id?: number;
@@ -25,5 +30,5 @@ export class CreateQuoteDto {
   client_id: number;
 
   @IsString()
-  comment: string
+  comment: string;
 }

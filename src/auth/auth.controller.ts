@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Put, Request } from "@nestjs/common";
+import { Body, Controller, Logger, Post, Put, Request } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { SignupDto } from "./dto/signup.dto";
 import { LoginDto } from "./dto/login.dto";
@@ -45,6 +45,7 @@ export class AuthController {
   @Public()
   @Post("forgot-password")
   async forgotPassword(@Body() forgotPasswordDto: ForgotPasswordDto) {
+    Logger.debug(forgotPasswordDto.email)
     return this.authService.forgotPassword(forgotPasswordDto.email);
   }
 

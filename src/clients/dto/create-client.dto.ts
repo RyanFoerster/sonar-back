@@ -1,5 +1,5 @@
-import { IsDate, IsEmail, IsNumber, IsString } from "class-validator";
-import { Column, CreateDateColumn, UpdateDateColumn } from "typeorm";
+import { IsDate, IsEmail, IsNumber, IsString } from 'class-validator';
+import { Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 export class CreateClientDto {
   @IsString()
@@ -28,10 +28,13 @@ export class CreateClientDto {
   postalCode: string;
 
   @IsNumber()
-  company_number: number;
+  company_number?: string;
 
   @IsString()
-  company_vat_number: string;
+  company_vat_number?: string;
+
+  @IsString()
+  national_number?: string;
 
   @CreateDateColumn()
   createdAt?: Date;

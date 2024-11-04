@@ -1,7 +1,7 @@
-import { CompteGroupe } from 'src/compte_groupe/entities/compte_groupe.entity';
-import { Invitation } from 'src/invitation/entities/invitation.entity';
-import { User } from 'src/users/entities/user.entity';
-import { Comment } from 'src/comment/entities/comment.entity';
+import { CompteGroupe } from '../../compte_groupe/entities/compte_groupe.entity';
+import { Invitation } from '../../invitation/entities/invitation.entity';
+import { User } from '../../users/entities/user.entity';
+import { Comment } from '../../comment/entities/comment.entity';
 import {
   Column,
   CreateDateColumn,
@@ -44,7 +44,7 @@ export class Event {
   reason: string;
 
   @Column({ nullable: true, type: 'json', default: [] })
-  user_status: { user_id: number, status: 'accepted' | 'refused' }[];
+  user_status: { user_id: number; status: 'accepted' | 'refused' }[];
 
   @ManyToOne(() => CompteGroupe, (compteGroupe) => compteGroupe.event)
   group: CompteGroupe;
@@ -57,7 +57,9 @@ export class Event {
   @JoinTable()
   participants: User[];
 
-  @OneToMany(() => Invitation, (invitation) => invitation.event, { nullable: true })
+  @OneToMany(() => Invitation, (invitation) => invitation.event, {
+    nullable: true,
+  })
   invitation: Invitation[];
 
   @OneToMany(() => Comment, (comment) => comment.event, { nullable: true })

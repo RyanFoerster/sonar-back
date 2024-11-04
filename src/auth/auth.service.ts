@@ -141,7 +141,9 @@ export class AuthService {
       });
       // Send the link to the user by email
 
-      await this.mailService.sendPasswordResetEmail(email, resetToken);
+      const {firstName, name} = user
+
+      await this.mailService.sendPasswordResetEmail(email, resetToken, firstName, name);
     }
 
     return {

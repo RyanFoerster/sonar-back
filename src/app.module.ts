@@ -1,33 +1,43 @@
+import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
+
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ComptePrincipalModule } from './compte_principal/compte_principal.module';
-import { CompteGroupeModule } from './compte_groupe/compte_groupe.module';
-import { UserSecondaryAccountModule } from './user-secondary-account/user-secondary-account.module';
-import { ProductModule } from './product/product.module';
-import { InvoiceModule } from './invoice/invoice.module';
-import { ClientsModule } from './clients/clients.module';
-import { QuoteModule } from './quote/quote.module';
+import { JwtModule } from '@nestjs/jwt';
+import { MulterModule } from '@nestjs/platform-express';
 import { ScheduleModule } from '@nestjs/schedule';
-import { TransactionModule } from './transaction/transaction.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
+
+import { ClientsModule } from './clients/clients.module';
+import { CommentsModule } from './comment/comment.module';
+import { CompteGroupeModule } from './compte_groupe/compte_groupe.module';
+import { ComptePrincipalModule } from './compte_principal/compte_principal.module';
+import config from './config/config';
 import { EventsModule } from './event/event.module';
 import { InvitationsModule } from './invitation/invitation.module';
-import { CommentsModule } from './comment/comment.module';
-import { JwtModule } from '@nestjs/jwt';
-import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
-import config from './config/config';
-import { MulterModule } from '@nestjs/platform-express';
+import { InvoiceModule } from './invoice/invoice.module';
 import { MeetModule } from './meet/meet.module';
+import { ProductModule } from './product/product.module';
+import { QuoteModule } from './quote/quote.module';
+import { BceService } from './services/bce/bce.service';
+import { TransactionModule } from './transaction/transaction.module';
+import { UserSecondaryAccountModule } from './user-secondary-account/user-secondary-account.module';
+import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
+import {
+  GoogleDriveConfig,
+  GoogleDriveModule,
+} from 'nestjs-googledrive-upload';
+
+import * as driveConfig from './config/drive-config.json';
 
 @Module({
   imports: [
-
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
@@ -35,26 +45,34 @@ import { MeetModule } from './meet/meet.module';
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        ssl: configService.get('STAGE') === 'prod',
-        extra: {
-          ssl:
+      useFactory: (configService: ConfigService) => {
+        const config = {
+          type: 'postgres',
+          // ssl: configService.get('STAGE') === 'prod',
+          // extra: {
+          //   ssl:
+          //     configService.get('STAGE') === 'prod'
+          //       ? { rejectUnauthorized: false }
+          //       : null,
+          // },
+          database: configService.get('database.database'),
+          host:
             configService.get('STAGE') === 'prod'
-              ? { rejectUnauthorized: false }
-              : null,
-        },
-        database: configService.get('database.database'),
-        host:
-          configService.get('STAGE') === 'prod'
-            ? configService.get('database.host')
-            : 'localhost',
-        port: +configService.get('database.port'),
-        username: configService.get('database.username'),
-        password: configService.get('database.password'),
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: configService.get('STAGE') !== 'prod',
-      }),
+              ? configService.get('database.host')
+              : 'localhost',
+          port: +configService.get('database.port'),
+          username: configService.get('database.username'),
+          password: configService.get('database.password'),
+          url:
+            configService.get('STAGE') === 'prod'
+              ? configService.get('DATABASE_URL')
+              : '',
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          synchronize: false,
+        };
+
+        return config as TypeOrmModuleOptions;
+      },
 
       inject: [ConfigService],
     }),
@@ -89,9 +107,9 @@ import { MeetModule } from './meet/meet.module';
     CommentsModule,
     VirementSepaModule,
     MeetModule,
+    HttpModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, BceService],
 })
-export class AppModule {
-}
+export class AppModule {}

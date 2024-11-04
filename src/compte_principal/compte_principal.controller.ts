@@ -7,14 +7,11 @@ import {
   Patch,
   Post,
   Req,
-  UnauthorizedException,
 } from '@nestjs/common';
+import { UsersService } from '../users/users.service';
 import { ComptePrincipalService } from './compte_principal.service';
 import { CreateComptePrincipalDto } from './dto/create-compte_principal.dto';
 import { UpdateComptePrincipalDto } from './dto/update-compte_principal.dto';
-import { User } from 'src/users/entities/user.entity';
-import { UsersModule } from 'src/users/users.module';
-import { UsersService } from 'src/users/users.service';
 
 @Controller('compte-principal')
 export class ComptePrincipalController {

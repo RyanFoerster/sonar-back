@@ -1,0 +1,31 @@
+services:
+  web:
+    image: dimagin/sonar-back:latest
+    restart: unless-stopped
+    ports:
+      - '8090:3000'
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+    depends_on:
+      - db
+    networks:
+      - sonar
+
+  db:
+    image: postgres
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_DB: sonar-db
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+    volumes:
+      - ./data:/var/lib/postgresql/data
+    networks:
+      - sonar
+
+networks:
+  sonar:
+    driver: bridge
