@@ -62,7 +62,7 @@ import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
               ? configService.get('DATABASE_URL')
               : '',
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
-          synchronize: false,
+          synchronize: true,
         };
 
         return config as TypeOrmModuleOptions;
