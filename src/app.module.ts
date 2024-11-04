@@ -29,12 +29,6 @@ import { BceService } from './services/bce/bce.service';
 import { TransactionModule } from './transaction/transaction.module';
 import { UserSecondaryAccountModule } from './user-secondary-account/user-secondary-account.module';
 import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
-import {
-  GoogleDriveConfig,
-  GoogleDriveModule,
-} from 'nestjs-googledrive-upload';
-
-import * as driveConfig from './config/drive-config.json';
 
 @Module({
   imports: [
