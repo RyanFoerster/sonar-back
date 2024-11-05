@@ -1,6 +1,6 @@
 services:
   web:
-    image: sonar-back:v1
+    image: dimagin/sonar-back:latest
     restart: unless-stopped
     ports:
       - '8090:3000'
