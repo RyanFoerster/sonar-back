@@ -1,6 +1,8 @@
 services:
   web:
-    image: dimagin/sonar-back:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
     ports:
       - '8090:3000'
@@ -17,15 +19,13 @@ services:
   db:
     image: postgres
     ports:
-      - '5432:5432'
-    environment:
-      POSTGRES_DB: sonar-db
-      POSTGRES_USER: sonar
-      POSTGRES_PASSWORD: sonar
+      - ${POSTGRES_PORT}:5432
     volumes:
       - db-data:/var/lib/postgresql/data:rw
     networks:
       - sonar
+    env_file:
+      - .env
 
 networks:
   sonar:
