@@ -8,8 +8,6 @@ services:
       - ${SONAR_PORT}:3000
     env_file:
       - .env
-    volumes:
-      - sonar-app-data:/app:rw
     depends_on:
       - db
     networks:
@@ -33,4 +31,3 @@ networks:
 
 volumes:
   sonar-db-data:
-  sonar-app-data:
