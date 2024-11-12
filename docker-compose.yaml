@@ -1,36 +1,36 @@
 services:
-  web:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  backend:
+    image: dimagin/sonar-back:latest
+    container_name: sonar-back
+    user: '${UID}:${GID}'
     restart: unless-stopped
     ports:
-      - '8090:3000'
+      - ${SONAR_PORT}:3000
     env_file:
       - .env
     volumes:
-      - web-data:/app:rwz
-      - db-data:/app/db:rw
+      - sonar-app-data:/app:rw
     depends_on:
       - db
     networks:
-      - sonar
+      - sonar-network
 
   db:
-    image: postgres
+    image: postgres:latest
+    container_name: sonar-db
     ports:
       - ${POSTGRES_PORT}:5432
     volumes:
-      - db-data:/var/lib/postgresql/data:rw
+      - sonar-db-data:/var/lib/postgresql/data:rw
     networks:
-      - sonar
+      - sonar-network
     env_file:
       - .env
 
 networks:
-  sonar:
+  sonar-network:
     driver: bridge
 
 volumes:
-  db-data:
-  web-data:
+  sonar-db-data:
+  sonar-app-data:

@@ -1,4 +1,4 @@
-FROM node:20
+FROM node:20 AS build
 
 # Set the working directory inside the container
 WORKDIR /app
@@ -11,9 +11,6 @@ RUN npm install -g pnpm
 
 # Install the application dependencies
 RUN pnpm install
-
-RUN pnpm install uuid
-RUN pnpm install express
 
 # Copy the rest of the application files
 COPY . .
