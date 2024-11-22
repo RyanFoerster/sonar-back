@@ -1,9 +1,9 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 
@@ -13,7 +13,6 @@ import { MulterModule } from '@nestjs/platform-express';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
-
 import { ClientsModule } from './clients/clients.module';
 import { CommentsModule } from './comment/comment.module';
 import { CompteGroupeModule } from './compte_groupe/compte_groupe.module';
@@ -64,7 +63,6 @@ import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
         synchronize: true,
         logging: true,
       }),
-
       inject: [ConfigService],
     }),
     JwtModule.registerAsync({
