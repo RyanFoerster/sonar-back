@@ -1,9 +1,9 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 
@@ -12,11 +12,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { MulterModule } from '@nestjs/platform-express';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
 import { CommentsModule } from './comment/comment.module';
 import { CompteGroupeModule } from './compte_groupe/compte_groupe.module';
@@ -31,7 +27,6 @@ import { QuoteModule } from './quote/quote.module';
 import { BceService } from './services/bce/bce.service';
 import { TransactionModule } from './transaction/transaction.module';
 import { UserSecondaryAccountModule } from './user-secondary-account/user-secondary-account.module';
-import { UsersModule } from './users/users.module';
 import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
 
 //import * as driveConfig from './config/drive-config.json';
@@ -63,7 +58,6 @@ import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
           database: configService.get('database.database'),
           host:
             configService.get('STAGE') === 'prod'
-
               ? configService.get('database.host')
               : 'localhost',
           port: +configService.get('database.port'),
@@ -74,12 +68,11 @@ import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
               ? configService.get('DATABASE_URL')
               : '',
           entities: [__dirname + '/**/*.entity{.ts,.js}'],
-          synchronize: false,
+          synchronize: true,
         };
 
         return config as TypeOrmModuleOptions;
       },
-
 
       inject: [ConfigService],
     }),
