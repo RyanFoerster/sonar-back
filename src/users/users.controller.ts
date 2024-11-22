@@ -77,7 +77,7 @@ export class UsersController {
     return await this.usersService.toggleActiveUser(userToActive);
   }
 
-  @UseInterceptors(FileInterceptor('file'))
+  /*@UseInterceptors(FileInterceptor('file'))
   @Post('profile-picture')
   async uploadProfilePicture(
     @UploadedFile() file: Express.Multer.File,
@@ -86,7 +86,7 @@ export class UsersController {
     Logger.debug(process.env.DRIVE_CLIENT_EMAIL);
     const user = await this.usersService.findOne(req.id);
     return this.usersService.updateProfilePicture(user, file);
-  }
+  }*/
 
   @Get(':imgpath')
   seeUploadedFile(@Param('imgpath') image, @Res() res: Response) {

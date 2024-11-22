@@ -21,7 +21,6 @@ export class UsersService {
   constructor(
     @InjectRepository(User) private readonly usersRepository: Repository<User>,
     private readonly comptePrincipalService: ComptePrincipalService,
-    //private readonly googleDriveService: GoogleDriveService,
   ) {}
 
   async create(createUserDto: CreateUserDto) {

@@ -1,31 +1,33 @@
 services:
-  web:
+  backend:
     image: dimagin/sonar-back:latest
+    container_name: sonar-back
+    user: '${UID}:${GID}'
     restart: unless-stopped
     ports:
-      - '8090:3000'
+      - ${SONAR_PORT}:3000
     env_file:
       - .env
-    volumes:
-      - .:/app
     depends_on:
       - db
     networks:
-      - sonar
+      - sonar-network
 
   db:
-    image: postgres
+    image: postgres:latest
+    container_name: sonar-db
     ports:
-      - '5432:5432'
-    environment:
-      POSTGRES_DB: sonar-db
-      POSTGRES_USER: sonar
-      POSTGRES_PASSWORD: sonar
+      - ${POSTGRES_PORT}:5432
     volumes:
-      - ./data:/var/lib/postgresql/data
+      - sonar-db-data:/var/lib/postgresql/data:rw
     networks:
-      - sonar
+      - sonar-network
+    env_file:
+      - .env
 
 networks:
-  sonar:
+  sonar-network:
     driver: bridge
+
+volumes:
+  sonar-db-data:
