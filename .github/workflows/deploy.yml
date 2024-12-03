@@ -20,6 +20,7 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
+            cat $REPO_OWNER
             cd sonar-back
             curl -o docker-compose.yaml https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/master/docker-compose.yaml
 
