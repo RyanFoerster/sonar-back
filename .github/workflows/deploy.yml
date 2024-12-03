@@ -11,13 +11,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Copy the docker-compose file
-        uses: appleboy/scp-action@master
+        uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
-          source: ./docker-compose.yaml
-          target: /home/${{ secrets.SSH_USERNAME }}/${{ github.event.repository.name }}/docker-compose.yaml
+          script: |
+            cd sonar-back
+            curl -o docker-compose.yaml https://raw.githubusercontent.com/${{ github.repository_owner }}/${{ github.event.repository.name }}/master/docker-compose.yaml
+            if [ ! -f docker-compose.yaml ]; then
+              echo "Erreur : le fichier docker-compose.yaml n'a pas été téléchargé !" >&2
+              exit 1
+            fi
 
       - name: Run the docker compose
         uses: appleboy/ssh-action@master
