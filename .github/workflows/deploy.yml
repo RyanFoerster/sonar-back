@@ -21,7 +21,7 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
             cd sonar-back
-            curl -O https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/master/docker-compose.yml || exit 1
+            curl -o docker-compose.yaml https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/master/docker-compose.yaml
 
       - name: Run the docker compose
         uses: appleboy/ssh-action@master
