@@ -9,7 +9,8 @@ services:
     env_file:
       - .env
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     networks:
       - sonar-network
 
@@ -24,6 +25,13 @@ services:
       - sonar-network
     env_file:
       - .env
+    healthcheck:
+      test: ["CMD", "pg_isready", "--host=localhost", "--username=${POSTGRES_USER}", "--dbname=${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_interval: 5s
+      start_period: 30s
 
 networks:
   sonar-network:
