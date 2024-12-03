@@ -12,7 +12,7 @@ services:
       db:
         condition: service_healthy
     networks:
-      - sonar-network
+      - sonar-network # This is the network that the backend service will be connected to
 
   db:
     image: postgres:latest
