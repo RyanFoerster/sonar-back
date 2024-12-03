@@ -10,8 +10,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Pull the docker-compose file
-        uses: appleboy/ssh-action@master
+      - name: Copy the docker-compose file
+        uses: appleboy/scp-action@master
         env:
           REPO_OWNER: ${{ github.event.repository.owner.login }}
           REPO_NAME: ${{ github.event.repository.name }}
@@ -19,10 +19,8 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
-          script: |
-            cat $REPO_OWNER
-            cd sonar-back
-            curl -o docker-compose.yaml https://raw.githubusercontent.com/$REPO_OWNER/$REPO_NAME/master/docker-compose.yaml
+          source: docker-compose.yaml
+          target: /home/${{ secrets.SSH_USERNAME }}/sonar-back/docker-compose.yaml
 
       - name: Run the docker compose
         uses: appleboy/ssh-action@master
