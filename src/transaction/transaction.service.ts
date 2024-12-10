@@ -8,6 +8,7 @@ import { CompteGroupe } from '../compte_groupe/entities/compte_groupe.entity';
 import { ComptePrincipalService } from '../compte_principal/compte_principal.service';
 import { CompteGroupeService } from '../compte_groupe/compte_groupe.service';
 import { ComptePrincipal } from '../compte_principal/entities/compte_principal.entity';
+import { PaginationDto } from './dto/pagination.dto';
 
 @Injectable()
 export class TransactionService {
@@ -99,35 +100,54 @@ export class TransactionService {
     return await this.transactionRepository.save(transaction);
   }
 
-  async findAll() {
-    const transactions = await this.transactionRepository
+  async findAll(paginationDto: PaginationDto) {
+    const { page = 1, limit = 10 } = paginationDto;
+    const skip = (page - 1) * limit;
+
+    const [transactions, total] = await this.transactionRepository
       .createQueryBuilder('transaction')
       .leftJoinAndSelect('transaction.senderPrincipal', 'senderPrincipal')
       .leftJoinAndSelect('transaction.senderGroup', 'senderGroup')
       .leftJoinAndSelect('transaction.recipientPrincipal', 'recipientPrincipal')
       .leftJoinAndSelect('transaction.recipientGroup', 'recipientGroup')
       .select([
-        'transaction', // Sélectionner toutes les colonnes de la table Transaction
-        'senderPrincipal.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'senderPrincipal.username', // Exemple de colonne
-        'senderPrincipal.solde', // Exemple de colonne
-        'senderGroup.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'senderGroup.username', // Exemple de colonne
+        'transaction',
+        'senderPrincipal.id',
+        'senderPrincipal.username',
+        'senderPrincipal.solde',
+        'senderGroup.id',
+        'senderGroup.username',
         'senderGroup.solde',
-        'recipientPrincipal.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'recipientPrincipal.username', // Exemple de colonne
+        'recipientPrincipal.id',
+        'recipientPrincipal.username',
         'recipientPrincipal.solde',
-        'recipientGroup.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'recipientGroup.username', // Exemple de colonne
+        'recipientGroup.id',
+        'recipientGroup.username',
         'recipientGroup.solde',
-        // Exemple de colonne
       ])
-      .getMany();
+      .orderBy('transaction.id', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
 
-    return transactions;
+    return {
+      data: transactions,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
-  findRecipientPrincipalTransactionById(id: number) {
+  findRecipientPrincipalTransactionById(
+    id: number,
+    paginationDto: PaginationDto,
+  ) {
+    const { page = 1, limit = 10 } = paginationDto;
+    const skip = (page - 1) * limit;
+
     return this.transactionRepository
       .createQueryBuilder('transaction')
       .leftJoinAndSelect('transaction.senderPrincipal', 'senderPrincipal')
@@ -135,26 +155,31 @@ export class TransactionService {
       .leftJoinAndSelect('transaction.recipientPrincipal', 'recipientPrincipal')
       .leftJoinAndSelect('transaction.recipientGroup', 'recipientGroup')
       .select([
-        'transaction', // Sélectionner toutes les colonnes de la table Transaction
-        'senderPrincipal.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'senderPrincipal.username', // Exemple de colonne
-        'senderPrincipal.solde', // Exemple de colonne
-        'senderGroup.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'senderGroup.username', // Exemple de colonne
+        'transaction',
+        'senderPrincipal.id',
+        'senderPrincipal.username',
+        'senderPrincipal.solde',
+        'senderGroup.id',
+        'senderGroup.username',
         'senderGroup.solde',
-        'recipientPrincipal.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'recipientPrincipal.username', // Exemple de colonne
+        'recipientPrincipal.id',
+        'recipientPrincipal.username',
         'recipientPrincipal.solde',
-        'recipientGroup.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'recipientGroup.username', // Exemple de colonne
+        'recipientGroup.id',
+        'recipientGroup.username',
         'recipientGroup.solde',
-        // Exemple de colonne
       ])
       .where('recipientPrincipal.id = :id', { id })
-      .getMany();
+      .orderBy('transaction.id', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
   }
 
-  findSenderPrincipalTransactionById(id: number) {
+  findSenderPrincipalTransactionById(id: number, paginationDto: PaginationDto) {
+    const { page = 1, limit = 10 } = paginationDto;
+    const skip = (page - 1) * limit;
+
     return this.transactionRepository
       .createQueryBuilder('transaction')
       .leftJoinAndSelect('transaction.senderPrincipal', 'senderPrincipal')
@@ -162,26 +187,31 @@ export class TransactionService {
       .leftJoinAndSelect('transaction.recipientPrincipal', 'recipientPrincipal')
       .leftJoinAndSelect('transaction.recipientGroup', 'recipientGroup')
       .select([
-        'transaction', // Sélectionner toutes les colonnes de la table Transaction
-        'senderPrincipal.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'senderPrincipal.username', // Exemple de colonne
-        'senderPrincipal.solde', // Exemple de colonne
-        'senderGroup.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'senderGroup.username', // Exemple de colonne
+        'transaction',
+        'senderPrincipal.id',
+        'senderPrincipal.username',
+        'senderPrincipal.solde',
+        'senderGroup.id',
+        'senderGroup.username',
         'senderGroup.solde',
-        'recipientPrincipal.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'recipientPrincipal.username', // Exemple de colonne
+        'recipientPrincipal.id',
+        'recipientPrincipal.username',
         'recipientPrincipal.solde',
-        'recipientGroup.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'recipientGroup.username', // Exemple de colonne
+        'recipientGroup.id',
+        'recipientGroup.username',
         'recipientGroup.solde',
-        // Exemple de colonne
       ])
       .where('senderPrincipal.id = :id', { id })
-      .getMany();
+      .orderBy('transaction.id', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
   }
 
-  findRecipientGroupTransactionById(id: number) {
+  findRecipientGroupTransactionById(id: number, paginationDto: PaginationDto) {
+    const { page = 1, limit = 10 } = paginationDto;
+    const skip = (page - 1) * limit;
+
     return this.transactionRepository
       .createQueryBuilder('transaction')
       .leftJoinAndSelect('transaction.senderPrincipal', 'senderPrincipal')
@@ -189,26 +219,31 @@ export class TransactionService {
       .leftJoinAndSelect('transaction.recipientPrincipal', 'recipientPrincipal')
       .leftJoinAndSelect('transaction.recipientGroup', 'recipientGroup')
       .select([
-        'transaction', // Sélectionner toutes les colonnes de la table Transaction
-        'senderPrincipal.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'senderPrincipal.username', // Exemple de colonne
-        'senderPrincipal.solde', // Exemple de colonne
-        'senderGroup.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'senderGroup.username', // Exemple de colonne
+        'transaction',
+        'senderPrincipal.id',
+        'senderPrincipal.username',
+        'senderPrincipal.solde',
+        'senderGroup.id',
+        'senderGroup.username',
         'senderGroup.solde',
-        'recipientPrincipal.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'recipientPrincipal.username', // Exemple de colonne
+        'recipientPrincipal.id',
+        'recipientPrincipal.username',
         'recipientPrincipal.solde',
-        'recipientGroup.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'recipientGroup.username', // Exemple de colonne
+        'recipientGroup.id',
+        'recipientGroup.username',
         'recipientGroup.solde',
-        // Exemple de colonne
       ])
       .where('recipientGroup.id = :id', { id })
-      .getMany();
+      .orderBy('transaction.id', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
   }
 
-  findSenderGroupTransactionById(id: number) {
+  findSenderGroupTransactionById(id: number, paginationDto: PaginationDto) {
+    const { page = 1, limit = 10 } = paginationDto;
+    const skip = (page - 1) * limit;
+
     return this.transactionRepository
       .createQueryBuilder('transaction')
       .leftJoinAndSelect('transaction.senderPrincipal', 'senderPrincipal')
@@ -216,23 +251,25 @@ export class TransactionService {
       .leftJoinAndSelect('transaction.recipientPrincipal', 'recipientPrincipal')
       .leftJoinAndSelect('transaction.recipientGroup', 'recipientGroup')
       .select([
-        'transaction', // Sélectionner toutes les colonnes de la table Transaction
-        'senderPrincipal.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'senderPrincipal.username', // Exemple de colonne
-        'senderPrincipal.solde', // Exemple de colonne
-        'senderGroup.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'senderGroup.username', // Exemple de colonne
+        'transaction',
+        'senderPrincipal.id',
+        'senderPrincipal.username',
+        'senderPrincipal.solde',
+        'senderGroup.id',
+        'senderGroup.username',
         'senderGroup.solde',
-        'recipientPrincipal.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'recipientPrincipal.username', // Exemple de colonne
+        'recipientPrincipal.id',
+        'recipientPrincipal.username',
         'recipientPrincipal.solde',
-        'recipientGroup.id', // Remplacez 'id' par les colonnes que vous souhaitez récupérer
-        'recipientGroup.username', // Exemple de colonne
+        'recipientGroup.id',
+        'recipientGroup.username',
         'recipientGroup.solde',
-        // Exemple de colonne
       ])
       .where('senderGroup.id = :id', { id })
-      .getMany();
+      .orderBy('transaction.id', 'DESC')
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
   }
 
   findOne(id: number) {

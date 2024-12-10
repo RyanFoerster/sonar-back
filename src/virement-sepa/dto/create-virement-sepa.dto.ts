@@ -1,25 +1,26 @@
-import { IsNumber, IsString } from "class-validator";
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateVirementSepaDto {
+  @IsString()
+  account_owner: string;
 
   @IsString()
-  account_owner: string
-
-  @IsString()
-  iban: string
+  iban: string;
 
   @IsNumber()
-  amount_htva: number
+  amount_htva: number;
 
   @IsNumber()
-  amount_tva: number
+  amount_tva: number;
 
   @IsNumber()
-  amount_total: number
+  amount_total: number;
 
   @IsString()
-  communication?: string
+  @IsOptional()
+  communication?: string;
 
   @IsString()
-  structured_communication?: string
+  @IsOptional()
+  structured_communication?: string;
 }

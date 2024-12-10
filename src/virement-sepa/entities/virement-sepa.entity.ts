@@ -1,10 +1,15 @@
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
-import { ComptePrincipal } from "../../compte_principal/entities/compte_principal.entity";
-import { CompteGroupe } from "../../compte_groupe/entities/compte_groupe.entity";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+import { ComptePrincipal } from '../../compte_principal/entities/compte_principal.entity';
+import { CompteGroupe } from '../../compte_groupe/entities/compte_groupe.entity';
 
 @Entity()
 export class VirementSepa {
-
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -29,16 +34,28 @@ export class VirementSepa {
   @Column()
   structured_communication?: string;
 
-  @Column({ default: "PENDING" })
-  status: "PENDING" | "REJECTED" | "ACCEPTED";
+  @Column({ default: 'PENDING' })
+  status: 'PENDING' | 'REJECTED' | 'ACCEPTED';
 
   @Column()
   projet_username: string;
 
-  @ManyToOne(() => ComptePrincipal, (comptePrincipal) => comptePrincipal.virementSepa, { nullable: true })
+  @Column({ nullable: true })
+  invoice_url?: string;
+
+  @Column({ nullable: true })
+  invoice_key?: string;
+
+  @ManyToOne(
+    () => ComptePrincipal,
+    (comptePrincipal) => comptePrincipal.virementSepa,
+    { nullable: true },
+  )
   comptePrincipal?: ComptePrincipal;
 
-  @ManyToOne(() => CompteGroupe, (compteGroupe) => compteGroupe.virementSepa, { nullable: true })
+  @ManyToOne(() => CompteGroupe, (compteGroupe) => compteGroupe.virementSepa, {
+    nullable: true,
+  })
   compteGroupe?: CompteGroupe;
 
   @CreateDateColumn()
