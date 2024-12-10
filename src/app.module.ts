@@ -1,18 +1,15 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
-
-import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { AuthModule } from './auth/auth.module';
-import { UsersModule } from './users/users.module';
-
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { MulterModule } from '@nestjs/platform-express';
-import { ScheduleModule } from '@nestjs/schedule';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { join } from 'path';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
 import { CommentsModule } from './comment/comment.module';
 import { CompteGroupeModule } from './compte_groupe/compte_groupe.module';
@@ -25,8 +22,10 @@ import { MeetModule } from './meet/meet.module';
 import { ProductModule } from './product/product.module';
 import { QuoteModule } from './quote/quote.module';
 import { BceService } from './services/bce/bce.service';
+import { S3Module } from './services/s3/s3.module';
 import { TransactionModule } from './transaction/transaction.module';
 import { UserSecondaryAccountModule } from './user-secondary-account/user-secondary-account.module';
+import { UsersModule } from './users/users.module';
 import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
 
 @Module({
@@ -60,8 +59,7 @@ import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
             ? configService.get('DATABASE_URL')
             : '',
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true,
-        logging: true,
+        synchronize: false,
       }),
       inject: [ConfigService],
     }),
@@ -78,8 +76,8 @@ import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
     }),
     ScheduleModule.forRoot(),
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'uploads'), // Indiquez le chemin vers le dossier des fichiers uploadés
-      serveRoot: '/uploads', // Le préfixe de l'URL pour accéder aux fichiers
+      rootPath: join(__dirname, '..', 'uploads'),
+      serveRoot: '/uploads',
     }),
     AuthModule,
     UsersModule,
@@ -97,6 +95,7 @@ import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
     VirementSepaModule,
     MeetModule,
     HttpModule,
+    S3Module,
   ],
   controllers: [AppController],
   providers: [AppService, BceService],

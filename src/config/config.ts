@@ -16,7 +16,12 @@ export default () => ({
     username: process.env.DATABASE_USERNAME,
     password: process.env.DATABASE_PASSWORD,
   },
-
+  aws: {
+    region: process.env.AWS_REGION,
+    access_key_id: process.env.AWS_ACCESS_KEY_ID,
+    secret_access_key: process.env.AWS_SECRET_ACCESS_KEY,
+    bucket_name: process.env.AWS_BUCKET_NAME,
+  },
   bce: {
     API_KEY: process.env.BCE_API_KEY,
   },
