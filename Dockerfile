@@ -1,25 +1,27 @@
-FROM node:20 AS build
+FROM node:23-alpine3.19 AS build
 
-# Set the working directory inside the container
 WORKDIR /app
 
-# Copy package.json and package-lock.json to the working directory
 COPY package*.json ./
 
-# Install pnpm
-RUN npm install -g pnpm
+RUN npm install
 
-# Install the application dependencies
-RUN pnpm install
-
-# Copy the rest of the application files
 COPY . .
 
-# Build the NestJS application
-RUN pnpm run build
+RUN npm run build
 
-# Expose the application port
+RUN npm prune --production
+
+FROM node:23-alpine3.19 AS production
+
+WORKDIR /app
+
+COPY --from=build /app/dist ./dist
+
+COPY --from=build /app/node_modules ./node_modules
+
+COPY --from=build /app/package*.json ./
+
 EXPOSE 3000
 
-# Command to run the application
-CMD ["pnpm", "run", "start:prod"]
+CMD ["npm", "run", "start:prod"]

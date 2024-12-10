@@ -10,7 +10,7 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Pull the repository
+      - name: Copy the docker-compose file
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -18,7 +18,7 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
             cd sonar-back
-            git pull
+            curl -o docker-compose.yaml https://raw.githubusercontent.com/${{ github.repository_owner }}/${{ github.event.repository.name }}/master/docker-compose.yaml
 
       - name: Run the docker compose
         uses: appleboy/ssh-action@master
@@ -30,4 +30,4 @@ jobs:
             cd sonar-back
             UID=$(id -u) GID=$(id -g) docker compose down
             UID=$(id -u) GID=$(id -g) docker compose pull
-            UID=$(id -u) GID=$(id -g) docker compose up -d
+            UID=$(id -u) GID=$(id -g) docker compose up -d --force-recreate
