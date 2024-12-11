@@ -85,6 +85,26 @@ export class UsersService {
     });
   }
 
+  async findUserByPrincipalAccountId(id: number) {
+    return await this.usersRepository.findOne({
+      where: {
+        comptePrincipal: {
+          id,
+        },
+      },
+    });
+  }
+
+  async findUserBySecondaryAccountId(id: number) {
+    return await this.usersRepository.findOne({
+      where: {
+        userSecondaryAccounts: {
+          secondary_account_id: id,
+        },
+      },
+    });
+  }
+
   async updateAddress(id: number, updateUserDto: UpdateUserDto) {
     const user = await this.findOne(id);
     const {

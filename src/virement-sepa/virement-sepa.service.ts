@@ -136,14 +136,17 @@ export class VirementSepaService {
       .getOneOrFail();
   }
 
-  async update(id: number, status?: 'ACCEPTED' | 'REJECTED') {
+  async update(
+    id: number,
+    status?: 'ACCEPTED' | 'REJECTED',
+    body?: { rejected_reason: string },
+  ) {
     let virement = await this.findOne(id);
     if (status) {
       virement.status = status;
     }
 
     if (virement.status === 'REJECTED') {
-      Logger.debug(JSON.stringify(virement, null, 2));
       if (virement.comptePrincipal !== null) {
         let account = await this.comptePrincipalService.findOne(
           virement.comptePrincipal.id,
@@ -159,6 +162,10 @@ export class VirementSepaService {
         account.solde += virement.amount_htva;
         Logger.debug(JSON.stringify(account, null, 2));
         await this.compteGroupService.save(account);
+      }
+
+      if (body) {
+        virement.rejected_reason = body.rejected_reason;
       }
     }
 

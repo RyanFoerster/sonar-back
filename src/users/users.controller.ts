@@ -60,6 +60,16 @@ export class UsersController {
     return await this.usersService.findAllPendingUser();
   }
 
+  @Get('principal-account/:id')
+  async findUserByPrincipalAccountId(@Param('id') id: number) {
+    return await this.usersService.findUserByPrincipalAccountId(id);
+  }
+
+  @Get('secondary-account/:id')
+  async findUserBySecondaryAccountId(@Param('id') id: number) {
+    return await this.usersService.findUserBySecondaryAccountId(id);
+  }
+
   @Patch()
   async updateAddress(@Request() req, @Body() updateUserDto: UpdateUserDto) {
     return await this.usersService.updateAddress(req.user.id, updateUserDto);
