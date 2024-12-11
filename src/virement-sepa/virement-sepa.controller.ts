@@ -71,8 +71,11 @@ export class VirementSepaController {
   }
 
   @Patch(':id/reject')
-  rejectVirement(@Param('id') id: string) {
-    return this.virementSepaService.update(+id, 'REJECTED');
+  rejectVirement(
+    @Param('id') id: string,
+    @Body() body: { rejected_reason: string },
+  ) {
+    return this.virementSepaService.update(+id, 'REJECTED', body);
   }
 
   @Patch(':id/accept')

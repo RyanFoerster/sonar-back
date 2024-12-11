@@ -37,6 +37,9 @@ export class VirementSepa {
   @Column({ default: 'PENDING' })
   status: 'PENDING' | 'REJECTED' | 'ACCEPTED';
 
+  @Column({ nullable: true })
+  rejected_reason?: string;
+
   @Column()
   projet_username: string;
 
