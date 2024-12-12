@@ -34,7 +34,7 @@ export class VirementSepaController {
     @Query() params: string,
     @UploadedFile() invoice: Express.Multer.File,
   ) {
-    Logger.debug(invoice);
+    Logger.debug(JSON.stringify(createVirementSepaDto, null, 2));
     return this.virementSepaService.create(
       createVirementSepaDto,
       req.user.id,

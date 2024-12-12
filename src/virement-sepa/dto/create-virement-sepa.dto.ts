@@ -11,14 +11,14 @@ export class CreateVirementSepaDto {
   amount_htva: number;
 
   @IsNumber()
-  amount_tva: number;
+  @IsOptional()
+  amount_tva?: number;
 
   @IsNumber()
   amount_total: number;
 
   @IsString()
-  @IsOptional()
-  communication?: string;
+  communication: string;
 
   @IsString()
   @IsOptional()
