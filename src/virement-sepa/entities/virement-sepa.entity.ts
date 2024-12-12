@@ -35,7 +35,7 @@ export class VirementSepa {
   structured_communication?: string;
 
   @Column({ default: 'PENDING' })
-  status: 'PENDING' | 'REJECTED' | 'ACCEPTED';
+  status: 'PENDING' | 'REJECTED' | 'ACCEPTED' | 'PAID';
 
   @Column({ nullable: true })
   rejected_reason?: string;
