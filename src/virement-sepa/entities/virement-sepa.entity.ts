@@ -22,14 +22,14 @@ export class VirementSepa {
   @Column()
   amount_htva: number;
 
-  @Column()
-  amount_tva: number;
+  @Column({ nullable: true })
+  amount_tva?: number;
 
   @Column()
   amount_total: number;
 
   @Column()
-  communication?: string;
+  communication: string;
 
   @Column()
   structured_communication?: string;
