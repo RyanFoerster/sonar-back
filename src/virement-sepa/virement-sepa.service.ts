@@ -39,16 +39,6 @@ export class VirementSepaService {
     let principalAccount: ComptePrincipal | undefined = undefined;
     let accountFinded: UserSecondaryAccount | undefined;
 
-    if (createVirementSepaDto.amount_htva.toString().includes('.')) {
-      createVirementSepaDto.amount_htva = Number(
-        createVirementSepaDto.amount_htva.toString().replace('.', ','),
-      );
-    }
-    if (createVirementSepaDto.amount_total.toString().includes('.')) {
-      createVirementSepaDto.amount_total = Number(
-        createVirementSepaDto.amount_total.toString().replace('.', ','),
-      );
-    }
     if (params.typeOfProjet === 'PRINCIPAL') {
       principalAccount = await this.comptePrincipalService.findOne(params.id);
       if (principalAccount.solde - createVirementSepaDto.amount_htva <= 0) {
@@ -87,7 +77,7 @@ export class VirementSepaService {
     }
 
     if (groupAccount) {
-      groupAccount.solde -= virementSepa.amount_htva;
+      groupAccount.solde -= +virementSepa.amount_htva;
       await this.compteGroupService.save(groupAccount);
       virementSepa.compteGroupe = groupAccount;
       virementSepa.projet_username = groupAccount.username;
