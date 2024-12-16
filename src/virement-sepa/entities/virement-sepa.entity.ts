@@ -5,8 +5,8 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { ComptePrincipal } from '../../compte_principal/entities/compte_principal.entity';
 import { CompteGroupe } from '../../compte_groupe/entities/compte_groupe.entity';
+import { ComptePrincipal } from '../../compte_principal/entities/compte_principal.entity';
 
 @Entity()
 export class VirementSepa {
@@ -19,13 +19,13 @@ export class VirementSepa {
   @Column()
   iban: string;
 
-  @Column()
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
   amount_htva: number;
 
-  @Column({ nullable: true })
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   amount_tva?: number;
 
-  @Column()
+  @Column({ type: 'decimal', precision: 10, scale: 2 })
   amount_total: number;
 
   @Column()
