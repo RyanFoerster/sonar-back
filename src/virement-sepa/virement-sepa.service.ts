@@ -1,21 +1,21 @@
+import { S3Service } from '@/services/s3/s3.service';
 import {
   BadRequestException,
   Injectable,
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
-import { CreateVirementSepaDto } from './dto/create-virement-sepa.dto';
-import { VirementSepa } from './entities/virement-sepa.entity';
-import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { UsersService } from '../users/users.service';
-import { User } from '../users/entities/user.entity';
+import { Repository } from 'typeorm';
 import { CompteGroupeService } from '../compte_groupe/compte_groupe.service';
-import { ComptePrincipalService } from '../compte_principal/compte_principal.service';
 import { CompteGroupe } from '../compte_groupe/entities/compte_groupe.entity';
+import { ComptePrincipalService } from '../compte_principal/compte_principal.service';
 import { ComptePrincipal } from '../compte_principal/entities/compte_principal.entity';
 import { UserSecondaryAccount } from '../user-secondary-account/entities/user-secondary-account.entity';
-import { S3Service } from '@/services/s3/s3.service';
+import { User } from '../users/entities/user.entity';
+import { UsersService } from '../users/users.service';
+import { CreateVirementSepaDto } from './dto/create-virement-sepa.dto';
+import { VirementSepa } from './entities/virement-sepa.entity';
 
 @Injectable()
 export class VirementSepaService {
@@ -48,14 +48,8 @@ export class VirementSepaService {
 
     if (params.typeOfProjet === 'GROUP') {
       groupAccount = await this.compteGroupService.findOne(params.id);
-      accountFinded = user.userSecondaryAccounts.find(
-        (acc) => acc.secondary_account_id === +params.id,
-      );
       if (groupAccount.solde - createVirementSepaDto.amount_htva <= 0) {
         throw new BadRequestException('Solde insuffisant');
-      }
-      if (!groupAccount || !accountFinded) {
-        throw new BadRequestException('Aucun compte trouvé');
       }
     }
 
