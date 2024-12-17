@@ -21,6 +21,10 @@ export class TransactionService {
 
   async create(createTransactionDto: CreateTransactionDto) {
     const logger: Logger = new Logger();
+    logger.log(
+      'createTransactionDto',
+      JSON.stringify(createTransactionDto, null, 2),
+    );
 
     let senderGroup: CompteGroupe;
     let senderPrincipal: ComptePrincipal;
@@ -29,7 +33,6 @@ export class TransactionService {
     transaction.amount = createTransactionDto.amount;
     transaction.communication = createTransactionDto.communication;
     transaction.date = new Date();
-    transaction = await this.transactionRepository.save(transaction);
     transaction.recipientGroup = [];
     transaction.recipientPrincipal = [];
 
@@ -78,26 +81,44 @@ export class TransactionService {
     }
 
     if (createTransactionDto.recipientGroup) {
+      const recipientGroups = [];
       for (const compteGroupeId of createTransactionDto.recipientGroup) {
         let compteGroupe =
           await this.compteGroupeService.findOne(compteGroupeId);
         compteGroupe.solde += createTransactionDto.amount;
-        transaction.recipientGroup.push(compteGroupe);
+        recipientGroups.push(compteGroupe);
         await this.compteGroupeService.save(compteGroupe);
       }
+      transaction.recipientGroup = recipientGroups;
     }
 
     if (createTransactionDto.recipientPrincipal) {
+      const recipientPrincipals = [];
       for (const comptePrincipalId of createTransactionDto.recipientPrincipal) {
         let comptePrincipal =
           await this.comptePrincipalService.findOne(comptePrincipalId);
         comptePrincipal.solde += createTransactionDto.amount;
-        transaction.recipientPrincipal.push(comptePrincipal);
+        recipientPrincipals.push(comptePrincipal);
         await this.comptePrincipalService.create(comptePrincipal);
       }
+      transaction.recipientPrincipal = recipientPrincipals;
     }
 
-    return await this.transactionRepository.save(transaction);
+    // Log de la prochaine valeur de séquence
+    const nextSequence = await this.getNextSequenceValue();
+    logger.log('Next sequence value:', nextSequence);
+
+    // Sauvegarde finale de la transaction avec toutes ses relations
+    const savedTransaction = await this.transactionRepository.save(transaction);
+    return await this.transactionRepository.findOne({
+      where: { id: savedTransaction.id },
+      relations: [
+        'senderGroup',
+        'senderPrincipal',
+        'recipientGroup',
+        'recipientPrincipal',
+      ],
+    });
   }
 
   async findAll(paginationDto: PaginationDto) {
@@ -282,5 +303,20 @@ export class TransactionService {
 
   remove(id: number) {
     return `This action removes a #${id} transaction`;
+  }
+
+  async getNextSequenceValue() {
+    const result = await this.transactionRepository.query(
+      'SELECT last_value, is_called FROM transaction_id_seq;',
+    );
+    return result[0];
+  }
+
+  async setNextSequenceValue(value: number) {
+    await this.transactionRepository.query(
+      `ALTER SEQUENCE transaction_id_seq RESTART WITH ${value};`,
+    );
+    const newValue = await this.getNextSequenceValue();
+    return newValue;
   }
 }
