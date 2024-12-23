@@ -69,6 +69,10 @@ export class CompteGroupeService {
     return this.compteGroupeRepository.findOneBy({ username });
   }
 
+  findAllMembers(id: number) {
+    return this.userSecondaryAccountService.findAllBySecondaryAccountId(id);
+  }
+
   async update(id: number, updateCompteGroupeDto: UpdateCompteGroupeDto) {
     return this.compteGroupeRepository.update(id, updateCompteGroupeDto);
   }

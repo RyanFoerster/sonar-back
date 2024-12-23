@@ -80,6 +80,28 @@ export class UserSecondaryAccountService {
     return this.userSecondaryAccountRepository.findOneBy({ id });
   }
 
+  findAllBySecondaryAccountId(id: number) {
+    return this.userSecondaryAccountRepository
+      .createQueryBuilder('user_secondary_account')
+      .leftJoinAndSelect(
+        'user_secondary_account.group_account',
+        'group_account',
+      )
+      .leftJoinAndSelect('user_secondary_account.user', 'user')
+      .select([
+        'user_secondary_account.id',
+        'user.id',
+        'user.email',
+        'user.firstName',
+        'user.name',
+        'user.iban',
+        'user.telephone',
+        'user.numeroNational',
+      ])
+      .where('group_account.id = :id', { id })
+      .getMany();
+  }
+
   async update(
     id: number,
     updateUserSecondaryAccountDto: UpdateUserSecondaryAccountDto,
