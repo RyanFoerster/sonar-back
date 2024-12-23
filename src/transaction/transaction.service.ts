@@ -105,7 +105,7 @@ export class TransactionService {
     }
 
     // Sauvegarde finale de la transaction avec toutes ses relations
-    const savedTransaction = await this.transactionRepository.save(transaction);
+    await this.transactionRepository.save(transaction);
     return true;
   }
 
