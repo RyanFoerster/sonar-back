@@ -1,10 +1,12 @@
 import {
   BadRequestException,
+  Get,
   Injectable,
   InternalServerErrorException,
   Logger,
   NotFoundException,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { SignupDto } from './dto/signup.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -20,6 +22,7 @@ import { UsersService } from '../users/users.service';
 import { EmailException } from '../users/exceptions/email.exception';
 import { UsernameException } from '../users/exceptions/username.exception';
 import { ComptePrincipalService } from '../compte_principal/compte_principal.service';
+import { JwtAuthGuard } from '@/guards/auth.guard';
 
 @Injectable()
 export class AuthService {
@@ -242,5 +245,12 @@ export class AuthService {
         expiryDate,
       });
     }
+  }
+
+  @Get('check-token')
+  @UseGuards(JwtAuthGuard)
+  checkToken() {
+    // Si le guard passe, le token est valide
+    return { valid: true };
   }
 }
