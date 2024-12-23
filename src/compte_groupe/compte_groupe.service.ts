@@ -61,7 +61,7 @@ export class CompteGroupeService {
     return this.compteGroupeRepository.find();
   }
 
-  async findOne(id: number) {
+  findOne(id: number) {
     return this.compteGroupeRepository.findOneBy({ id });
   }
 
