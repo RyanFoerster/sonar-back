@@ -246,11 +246,4 @@ export class AuthService {
       });
     }
   }
-
-  @Get('check-token')
-  @UseGuards(JwtAuthGuard)
-  checkToken() {
-    // Si le guard passe, le token est valide
-    return { valid: true };
-  }
 }
