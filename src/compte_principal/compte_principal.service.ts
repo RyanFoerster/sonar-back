@@ -33,7 +33,11 @@ export class ComptePrincipalService {
   }
 
   findAll() {
-    return this.comptePrincipalRepository.find();
+    return this.comptePrincipalRepository.find({
+      relations: {
+        user: true,
+      },
+    });
   }
 
   async findOne(id: number) {
@@ -58,6 +62,17 @@ export class ComptePrincipalService {
 
   findOneByUsername(username: string) {
     return this.comptePrincipalRepository.findOneBy({ username });
+  }
+
+  findAllMembers(id: number) {
+    return this.comptePrincipalRepository.find({
+      where: {
+        id,
+      },
+      relations: {
+        user: true,
+      },
+    });
   }
 
   update(updateComptePrincipalDto: UpdateComptePrincipalDto) {
