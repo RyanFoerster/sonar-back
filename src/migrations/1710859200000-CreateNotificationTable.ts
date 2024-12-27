@@ -4,20 +4,47 @@ export class CreateNotificationTable1710859200000
   implements MigrationInterface
 {
   name = 'CreateNotificationTable1710859200000';
+
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Vérifier si la table existe déjà
     const tableExists = await queryRunner.hasTable('notification');
     if (!tableExists) {
+      // Créer les types enum s'ils n'existent pas
+      const typeEnumExists = await queryRunner.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM pg_type WHERE typname = 'notification_type_enum'
+        );
+      `);
+
+      if (!typeEnumExists[0].exists) {
+        await queryRunner.query(`
+          CREATE TYPE "notification_type_enum" AS ENUM('GROUP_INVITATION', 'ROLE_CHANGE', 'OTHER')
+        `);
+      }
+
+      const statusEnumExists = await queryRunner.query(`
+        SELECT EXISTS (
+          SELECT 1 FROM pg_type WHERE typname = 'notification_status_enum'
+        );
+      `);
+
+      if (!statusEnumExists[0].exists) {
+        await queryRunner.query(`
+          CREATE TYPE "notification_status_enum" AS ENUM('PENDING', 'ACCEPTED', 'REJECTED')
+        `);
+      }
+
+      // Créer la table notification
       await queryRunner.query(`
         CREATE TABLE "notification" (
           "id" SERIAL NOT NULL,
-          "type" character varying NOT NULL,
-          "status" character varying NOT NULL DEFAULT 'PENDING',
-          "message" character varying,
+          "type" notification_type_enum NOT NULL,
+          "message" character varying NOT NULL,
+          "status" notification_status_enum NOT NULL DEFAULT 'PENDING',
+          "createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+          "fromUserId" integer,
+          "toUserId" integer,
           "groupId" integer,
-          "userId" integer NOT NULL,
-          "created_at" TIMESTAMP NOT NULL DEFAULT now(),
-          "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
           CONSTRAINT "PK_notification" PRIMARY KEY ("id")
         )
       `);
@@ -25,8 +52,17 @@ export class CreateNotificationTable1710859200000
       // Ajouter les clés étrangères
       await queryRunner.query(`
         ALTER TABLE "notification"
-        ADD CONSTRAINT "FK_notification_user"
-        FOREIGN KEY ("userId")
+        ADD CONSTRAINT "FK_notification_fromUser"
+        FOREIGN KEY ("fromUserId")
+        REFERENCES "user"("id")
+        ON DELETE CASCADE
+        ON UPDATE NO ACTION
+      `);
+
+      await queryRunner.query(`
+        ALTER TABLE "notification"
+        ADD CONSTRAINT "FK_notification_toUser"
+        FOREIGN KEY ("toUserId")
         REFERENCES "user"("id")
         ON DELETE CASCADE
         ON UPDATE NO ACTION
@@ -52,10 +88,18 @@ export class CreateNotificationTable1710859200000
         ALTER TABLE "notification" DROP CONSTRAINT IF EXISTS "FK_notification_group"
       `);
       await queryRunner.query(`
-        ALTER TABLE "notification" DROP CONSTRAINT IF EXISTS "FK_notification_user"
+        ALTER TABLE "notification" DROP CONSTRAINT IF EXISTS "FK_notification_toUser"
       `);
+      await queryRunner.query(`
+        ALTER TABLE "notification" DROP CONSTRAINT IF EXISTS "FK_notification_fromUser"
+      `);
+
       // Supprimer la table
-      await queryRunner.query(`DROP TABLE "notification"`);
+      await queryRunner.query(`DROP TABLE IF EXISTS "notification"`);
+
+      // Supprimer les types enum
+      await queryRunner.query(`DROP TYPE IF EXISTS "notification_status_enum"`);
+      await queryRunner.query(`DROP TYPE IF EXISTS "notification_type_enum"`);
     }
   }
 }
