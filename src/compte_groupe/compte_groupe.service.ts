@@ -58,11 +58,24 @@ export class CompteGroupeService {
   }
 
   findAll() {
-    return this.compteGroupeRepository.find();
+    return this.compteGroupeRepository.find({
+      relations: {
+        userSecondaryAccount: {
+          user: true,
+        },
+      },
+    });
   }
 
   findOne(id: number) {
-    return this.compteGroupeRepository.findOneBy({ id });
+    return this.compteGroupeRepository.findOne({
+      where: { id },
+      relations: {
+        userSecondaryAccount: {
+          user: true,
+        },
+      },
+    });
   }
 
   findOneByUsername(username: string) {

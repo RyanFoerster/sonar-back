@@ -27,6 +27,7 @@ import { TransactionModule } from './transaction/transaction.module';
 import { UserSecondaryAccountModule } from './user-secondary-account/user-secondary-account.module';
 import { UsersModule } from './users/users.module';
 import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
+import { NotificationModule } from './notification/notification.module';
 
 @Module({
   imports: [
@@ -96,6 +97,7 @@ import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
     MeetModule,
     HttpModule,
     S3Module,
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService, BceService],

@@ -35,6 +35,11 @@ export class ComptePrincipalController {
     return this.comptePrincipalService.findOne(+id);
   }
 
+  @Get(':id/members')
+  findAllMembers(@Param('id') id: string) {
+    return this.comptePrincipalService.findAllMembers(+id);
+  }
+
   @Patch(':id')
   update(
     @Param('id') id: string,
