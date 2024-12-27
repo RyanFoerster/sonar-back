@@ -4,7 +4,6 @@ export class CreateNotificationTable1710859200000
   implements MigrationInterface
 {
   name = 'CreateNotificationTable1710859200000';
-
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Vérifier si la table existe déjà
     const tableExists = await queryRunner.hasTable('notification');
