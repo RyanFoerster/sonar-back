@@ -6,7 +6,6 @@ import { INestApplication, Logger } from '@nestjs/common';
 
 import { AppModule } from './app.module';
 
-
 const server = express();
 
 export const createNestServer = async (expressInstance: express.Express) => {
@@ -18,15 +17,12 @@ export const createNestServer = async (expressInstance: express.Express) => {
       abortOnError: false,
     },
   );
-
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
   app.enableCors({
-
     origin: ['https://sonarartists.fr', 'http://localhost:4200'],
-
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
   });
 
