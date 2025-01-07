@@ -145,7 +145,7 @@ export class VirementSepaService {
         let account = await this.comptePrincipalService.findOne(
           virement.comptePrincipal.id,
         );
-        account.solde += virement.amount_htva;
+        account.solde += +virement.amount_htva;
         await this.comptePrincipalService.update(account);
       }
 
