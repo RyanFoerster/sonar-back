@@ -153,7 +153,7 @@ export class VirementSepaService {
         let account = await this.compteGroupService.findOne(
           virement.compteGroupe.id,
         );
-        account.solde += virement.amount_htva;
+        account.solde += +virement.amount_htva;
         Logger.debug(JSON.stringify(account, null, 2));
         await this.compteGroupService.save(account);
       }
