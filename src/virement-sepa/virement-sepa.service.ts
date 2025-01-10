@@ -48,6 +48,38 @@ export class VirementSepaService {
 
     if (params.typeOfProjet === 'GROUP') {
       groupAccount = await this.compteGroupService.findOne(params.id);
+
+      if (user.role !== 'ADMIN') {
+        accountFinded = user.userSecondaryAccounts?.find(
+          (account) => account.secondary_account_id === +params.id,
+        );
+
+        user.userSecondaryAccounts?.forEach((account) => {
+          Logger.debug(
+            `Account: ${JSON.stringify(account.id, null, 2)} - ${JSON.stringify(
+              account.secondary_account_id,
+              null,
+              2,
+            )}`,
+          );
+        });
+
+        if (!accountFinded) {
+          Logger.error(
+            `L'utilisateur ${user.id} n'a pas accès au compte groupe ${params.id}`,
+          );
+          throw new UnauthorizedException(
+            "Vous n'avez pas accès à ce compte groupe",
+          );
+        }
+
+        if (accountFinded.role_billing !== 'ADMIN') {
+          throw new UnauthorizedException(
+            "Vous n'avez pas les droits de facturation nécessaires pour effectuer cette opération",
+          );
+        }
+      }
+
       if (groupAccount.solde - createVirementSepaDto.amount_htva <= 0) {
         throw new BadRequestException('Solde insuffisant');
       }
@@ -58,7 +90,10 @@ export class VirementSepaService {
     }
 
     if (user.role !== 'ADMIN') {
-      if (accountFinded.role_billing !== 'ADMIN') {
+      if (
+        params.typeOfProjet === 'GROUP' &&
+        accountFinded.role_billing !== 'ADMIN'
+      ) {
         throw new BadRequestException(
           "Vous n'avez pas l'autorisation de faire cela",
         );
