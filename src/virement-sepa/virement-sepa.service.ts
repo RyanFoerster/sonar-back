@@ -201,6 +201,18 @@ export class VirementSepaService {
     return this.virementSepaRepository.save(virement);
   }
 
+  async paid(id: number, userId: number) {
+    let user = await this.usersService.findOne(userId);
+    if (user.role !== 'ADMIN') {
+      throw new UnauthorizedException('Vous ne pouvez pas faire cela');
+    }
+    let virement = await this.findOne(id);
+    if (virement.status === 'ACCEPTED') {
+      virement.status = 'PAID';
+    }
+    return this.virementSepaRepository.save(virement);
+  }
+
   remove(id: number) {
     return `This action removes a #${id} virementSepa`;
   }
