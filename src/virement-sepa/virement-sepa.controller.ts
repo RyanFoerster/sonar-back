@@ -83,6 +83,11 @@ export class VirementSepaController {
     return this.virementSepaService.update(+id, 'ACCEPTED');
   }
 
+  @Patch(':id/paid')
+  paidVirement(@Param('id') id: string, @Request() req) {
+    return this.virementSepaService.paid(+id, req.user.id);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.virementSepaService.remove(+id);
