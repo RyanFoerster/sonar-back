@@ -1,18 +1,33 @@
-import { Column, Entity, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  CreateDateColumn,
+  Index,
+} from 'typeorm';
 
 @Entity()
 export class RefreshToken {
-
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  token: string
+  @Column({ unique: true })
+  @Index()
+  token: string;
 
   @Column()
-  userId: number
+  @Index()
+  userId: number;
 
   @Column()
-  expiryDate: Date
+  expiryDate: Date;
 
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @Column({ default: false })
+  revoked: boolean;
+
+  @Column({ nullable: true })
+  revokedAt: Date;
 }
