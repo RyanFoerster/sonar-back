@@ -49,7 +49,7 @@ export class AuthController {
   @Public()
   @Post('refresh')
   async refreshTokens(@Body() refreshTokenDto: RefreshTokenDto) {
-    return this.authService.refreshTokens(refreshTokenDto.refreshToken);
+    return this.authService.refreshTokens(refreshTokenDto.refresh_token);
   }
 
   @Put('change-password')

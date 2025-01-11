@@ -197,8 +197,6 @@ export class AuthService {
       token: refreshToken,
     });
 
-    Logger.debug(JSON.stringify(tokenToRefresh, null, 2));
-
     if (!tokenToRefresh) {
       throw new UnauthorizedException('Invalid refresh token');
     }
@@ -211,7 +209,7 @@ export class AuthService {
     const userFromId = await this.usersService.findOne(userId);
     const accessToken = this.jwtService.sign(
       { sub: userId, email: userFromId.email },
-      { expiresIn: '1h' },
+      { expiresIn: 5 },
     );
     const refreshToken = uuidv4();
     const { password, ...user } = await this.usersService.findOne(userId);
