@@ -209,7 +209,7 @@ export class AuthService {
     const userFromId = await this.usersService.findOne(userId);
     const accessToken = this.jwtService.sign(
       { sub: userId, email: userFromId.email },
-      { expiresIn: 5 },
+      { expiresIn: '15m' },
     );
     const refreshToken = uuidv4();
     const { password, ...user } = await this.usersService.findOne(userId);
