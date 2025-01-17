@@ -50,11 +50,17 @@ export class ProductService {
 
     let product = this.productRepository.create(updateProductDto);
 
-    Logger.debug(
-      `Product after create ${id} with ${JSON.stringify(product, null, 2)}`,
-    );
+    // Calcul du prix HTVA et du montant de TVA
+    product.price_htva = product.price * product.quantity;
+    product.tva_amount = product.price_htva * updateProductDto.vat; // Utilisation de la TVA du DTO
+    product.total = product.price_htva + product.tva_amount;
+    product.vat = updateProductDto.vat; // Conservation de la TVA du DTO
 
     product.id = id;
+
+    Logger.debug(
+      `Product after calculations ${id} with ${JSON.stringify(product, null, 2)}`,
+    );
 
     return this.productRepository.save(product);
   }

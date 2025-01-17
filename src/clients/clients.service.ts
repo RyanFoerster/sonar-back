@@ -36,6 +36,12 @@ export class ClientsService {
       );
       client = clientFromDB;
     } else {
+      if (
+        createClientDto.is_physical_person === undefined ||
+        createClientDto.is_physical_person === null
+      ) {
+        createClientDto.is_physical_person = false;
+      }
       client = await this.clientRepository.save(createClientDto);
     }
 

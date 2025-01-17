@@ -8,6 +8,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Product } from '../product/entities/product.entity';
 import { VirementSepa } from './entities/virement-sepa.entity';
 import { S3Module } from '../services/s3/s3.module';
+import { MailModule } from '@/mail/mail.module';
+import { PdfModule } from '../services/pdf.module';
 
 @Module({
   controllers: [VirementSepaController],
@@ -19,6 +21,8 @@ import { S3Module } from '../services/s3/s3.module';
     CompteGroupeModule,
     ComptePrincipalModule,
     S3Module,
+    MailModule,
+    PdfModule,
   ],
 })
 export class VirementSepaModule {}

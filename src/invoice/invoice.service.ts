@@ -349,43 +349,73 @@ export class InvoiceService {
     createCreditNoteDto: any,
   ): Promise<Invoice> {
     return await this.dataSource.transaction(async (manager) => {
-      let creditNote: Invoice = manager.create(Invoice, createCreditNoteDto);
+      // Créer d'abord les produits
+      const products: Product[] = [];
+      for (const productData of createCreditNoteDto.products) {
+        // S'assurer que le prix est négatif
+        const price = productData.price_htva;
+        const vat = productData.vat / 100; // Convertir le pourcentage en décimal
+        const tva_amount = price * vat;
+        const total = price * (1 + vat);
 
+        const product = manager.create(Product, {
+          description: productData.description,
+          price: price, // Champ requis
+          price_htva: price,
+          quantity: productData.quantity,
+          vat: vat,
+          tva_amount: tva_amount,
+          total: total,
+        });
+
+        const savedProduct = await manager.save(Product, product);
+        products.push(savedProduct);
+      }
+
+      // Récupérer le compte principal par défaut
+      const mainAccount = await this.comptePrincipalService.findOne(1); // Utiliser le compte principal par défaut
+      if (!mainAccount) {
+        throw new Error('Aucun compte principal trouvé');
+      }
+
+      // Créer la note de crédit
+      let creditNote: Invoice = manager.create(Invoice, {
+        client_id: createCreditNoteDto.client_id,
+        invoice_date: new Date(), // Date actuelle pour la date de facture
+        credit_note_date: createCreditNoteDto.credit_note_date,
+        service_date: createCreditNoteDto.service_date,
+        status: createCreditNoteDto.status,
+        type: 'credit_note',
+        payment_deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // +30 jours par défaut
+        invoice_number: mainAccount.next_invoice_number, // Utiliser le prochain numéro de facture
+      });
+
+      // Associer le client
       creditNote.client = await this.clientService.findOne(
         createCreditNoteDto.client_id,
       );
 
-      let products: Product[] = [];
-      for (const productId of createCreditNoteDto.products_id) {
-        let product = await this.productService.findOne(productId);
-        products.push(product);
-      }
+      // Associer le compte principal
+      creditNote.main_account = mainAccount;
 
+      // Associer les produits
       creditNote.products = products;
 
-      Logger.debug('Products', JSON.stringify(creditNote.products, null, 2));
+      // Calculer les totaux
       creditNote.price_htva = await this.setTotalHtva(creditNote.products);
       creditNote.total_vat_6 = await this.setTotalTva6(creditNote.products);
       creditNote.total_vat_21 = await this.setTotalTva21(creditNote.products);
-
       creditNote.total =
         creditNote.price_htva +
-        creditNote.total_vat_21 +
-        creditNote.total_vat_6;
+        creditNote.total_vat_6 +
+        creditNote.total_vat_21;
 
-      if (createCreditNoteDto.main_account_id !== undefined) {
-        creditNote.main_account = await this.comptePrincipalService.findOne(
-          createCreditNoteDto.main_account_id,
-        );
-      }
+      // Incrémenter le numéro de facture du compte principal
+      mainAccount.next_invoice_number += 1;
+      await manager.save(mainAccount);
 
-      return null;
-
-      // return await manager.save(Invoice, {
-      //   ...creditNote,
-      //   type: 'credit_note',
-      //   status: 'credit_note',
-      // });
+      // Sauvegarder la note de crédit
+      return await manager.save(Invoice, creditNote);
     });
   }
 

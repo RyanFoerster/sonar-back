@@ -1,9 +1,21 @@
-import { IsDate, IsEmail, IsNumber, IsString } from 'class-validator';
+import {
+  IsDate,
+  IsEmail,
+  IsNumber,
+  IsString,
+  IsBoolean,
+} from 'class-validator';
 import { Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 export class CreateClientDto {
   @IsString()
   name: string;
+
+  @IsString()
+  firstname?: string;
+
+  @IsString()
+  lastname?: string;
 
   @IsEmail()
   @IsString()
@@ -35,6 +47,9 @@ export class CreateClientDto {
 
   @IsString()
   national_number?: string;
+
+  @IsBoolean()
+  is_physical_person: boolean;
 
   @CreateDateColumn()
   createdAt?: Date;
