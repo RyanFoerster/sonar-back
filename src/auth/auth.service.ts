@@ -208,7 +208,11 @@ export class AuthService {
   async generateUserTokens(userId: number) {
     const userFromId = await this.usersService.findOne(userId);
     const accessToken = this.jwtService.sign(
-      { sub: userId, email: userFromId.email },
+      {
+        sub: userId,
+        email: userFromId.email,
+        role: userFromId.role,
+      },
       { expiresIn: '15m' },
     );
     const refreshToken = uuidv4();

@@ -19,6 +19,12 @@ export class Client {
   @Column()
   name: string;
 
+  @Column({ nullable: true })
+  firstname: string;
+
+  @Column({ nullable: true })
+  lastname: string;
+
   @Column()
   email: string;
 
@@ -48,6 +54,9 @@ export class Client {
 
   @Column({ nullable: true })
   national_number: string;
+
+  @Column({ default: false })
+  is_physical_person: boolean;
 
   @CreateDateColumn()
   createdAt: Date;

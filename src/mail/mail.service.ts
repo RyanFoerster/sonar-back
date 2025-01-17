@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
 import { Quote } from '../quote/entities/quote.entity';
 import { User } from '../users/entities/user.entity';
 
@@ -14,15 +13,6 @@ export class MailService {
     firstName: string,
     name: string,
   ) {
-    /*const resetLink = `http://yourapp.com/reset-password?token=${token}`;
-    const mailOptions = {
-      from: 'Auth-backend service',
-      to,
-      subject: 'Password reset request',
-      html: `<p>You requested a password reset. Click the link below to reset your password:</p><p><a href="${resetLink}">Reset Password</a></p>`
-    }
-
-    await this.transporter.sendMail(mailOptions);*/
     const API_KEY =
       this.configService.get('stage') === 'prod'
         ? this.configService.get('mailhub.api_key_prod')
@@ -98,9 +88,6 @@ export class MailService {
         : this.configService.get('mailhub.api_key_dev');
 
     try {
-      // Extraire le contenu base64 du Data URI
-      // const base64Content = pdfContent.split(',')[1];
-
       const requestBody = {
         layout_identifier: 'tp-5eded5ab563d474d',
         variables: {
@@ -124,8 +111,7 @@ export class MailService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Authorization: `Bearer ${API_KEY}`,
-          Authorization: `Bearer mh_live_65df249bc37d49aaa3505171f790c70dc5d6fa7fa76441f0ba921ae7e304f9fd`,
+          Authorization: `Bearer ${API_KEY}`,
         },
         body: JSON.stringify(requestBody),
       }).then((data) => console.log(data));
@@ -148,8 +134,16 @@ export class MailService {
         : this.configService.get('mailhub.api_key_dev');
 
     try {
+      const attachments = [
+        {
+          filename: `virement_sepa_${virementId}.pdf`,
+          content: pdfContent,
+          contentType: 'application/pdf',
+        },
+      ];
+
       const requestBody = {
-        layout_identifier: 'tp-531d0f0745894797', // Vous devrez créer un nouveau template pour les virements SEPA
+        layout_identifier: 'tp-531d0f0745894797',
         variables: {
           transfer_id: virementId,
         },
@@ -157,14 +151,7 @@ export class MailService {
         to: to,
         subject: `Virement SEPA pour ${accountOwner}`,
         language: null,
-
-        attachments: [
-          {
-            filename: `facture_virement_${virementId}.pdf`,
-            content: pdfContent,
-            contentType: 'application/pdf',
-          },
-        ],
+        attachments,
       };
 
       fetch(`https://api.mailhub.sh/v1/send`, {
