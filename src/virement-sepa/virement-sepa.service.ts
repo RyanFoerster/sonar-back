@@ -55,7 +55,7 @@ export class VirementSepaService {
 
       if (user.role !== 'ADMIN') {
         accountFinded = user.userSecondaryAccounts?.find(
-          (account) => account.secondary_account_id === +params.id,
+          (account) => account.group_account.id === +params.id,
         );
 
         user.userSecondaryAccounts?.forEach((account) => {
