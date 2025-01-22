@@ -22,6 +22,8 @@ import { UsersService } from '../users/users.service';
 import { CreateCreditNoteDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { Invoice } from './entities/invoice.entity';
+import { CompteGroupe } from '@/compte_groupe/entities/compte_groupe.entity';
+import { ComptePrincipal } from '@/compte_principal/entities/compte_principal.entity';
 
 @Injectable()
 export class InvoiceService {
@@ -38,9 +40,12 @@ export class InvoiceService {
     private productService: ProductService,
   ) {}
 
-  async create(quoteObject: any, user: User, params: any) {
-    let quote = quoteObject.quote;
-    let quoteFromDB = await this.quoteService.findOne(quote.id);
+  async create(
+    quoteObject: any,
+    user: User,
+    params: { account_id: number; type: 'PRINCIPAL' | 'GROUP' },
+  ) {
+    let quoteFromDB = await this.quoteService.findOne(quoteObject.id);
     let account;
     let userFromDB = await this.usersService.findOne(user.id);
 
@@ -57,14 +62,11 @@ export class InvoiceService {
     }
 
     let invoice = await this.createInvoiceFromQuote(quoteFromDB);
-    Logger.debug('Params', JSON.stringify(params, null, 2));
 
     if (params.type === 'PRINCIPAL') {
       account = await this.comptePrincipalService.findOne(params.account_id);
       invoice.main_account = account;
       invoice.invoice_number = account.next_invoice_number;
-      Logger.debug('Invoice number', invoice.invoice_number);
-      Logger.debug('Account', JSON.stringify(account, null, 2));
 
       // Incrémenter et mettre à jour le prochain numéro de facture
       account.next_invoice_number += 1;
@@ -81,10 +83,7 @@ export class InvoiceService {
       await this.compteGroupeService.save(account);
     }
 
-    Logger.debug('Invoice', JSON.stringify(invoice, null, 2));
-
     const invoiceCreated = await this._invoiceRepository.save(invoice);
-    Logger.debug('Invoice created', JSON.stringify(invoiceCreated, null, 2));
 
     invoiceCreated.quote = quoteFromDB;
 
@@ -231,15 +230,12 @@ export class InvoiceService {
     return await this._invoiceRepository.delete(id);
   }
 
-  private readonly logger = new Logger();
-
   @Cron(CronExpression.EVERY_10_SECONDS)
   async createFacture() {
     const currentDate = new Date();
 
     const quoteWithoutInvoice =
       await this.quoteService.findQuoteWithoutInvoice();
-    Logger.debug(JSON.stringify(quoteWithoutInvoice, null, 2));
 
     const currentQuotes: Quote[] = [];
 
@@ -261,8 +257,6 @@ export class InvoiceService {
       }
     }
 
-    Logger.debug('Current quotes', JSON.stringify(currentQuotes, null, 2));
-
     if (currentQuotes.length > 0) {
       for (const quote of currentQuotes) {
         const invoice = new Invoice();
@@ -278,7 +272,6 @@ export class InvoiceService {
         invoice.status = 'pending';
 
         const invoiceCreated = await this._invoiceRepository.save(invoice);
-        this.logger.debug(JSON.stringify(invoiceCreated));
         invoiceCreated.quote = await this.quoteService.findOne(quote.id);
         invoiceCreated.client = await this.clientService.findOne(
           quote.client.id,
@@ -298,10 +291,6 @@ export class InvoiceService {
         quote.invoice = invoiceCreated;
         await this.quoteService.save(quote);
       }
-
-      this.logger.debug('Des factures ont été créees');
-    } else {
-      this.logger.error('Aucune facture crée');
     }
   }
 
@@ -316,7 +305,6 @@ export class InvoiceService {
       const products = [];
       for (const productId of createCreditNoteDto.products_ids) {
         const product = await this.productService.findOne(productId);
-        Logger.debug('Product', JSON.stringify(product, null, 2));
         if (product.quote === null) {
           products.push(product); // Si le produit n'est pas lié à un devis, on l'ajoute à la note de crédit car il n'a pas été facturé
         }
@@ -329,7 +317,6 @@ export class InvoiceService {
       if (createCreditNoteDto.creditNoteAmount > invoice.total) {
         throw new Error('Credit note amount exceeds invoice total amount'); // Vérifie que le montant de la note de crédit ne dépasse pas le total de la facture
       }
-      Logger.debug(JSON.stringify(invoice, null, 2));
       // Crée la note de crédit en utilisant les données fournies
       let { id, ...invoiceWithoutId } = invoice;
       invoiceWithoutId.products = products;
@@ -347,36 +334,36 @@ export class InvoiceService {
 
   async createCreditNoteWithoutInvoice(
     createCreditNoteDto: any,
+    account_id: number,
+    type: 'PRINCIPAL' | 'GROUP',
   ): Promise<Invoice> {
     return await this.dataSource.transaction(async (manager) => {
-      // Créer d'abord les produits
-      const products: Product[] = [];
-      for (const productData of createCreditNoteDto.products) {
-        // S'assurer que le prix est négatif
-        const price = productData.price_htva;
-        const vat = productData.vat / 100; // Convertir le pourcentage en décimal
-        const tva_amount = price * vat;
-        const total = price * (1 + vat);
+      // Récupérer les produits lié a la note de crédit
 
-        const product = manager.create(Product, {
-          description: productData.description,
-          price: price, // Champ requis
-          price_htva: price,
-          quantity: productData.quantity,
-          vat: vat,
-          tva_amount: tva_amount,
-          total: total,
-        });
+      const products = [];
 
-        const savedProduct = await manager.save(Product, product);
-        products.push(savedProduct);
+      for (const productId of createCreditNoteDto.products_id) {
+        const product = await this.productService.findOne(productId);
+        products.push(product);
       }
+
+      createCreditNoteDto.products = products;
 
       // Récupérer le compte principal par défaut
-      const mainAccount = await this.comptePrincipalService.findOne(1); // Utiliser le compte principal par défaut
-      if (!mainAccount) {
+      let account: ComptePrincipal | CompteGroupe;
+      if (type === 'PRINCIPAL') {
+        account = await this.comptePrincipalService.findOne(account_id);
+      } else {
+        account = await this.compteGroupeService.findOne(account_id);
+      }
+      if (!account && type === 'PRINCIPAL') {
         throw new Error('Aucun compte principal trouvé');
       }
+      if (!account && type === 'GROUP') {
+        throw new Error('Aucun compte groupe trouvé');
+      }
+
+      createCreditNoteDto.status = 'paid';
 
       // Créer la note de crédit
       let creditNote: Invoice = manager.create(Invoice, {
@@ -387,7 +374,7 @@ export class InvoiceService {
         status: createCreditNoteDto.status,
         type: 'credit_note',
         payment_deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // +30 jours par défaut
-        invoice_number: mainAccount.next_invoice_number, // Utiliser le prochain numéro de facture
+        invoice_number: account.next_invoice_number, // Utiliser le prochain numéro de facture
       });
 
       // Associer le client
@@ -396,7 +383,11 @@ export class InvoiceService {
       );
 
       // Associer le compte principal
-      creditNote.main_account = mainAccount;
+      if (type === 'PRINCIPAL') {
+        creditNote.main_account = account as ComptePrincipal;
+      } else {
+        creditNote.group_account = account as CompteGroupe;
+      }
 
       // Associer les produits
       creditNote.products = products;
@@ -411,8 +402,8 @@ export class InvoiceService {
         creditNote.total_vat_21;
 
       // Incrémenter le numéro de facture du compte principal
-      mainAccount.next_invoice_number += 1;
-      await manager.save(mainAccount);
+      account.next_invoice_number += 1;
+      await manager.save(account);
 
       // Sauvegarder la note de crédit
       return await manager.save(Invoice, creditNote);
@@ -420,7 +411,6 @@ export class InvoiceService {
   }
 
   findCreditNoteByInvoiceId(invoice_id: number) {
-    Logger.debug(invoice_id);
     return this._invoiceRepository.findOneBy({
       linkedInvoiceId: invoice_id,
       type: 'credit_note',
@@ -432,8 +422,6 @@ export class InvoiceService {
     for (const product of products) {
       total += product.price_htva;
     }
-
-    Logger.debug('Total HTVA', total);
 
     return total;
   }
