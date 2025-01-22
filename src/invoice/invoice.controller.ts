@@ -20,7 +20,11 @@ export class InvoiceController {
   constructor(private readonly invoiceService: InvoiceService) {}
 
   @Post()
-  create(@Body() quote: Quote, @Req() req, @Query() params: string) {
+  create(
+    @Body() quote: Quote,
+    @Req() req,
+    @Query() params: { account_id: number; type: 'PRINCIPAL' | 'GROUP' },
+  ) {
     return this.invoiceService.create(quote, req.user, params);
   }
 
@@ -55,9 +59,12 @@ export class InvoiceController {
   @Post('credit-note-without-invoice')
   createCreditNoteWithoutInvoice(
     @Body() createCreditNoteDto: any,
+    @Query() params: { account_id: number; type: 'PRINCIPAL' | 'GROUP' },
   ): Promise<Invoice> {
     return this.invoiceService.createCreditNoteWithoutInvoice(
       createCreditNoteDto,
+      params.account_id,
+      params.type,
     );
   }
 

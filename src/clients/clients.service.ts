@@ -19,14 +19,19 @@ export class ClientsService {
 
   async create(user: User, createClientDto: CreateClientDto) {
     let client: Client;
-    let clientFromDB = await this.clientRepository.findOneBy({
-      company_vat_number: createClientDto.company_vat_number,
-    });
+    let clientFromDB = null;
 
-    if (!clientFromDB) {
+    // Vérifier les doublons uniquement si un numéro de TVA ou d'entreprise est fourni
+    if (createClientDto.company_vat_number || createClientDto.company_number) {
       clientFromDB = await this.clientRepository.findOneBy({
-        company_number: createClientDto.company_number,
+        company_vat_number: createClientDto.company_vat_number,
       });
+
+      if (!clientFromDB && createClientDto.company_number) {
+        clientFromDB = await this.clientRepository.findOneBy({
+          company_number: createClientDto.company_number,
+        });
+      }
     }
 
     if (clientFromDB) {
