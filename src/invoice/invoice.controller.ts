@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Logger,
   Param,
   Patch,
   Post,
@@ -52,8 +53,10 @@ export class InvoiceController {
   @Post('credit-note')
   createCreditNote(
     @Body() createCreditNoteDto: CreateCreditNoteDto,
+    @Query() params: { account_id: number; type: 'PRINCIPAL' | 'GROUP' },
   ): Promise<Invoice> {
-    return this.invoiceService.createCreditNote(createCreditNoteDto);
+    Logger.debug(params);
+    return this.invoiceService.createCreditNote(createCreditNoteDto, params);
   }
 
   @Post('credit-note-without-invoice')

@@ -1,8 +1,5 @@
-import { User } from '../../users/entities/user.entity';
-import { PaiementMode } from '../enums/paiement_mode';
 import {
   Column,
-  CreateDateColumn,
   Entity,
   JoinColumn,
   ManyToOne,
@@ -11,7 +8,6 @@ import {
   PrimaryGeneratedColumn,
   Unique,
 } from 'typeorm';
-import { Status } from '../enums/status';
 import { ComptePrincipal } from '../../compte_principal/entities/compte_principal.entity';
 import { CompteGroupe } from '../../compte_groupe/entities/compte_groupe.entity';
 import { Product } from '../../product/entities/product.entity';

@@ -69,6 +69,7 @@ export class MailService {
             name,
             quote_id,
             role,
+            isProd: this.configService.get('stage') === 'prod',
           },
           from: 'info@sonarartists.fr',
           to,
