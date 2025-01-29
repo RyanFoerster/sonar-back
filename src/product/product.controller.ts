@@ -9,12 +9,16 @@ import {
   Post,
   Put,
   Query,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { Product } from './entities/product.entity';
+import { CustomCacheInterceptor } from '../interceptors/cache.interceptor';
 
 @Controller('product')
+@UseInterceptors(CustomCacheInterceptor)
 export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
@@ -45,12 +49,16 @@ export class ProductController {
     @Body() updateProductDto: UpdateProductDto,
     @Query('tvaIncluded') tvaIncluded: boolean,
   ) {
-    Logger.debug(`updateProduct id: ${id}`);
     return this.productService.updateProduct(
       +id,
       updateProductDto,
       tvaIncluded,
     );
+  }
+
+  @Put('save/:id')
+  save(@Param('id') id: string, @Body() product: Product) {
+    return this.productService.saveProduct(product);
   }
 
   @Delete(':id')

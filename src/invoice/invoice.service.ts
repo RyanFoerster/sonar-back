@@ -357,6 +357,32 @@ export class InvoiceService {
         account.next_invoice_number += 1;
         await manager.save(account);
       }
+
+      // Calculer les totaux en fonction des produits
+      const totalHT = creditNote.products.reduce(
+        (sum: number, product: any) => sum + product.price_htva,
+        0,
+      );
+      const totalVAT6 = creditNote.products
+        .filter((product: any) => product.vat === 0.06)
+        .reduce((sum: number, product: any) => sum + product.tva_amount, 0);
+      const totalVAT21 = creditNote.products
+        .filter((product: any) => product.vat === 0.21)
+        .reduce((sum: number, product: any) => sum + product.tva_amount, 0);
+      const totalTTC = creditNote.products.reduce(
+        (sum: number, product: any) => sum + product.total,
+        0,
+      );
+
+      // Calculer le montant de la note de crédit en prenant en compte que les montants négatifs
+      const totalNegative = creditNote.products.reduce(
+        (sum: number, product: any) =>
+          sum + (product.total < 0 ? product.total : 0),
+        0,
+      );
+
+      creditNote.creditNoteAmount = totalNegative;
+
       const creditNoteSaved = await manager.save(creditNote);
       invoice.linkedInvoiceId = creditNoteSaved.id;
       await manager.save(invoice);

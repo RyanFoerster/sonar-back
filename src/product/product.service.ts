@@ -48,20 +48,36 @@ export class ProductService {
       `Updating product ${id} with ${JSON.stringify(updateProductDto, null, 2)}`,
     );
 
-    let product = this.productRepository.create(updateProductDto);
+    // Récupérer le produit existant
+    const existingProduct = await this.productRepository.findOne({
+      where: { id },
+    });
 
-    // Calcul du prix HTVA et du montant de TVA
-    product.price_htva = product.price * product.quantity;
-    product.tva_amount = product.price_htva * updateProductDto.vat; // Utilisation de la TVA du DTO
-    product.total = product.price_htva + product.tva_amount;
-    product.vat = updateProductDto.vat; // Conservation de la TVA du DTO
+    // Créer une copie de l'objet pour ne pas modifier directement l'entité
+    const updatedProduct = { ...existingProduct };
 
-    product.id = id;
+    // Mettre à jour uniquement les champs modifiés
+    Object.assign(updatedProduct, updateProductDto);
 
     Logger.debug(
-      `Product after calculations ${id} with ${JSON.stringify(product, null, 2)}`,
+      `Product before calculations ${id} with ${JSON.stringify(updatedProduct, null, 2)}`,
     );
 
+    // Garder les valeurs originales
+    updatedProduct.price_htva = existingProduct.price_htva;
+    updatedProduct.tva_amount = existingProduct.tva_amount;
+    updatedProduct.total = existingProduct.total;
+    updatedProduct.vat = updateProductDto.vat;
+
+    Logger.debug(
+      `Product after calculations ${id} with ${JSON.stringify(updatedProduct, null, 2)}`,
+    );
+
+    // Retourner l'objet mis à jour sans le sauvegarder
+    return updatedProduct;
+  }
+
+  async saveProduct(product: Product) {
     return this.productRepository.save(product);
   }
 

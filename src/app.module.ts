@@ -1,5 +1,6 @@
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
+import { CacheModule } from '@nestjs/cache-manager';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { MulterModule } from '@nestjs/platform-express';
@@ -28,6 +29,7 @@ import { UserSecondaryAccountModule } from './user-secondary-account/user-second
 import { UsersModule } from './users/users.module';
 import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
 import { NotificationModule } from './notification/notification.module';
+import { cacheConfig } from './config/cache.config';
 
 @Module({
   imports: [
@@ -98,6 +100,7 @@ import { NotificationModule } from './notification/notification.module';
     HttpModule,
     S3Module,
     NotificationModule,
+    CacheModule.register(cacheConfig),
   ],
   controllers: [AppController],
   providers: [AppService, BceService],
