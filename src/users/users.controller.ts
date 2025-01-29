@@ -23,7 +23,6 @@ import { extname, join } from 'path';
 import { Response } from 'express';
 import { User } from './entities/user.entity';
 import * as process from 'node:process';
-import { CustomCacheInterceptor } from '../interceptors/cache.interceptor';
 
 @Controller('users')
 export class UsersController {
@@ -40,19 +39,16 @@ export class UsersController {
   }
 
   @Get('all')
-  @UseInterceptors(CustomCacheInterceptor)
   async findAll() {
     return this.usersService.findAll();
   }
 
   @Get('groups')
-  @UseInterceptors(CustomCacheInterceptor)
   async findAllUsersGroup(@Request() req, @Query() params: string) {
     return await this.usersService.findAllUsersGroup(params);
   }
 
   @Get('pending')
-  @UseInterceptors(CustomCacheInterceptor)
   async findAllPendingUser(@Request() req) {
     const user = await this.findConnectedUser(req);
     if (user.role !== 'ADMIN') {

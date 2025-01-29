@@ -5,9 +5,6 @@ import express from 'express';
 import { INestApplication, Logger } from '@nestjs/common';
 
 import { AppModule } from './app.module';
-import rateLimit from 'express-rate-limit';
-import compression from 'compression';
-import helmet from 'helmet';
 
 const server = express();
 
@@ -20,32 +17,8 @@ export const createNestServer = async (expressInstance: express.Express) => {
       abortOnError: false,
     },
   );
-
-  // Configuration de la sécurité et de l'optimisation
-  app.use(helmet());
-  app.use(compression());
-
-  // Configurer Express pour faire confiance au proxy
-  const expressApp = app.getHttpAdapter().getInstance();
-  expressApp.set('trust proxy', 1);
-
-  // Rate limiting avec configuration pour proxy
-  app.use(
-    rateLimit({
-      windowMs: 15 * 60 * 1000, // 15 minutes
-      max: 100, // limite chaque IP à 100 requêtes par fenêtre
-      message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard',
-      standardHeaders: true,
-      legacyHeaders: false,
-      keyGenerator: (req) => {
-        // Utiliser l'IP du client derrière le proxy
-        return req.ip || req.connection.remoteAddress;
-      },
-    }),
-  );
-
-  app.use(express.json({ limit: '10mb' }));
-  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
 
   app.enableCors({
     origin: ['https://sonarartists.fr', 'http://localhost:4200'],
