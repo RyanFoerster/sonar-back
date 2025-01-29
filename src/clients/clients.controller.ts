@@ -7,11 +7,13 @@ import {
   Patch,
   Post,
   Request,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { User } from '../users/entities/user.entity';
+import { CustomCacheInterceptor } from '../interceptors/cache.interceptor';
 
 @Controller('clients')
 export class ClientsController {
@@ -24,11 +26,13 @@ export class ClientsController {
   }
 
   @Get()
+  @UseInterceptors(CustomCacheInterceptor)
   findAll() {
     return this.clientsService.findAll();
   }
 
   @Get(':id')
+  @UseInterceptors(CustomCacheInterceptor)
   findOne(@Param('id') id: string) {
     return this.clientsService.findOne(+id);
   }

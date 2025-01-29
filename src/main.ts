@@ -5,6 +5,9 @@ import express from 'express';
 import { INestApplication, Logger } from '@nestjs/common';
 
 import { AppModule } from './app.module';
+import rateLimit from 'express-rate-limit';
+import compression from 'compression';
+import helmet from 'helmet';
 
 const server = express();
 
@@ -17,8 +20,22 @@ export const createNestServer = async (expressInstance: express.Express) => {
       abortOnError: false,
     },
   );
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
+
+  // Configuration de la sécurité et de l'optimisation
+  app.use(helmet());
+  app.use(compression());
+
+  // Rate limiting - limite à 100 requêtes par IP sur 15 minutes
+  app.use(
+    rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 100, // limite chaque IP à 100 requêtes par fenêtre
+      message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard',
+    }),
+  );
+
+  app.use(express.json({ limit: '10mb' }));
+  app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
   app.enableCors({
     origin: ['https://sonarartists.fr', 'http://localhost:4200'],

@@ -76,7 +76,7 @@ export class MailService {
           subject: "Demande d'acceptation de devis",
           language: null,
         }),
-      }).then((data) => console.log(data));
+      }).then();
     } catch (error) {
       console.error('Error:', error);
     }
@@ -115,7 +115,7 @@ export class MailService {
           Authorization: `Bearer ${API_KEY}`,
         },
         body: JSON.stringify(requestBody),
-      }).then((data) => console.log(data));
+      }).then();
     } catch (error) {
       console.error('Error:', error);
     }
