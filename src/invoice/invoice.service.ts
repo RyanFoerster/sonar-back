@@ -296,11 +296,16 @@ export class InvoiceService {
 
   async createCreditNote(
     createCreditNoteDto: CreateCreditNoteDto,
+    params: { account_id: number; type: 'PRINCIPAL' | 'GROUP' },
   ): Promise<Invoice> {
     return await this.dataSource.transaction(async (manager) => {
       const invoice = await manager.findOneBy(Invoice, {
         id: createCreditNoteDto.linkedInvoiceId,
       });
+
+      if (invoice.linkedInvoiceId) {
+        throw new Error('Invoice already has a linked credit note');
+      }
 
       const products = [];
       for (const productId of createCreditNoteDto.products_ids) {
@@ -308,6 +313,20 @@ export class InvoiceService {
         if (product.quote === null) {
           products.push(product); // Si le produit n'est pas lié à un devis, on l'ajoute à la note de crédit car il n'a pas été facturé
         }
+      }
+
+      // Récupérer le compte principal par défaut
+      let account: ComptePrincipal | CompteGroupe;
+      if (params.type === 'PRINCIPAL') {
+        account = await this.comptePrincipalService.findOne(params.account_id);
+      } else {
+        account = await this.compteGroupeService.findOne(params.account_id);
+      }
+      if (!account && params.type === 'PRINCIPAL') {
+        throw new Error('Aucun compte principal trouvé');
+      }
+      if (!account && params.type === 'GROUP') {
+        throw new Error('Aucun compte groupe trouvé');
       }
 
       if (!invoice) {
@@ -323,9 +342,25 @@ export class InvoiceService {
       const creditNote = manager.create(Invoice, {
         ...invoiceWithoutId,
         ...createCreditNoteDto,
+        products: products,
         type: 'credit_note',
+        invoice_number: null, // On réinitialise le numéro de facture
       });
-      return manager.save(creditNote);
+      if (params.type === 'PRINCIPAL') {
+        creditNote.main_account = account as ComptePrincipal;
+        creditNote.invoice_number = account.next_invoice_number;
+        account.next_invoice_number += 1;
+        await manager.save(account);
+      } else {
+        creditNote.group_account = account as CompteGroupe;
+        creditNote.invoice_number = account.next_invoice_number;
+        account.next_invoice_number += 1;
+        await manager.save(account);
+      }
+      const creditNoteSaved = await manager.save(creditNote);
+      invoice.linkedInvoiceId = creditNoteSaved.id;
+      await manager.save(invoice);
+      return creditNoteSaved;
       // return null;
     });
     // Récupère la facture liée
@@ -410,10 +445,13 @@ export class InvoiceService {
     });
   }
 
-  findCreditNoteByInvoiceId(invoice_id: number) {
-    return this._invoiceRepository.findOneBy({
-      linkedInvoiceId: invoice_id,
-      type: 'credit_note',
+  findCreditNoteByInvoiceId(creditNoteId: number) {
+    return this._invoiceRepository.findOne({
+      where: {
+        id: creditNoteId,
+        type: 'credit_note',
+      },
+      relations: ['products'],
     });
   }
 
