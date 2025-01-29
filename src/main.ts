@@ -25,12 +25,22 @@ export const createNestServer = async (expressInstance: express.Express) => {
   app.use(helmet());
   app.use(compression());
 
-  // Rate limiting - limite à 100 requêtes par IP sur 15 minutes
+  // Configurer Express pour faire confiance au proxy
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.set('trust proxy', 1);
+
+  // Rate limiting avec configuration pour proxy
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutes
       max: 100, // limite chaque IP à 100 requêtes par fenêtre
       message: 'Trop de requêtes depuis cette IP, veuillez réessayer plus tard',
+      standardHeaders: true,
+      legacyHeaders: false,
+      keyGenerator: (req) => {
+        // Utiliser l'IP du client derrière le proxy
+        return req.ip || req.connection.remoteAddress;
+      },
     }),
   );
 
