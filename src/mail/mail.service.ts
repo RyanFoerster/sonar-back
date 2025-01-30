@@ -55,6 +55,8 @@ export class MailService {
         ? this.configService.get('mailhub.api_key_prod')
         : this.configService.get('mailhub.api_key_dev');
 
+    const config = this.configService.get('stage') === 'prod' ? 'PROD' : 'DEV';
+
     try {
       fetch(`https://api.mailhub.sh/v1/send`, {
         method: 'POST',
@@ -69,7 +71,7 @@ export class MailService {
             name,
             quote_id,
             role,
-            isProd: this.configService.get('stage') === 'prod',
+            config,
           },
           from: 'info@sonarartists.fr',
           to,

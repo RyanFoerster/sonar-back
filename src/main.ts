@@ -1,8 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 
+import { INestApplication } from '@nestjs/common';
 import express from 'express';
-import { INestApplication, Logger } from '@nestjs/common';
 
 import { AppModule } from './app.module';
 

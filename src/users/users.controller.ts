@@ -6,23 +6,18 @@ import {
   Logger,
   Param,
   Patch,
-  Post,
   Query,
   Req,
   Request,
   Res,
   UnauthorizedException,
-  UploadedFile,
-  UseInterceptors,
 } from '@nestjs/common';
-import { UsersService } from './users.service';
-import { UpdateUserDto } from './dtos/update-user.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
 import { Response } from 'express';
-import { User } from './entities/user.entity';
 import * as process from 'node:process';
+import { join } from 'path';
+import { UpdateUserDto } from './dtos/update-user.dto';
+import { User } from './entities/user.entity';
+import { UsersService } from './users.service';
 
 @Controller('users')
 export class UsersController {
