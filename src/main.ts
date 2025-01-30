@@ -29,6 +29,7 @@ export const createNestServer = async (expressInstance: express.Express) => {
   });
 
   Logger.log(`Stage: ${configService.get('stage')}`);
+  Logger.log(`isProd: ${configService.get('isProd')}`);
 
   await app.init();
   return app;
