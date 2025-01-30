@@ -1,0 +1,49 @@
+services:
+  sonar-back-dev:
+    image: dimagin/sonar-back:dev
+    container_name: sonar-back-dev
+    user: '${UID}:${GID}'
+    restart: unless-stopped
+    ports:
+      - ${SONAR_PORT}:3000
+    env_file:
+      - .env
+    depends_on:
+      sonar-db-dev:
+        condition: service_healthy
+    networks:
+      - sonar-network-dev
+
+  sonar-db-dev:
+    image: postgres:15.5
+    container_name: sonar-db-dev
+    restart: unless-stopped
+    ports:
+      - ${POSTGRES_PORT}:5432
+    volumes:
+      - sonar-db-data-dev:/var/lib/postgresql/data:rw
+    networks:
+      - sonar-network-dev
+    env_file:
+      - .env
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'pg_isready',
+          '--host=localhost',
+          '--username=${POSTGRES_USER}',
+          '--dbname=${POSTGRES_DB}',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_interval: 5s
+      start_period: 30s
+
+networks:
+  sonar-network-dev:
+    driver: bridge
+
+volumes:
+  sonar-db-data-dev:
