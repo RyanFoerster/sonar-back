@@ -135,10 +135,9 @@ export class MailService {
     pdfContent: string,
     virementId: number,
   ) {
-    const API_KEY =
-      this.configService.get('stage') === 'prod'
-        ? this.configService.get('mailhub.api_key_prod')
-        : this.configService.get('mailhub.api_key_dev');
+    const API_KEY = this.configService.get('isProd')
+      ? this.configService.get('mailhub.api_key_prod')
+      : this.configService.get('mailhub.api_key_dev');
 
     try {
       const attachments = [
