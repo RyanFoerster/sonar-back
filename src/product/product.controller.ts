@@ -3,17 +3,15 @@ import {
   Controller,
   Delete,
   Get,
-  Logger,
   Param,
-  Patch,
   Post,
   Put,
   Query,
 } from '@nestjs/common';
-import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { Product } from './entities/product.entity';
+import { ProductService } from './product.service';
 
 @Controller('product')
 export class ProductController {
