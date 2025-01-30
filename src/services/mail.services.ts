@@ -60,10 +60,16 @@ export class MailService {
     role: 'GROUP' | 'CLIENT',
     name?: string,
   ) {
-    const API_KEY =
-      this.configService.get('stage') === 'prod'
-        ? this.configService.get('mailhub.api_key_prod')
-        : this.configService.get('mailhub.api_key_dev');
+    const API_KEY = this.configService.get('isProd')
+      ? this.configService.get('mailhub.api_key_prod')
+      : this.configService.get('mailhub.api_key_dev');
+
+    Logger.debug('API_KEY', API_KEY);
+    Logger.debug('isProd', this.configService.get('isProd'));
+
+    const config = this.configService.get('isProd') ? 'PROD' : 'DEV';
+
+    Logger.debug('config', config);
 
     try {
       fetch(`https://api.mailhub.sh/v1/send`, {
@@ -79,6 +85,7 @@ export class MailService {
             name,
             quote_id,
             role,
+            config,
           },
           from: 'info@sonarartists.fr',
           to,

@@ -1,12 +1,14 @@
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, Logger } from '@nestjs/common';
 import express from 'express';
 
 import { AppModule } from './app.module';
+import { ConfigService } from '@nestjs/config';
 
 const server = express();
+const configService = new ConfigService();
 
 export const createNestServer = async (expressInstance: express.Express) => {
   const app: INestApplication = await NestFactory.create(
@@ -25,6 +27,8 @@ export const createNestServer = async (expressInstance: express.Express) => {
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
   });
+
+  Logger.log(`Stage: ${configService.get('stage')}`);
 
   await app.init();
   return app;
