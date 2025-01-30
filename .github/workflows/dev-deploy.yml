@@ -31,4 +31,3 @@ jobs:
             UID=$(id -u) GID=$(id -g) docker compose down
             UID=$(id -u) GID=$(id -g) docker compose pull
             UID=$(id -u) GID=$(id -g) docker compose up -d --force-recreate
-
