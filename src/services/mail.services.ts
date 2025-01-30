@@ -14,15 +14,6 @@ export class MailService {
     firstName: string,
     name: string,
   ) {
-    /*const resetLink = `http://yourapp.com/reset-password?token=${token}`;
-    const mailOptions = {
-      from: 'Auth-backend service',
-      to,
-      subject: 'Password reset request',
-      html: `<p>You requested a password reset. Click the link below to reset your password:</p><p><a href="${resetLink}">Reset Password</a></p>`
-    }
-
-    await this.transporter.sendMail(mailOptions);*/
     const API_KEY =
       this.configService.get('stage') === 'prod'
         ? this.configService.get('mailhub.api_key_prod')
@@ -64,12 +55,7 @@ export class MailService {
       ? this.configService.get('mailhub.api_key_prod')
       : this.configService.get('mailhub.api_key_dev');
 
-    Logger.debug('API_KEY', API_KEY);
-    Logger.debug('isProd', this.configService.get('isProd'));
-
     const config = this.configService.get('isProd') ? 'PROD' : 'DEV';
-
-    Logger.debug('config', config);
 
     try {
       fetch(`https://api.mailhub.sh/v1/send`, {
@@ -144,33 +130,34 @@ export class MailService {
   async sendVirementSepaEmail(
     to: string,
     accountOwner: string,
-    projectName: string,
-    amount: number,
     pdfContent: string,
     virementId: number,
+    cc: string | null = null,
   ) {
     const API_KEY = this.configService.get('isProd')
       ? this.configService.get('mailhub.api_key_prod')
       : this.configService.get('mailhub.api_key_dev');
 
     try {
+      const attachments = [
+        {
+          filename: `virement_sepa_${virementId}.pdf`,
+          content: pdfContent,
+          contentType: 'application/pdf',
+        },
+      ];
+
       const requestBody = {
-        layout_identifier: 'tp-531d0f0745894797', // Vous devrez créer un nouveau template pour les virements SEPA
+        layout_identifier: 'tp-531d0f0745894797',
         variables: {
           transfer_id: virementId,
         },
         from: 'info@sonarartists.fr',
         to: to,
+        cc: cc,
         subject: `Virement SEPA pour ${accountOwner}`,
         language: null,
-
-        attachments: [
-          {
-            filename: `facture_virement_${virementId}.pdf`,
-            content: pdfContent,
-            contentType: 'application/pdf',
-          },
-        ],
+        attachments,
       };
 
       fetch(`https://api.mailhub.sh/v1/send`, {

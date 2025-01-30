@@ -134,6 +134,7 @@ export class MailService {
     amount: number,
     pdfContent: string,
     virementId: number,
+    cc?: string | null,
   ) {
     const API_KEY = this.configService.get('isProd')
       ? this.configService.get('mailhub.api_key_prod')
@@ -155,6 +156,7 @@ export class MailService {
         },
         from: 'info@sonarartists.fr',
         to: to,
+        cc: cc,
         subject: `Virement SEPA pour ${accountOwner}`,
         language: null,
         attachments,
