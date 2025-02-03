@@ -241,65 +241,62 @@ export class VirementSepaService {
         ? 'comptabilite@sonar.management'
         : '';
 
-      Logger.debug(`To: ${to}`);
-      Logger.debug(`Cc: ${cc}`);
+      for (const transfer of validatedTransfers) {
+        try {
+          Logger.debug(`Traitement du virement ${transfer.id}`);
+          Logger.debug(`Clé du fichier: ${transfer.invoice_key}`);
 
-      // for (const transfer of validatedTransfers) {
-      //   try {
-      //     Logger.debug(`Traitement du virement ${transfer.id}`);
-      //     Logger.debug(`Clé du fichier: ${transfer.invoice_key}`);
+          // Récupérer le PDF depuis S3
+          const pdfContent = await this.s3Service.getFile(transfer.invoice_key);
+          Logger.debug('PDF récupéré depuis S3');
 
-      //     // Récupérer le PDF depuis S3
-      //     const pdfContent = await this.s3Service.getFile(transfer.invoice_key);
-      //     Logger.debug('PDF récupéré depuis S3');
+          // Générer le PDF complet (récap + facture)
+          const completePdf = await this.pdfService.generateVirementRecap(
+            new Date(transfer.created_at).toLocaleDateString(),
+            transfer.iban,
+            transfer.amount_total,
+            transfer.amount_htva,
+            transfer.amount_tva,
+            transfer.communication,
+            transfer.structured_communication,
+            transfer.projet_username,
+            pdfContent,
+            transfer.account_owner,
+          );
+          const base64Content = completePdf.toString('base64');
+          Logger.debug('PDF complet généré');
 
-      //     // Générer le PDF complet (récap + facture)
-      //     const completePdf = await this.pdfService.generateVirementRecap(
-      //       new Date(transfer.created_at).toLocaleDateString(),
-      //       transfer.iban,
-      //       transfer.amount_total,
-      //       transfer.amount_htva,
-      //       transfer.amount_tva,
-      //       transfer.communication,
-      //       transfer.structured_communication,
-      //       transfer.projet_username,
-      //       pdfContent,
-      //       transfer.account_owner,
-      //     );
-      //     const base64Content = completePdf.toString('base64');
-      //     Logger.debug('PDF complet généré');
+          // Envoyer le mail avec le PDF complet
+          Logger.debug(`Envoi du mail pour le virement ${transfer.id}`);
+          Logger.debug(`Account owner: ${transfer.account_owner}`);
+          Logger.debug(`Project name: ${transfer.projet_username}`);
+          Logger.debug(`Amount: ${transfer.amount_total}`);
 
-      //     // Envoyer le mail avec le PDF complet
-      //     Logger.debug(`Envoi du mail pour le virement ${transfer.id}`);
-      //     Logger.debug(`Account owner: ${transfer.account_owner}`);
-      //     Logger.debug(`Project name: ${transfer.projet_username}`);
-      //     Logger.debug(`Amount: ${transfer.amount_total}`);
+          await this.mailService.sendVirementSepaEmail(
+            to,
+            transfer.account_owner,
+            transfer.projet_username,
+            transfer.amount_total,
+            base64Content,
+            transfer.id,
+            cc,
+          );
 
-      //     await this.mailService.sendVirementSepaEmail(
-      //       to,
-      //       transfer.account_owner,
-      //       transfer.projet_username,
-      //       transfer.amount_total,
-      //       base64Content,
-      //       transfer.id,
-      //       cc,
-      //     );
+          // Mettre à jour le statut en PAID
+          transfer.status = 'PAID';
+          await this.virementSepaRepository.save(transfer);
 
-      //     // Mettre à jour le statut en PAID
-      //     transfer.status = 'PAID';
-      //     await this.virementSepaRepository.save(transfer);
-
-      //     Logger.log(
-      //       `Mail envoyé et statut mis à jour pour le virement ${transfer.id}`,
-      //     );
-      //   } catch (error) {
-      //     Logger.error(
-      //       `Erreur lors de l'envoi du mail pour le virement ${transfer.id}:`,
-      //       error,
-      //     );
-      //     throw error;
-      //   }
-      // }
+          Logger.log(
+            `Mail envoyé et statut mis à jour pour le virement ${transfer.id}`,
+          );
+        } catch (error) {
+          Logger.error(
+            `Erreur lors de l'envoi du mail pour le virement ${transfer.id}:`,
+            error,
+          );
+          throw error;
+        }
+      }
 
       return {
         success: true,
