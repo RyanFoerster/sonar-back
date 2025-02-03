@@ -200,7 +200,7 @@ export class PdfService {
   }
 
   private addLine(
-    doc: PDFDocument,
+    doc: PDFKit.PDFDocument,
     label: string,
     value: string,
     col1: number,
@@ -215,15 +215,16 @@ export class PdfService {
 
     // Value
     if (isBold) {
-      doc.fillColor('#000000').text(value, col2, y, { bold: true });
+      doc.fillColor('#000000').font('Helvetica-Bold').text(value, col2, y);
+      doc.font('Helvetica'); // Retour à la police normale
     } else {
-      doc.fillColor('#000000').text(value, col2, y);
+      doc.fillColor('#000000').font('Helvetica').text(value, col2, y);
     }
 
     return y + lineHeight;
   }
 
-  private addSeparator(doc: PDFDocument, y: number): number {
+  private addSeparator(doc: PDFKit.PDFDocument, y: number): number {
     doc
       .moveTo(50, y + 10)
       .lineTo(545, y + 10)
