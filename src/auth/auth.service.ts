@@ -40,17 +40,7 @@ export class AuthService {
   async signup(signupDto: SignupDto, id?: number) {
     console.log('Je passe ici');
 
-    const {
-      email,
-      username,
-      password,
-      confirmPassword,
-      name,
-      firstName,
-      numeroNational,
-      telephone,
-      iban,
-    } = signupDto;
+    const { email, username, password, confirmPassword } = signupDto;
     let admin = undefined;
     // Check if email already exists
     const emailInUse = await this.usersService.findOneByEmail(email);

@@ -36,13 +36,17 @@ export class UsersService {
   }
 
   async findOne(id: number) {
-    const user = await this.usersRepository.findOneBy({ id });
+    const user = await this.usersRepository
+      .createQueryBuilder('user')
+      .where('user.id = :id', { id })
+      .leftJoinAndSelect('user.comptePrincipal', 'comptePrincipal')
+      .leftJoinAndSelect('user.userSecondaryAccounts', 'userSecondaryAccounts')
+      .leftJoinAndSelect('userSecondaryAccounts.group_account', 'group_account')
+      .getOne();
 
     if (!user) return null;
 
-    return await this.usersRepository.findOne({
-      where: { email: user.email },
-    });
+    return user;
   }
 
   async findAll() {
