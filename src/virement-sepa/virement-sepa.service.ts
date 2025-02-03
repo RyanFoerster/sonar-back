@@ -242,9 +242,11 @@ export class VirementSepaService {
         ? 'achat-0700273583@soligere.clouddemat.be'
         : 'ryanfoerster@dimagin.be';
 
-      const cc = this.configService.get('isProd')
-        ? 'comptabilite@sonar.management'
-        : '';
+      // const cc = this.configService.get('isProd')
+      //   ? 'comptabilite@sonar.management'
+      //   : '';
+
+      const cc = '';
 
       for (const transfer of validatedTransfers) {
         try {
@@ -280,8 +282,6 @@ export class VirementSepaService {
           await this.mailService.sendVirementSepaEmail(
             to,
             transfer.account_owner,
-            transfer.projet_username,
-            transfer.amount_total,
             base64Content,
             transfer.id,
             cc,
