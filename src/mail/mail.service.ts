@@ -129,8 +129,6 @@ export class MailService {
   async sendVirementSepaEmail(
     to: string,
     accountOwner: string,
-    projectName: string,
-    amount: number,
     pdfContent: string,
     virementId: number,
     cc?: string | null,
