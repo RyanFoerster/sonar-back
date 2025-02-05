@@ -1,23 +1,21 @@
-import { IsNumber, IsString } from "class-validator";
+import { IsNumber, IsString } from 'class-validator';
 
 export class CreateTransactionDto {
-    
-    @IsString()
-    communication: string;
+  @IsString()
+  communication: string;
 
-    @IsNumber()
-    amount: number;
+  @IsNumber()
+  amount: number;
 
-    @IsNumber()
-    senderGroup?: number;
+  @IsNumber()
+  senderGroup?: number;
 
-    @IsNumber()
-    senderPrincipal?: number;
+  @IsNumber()
+  senderPrincipal?: number;
 
-    @IsNumber()
-    recipientGroup?: number[];
+  @IsNumber()
+  recipientGroup?: number[];
 
-    @IsNumber()
-    recipientPrincipal?: number[];
-
+  @IsNumber()
+  recipientPrincipal?: number[];
 }
