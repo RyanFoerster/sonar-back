@@ -76,9 +76,6 @@ export class ClientsService {
   }
 
   async checkBCE(vat: number) {
-    console.log(vat);
-    const response = await this.bceService.checkBCE(vat);
-    console.log(response);
     return await this.bceService.checkBCE(vat);
   }
 }
