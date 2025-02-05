@@ -13,6 +13,7 @@ import { Invitation } from '../../invitation/entities/invitation.entity';
 import { Meet } from '../../meet/entities/meet.entity';
 import { UserSecondaryAccount } from '../../user-secondary-account/entities/user-secondary-account.entity';
 import { Comment } from '../../comment/entities/comment.entity';
+import { Beneficiary } from '@/beneficiaries/entities/beneficiary.entity';
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
@@ -86,4 +87,7 @@ export class User {
 
   @ManyToMany((type) => Meet, (meet) => meet.user)
   meet: Meet;
+
+  @OneToMany(() => Beneficiary, (beneficiary) => beneficiary.user)
+  beneficiary: Beneficiary;
 }
