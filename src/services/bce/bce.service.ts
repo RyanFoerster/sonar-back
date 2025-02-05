@@ -17,11 +17,34 @@ export class BceService {
     if (response.ok) {
       const data = await response.json();
       if (data.Enterprise.active) {
-        return await fetch(`${this.baseUrl}vat/${vat}`, {
-          headers: {
-            Authorization: `Bearer ${BCE_KEY}`,
+        const address = await fetch(
+          `${this.baseUrl}enterprise/${vat}/address`,
+          {
+            headers: {
+              Authorization: `Bearer ${BCE_KEY}`,
+            },
           },
-        }).then((response) => response.json());
+        ).then((response) => response.json());
+        const street = address.Address.street.fr;
+        const addressNumber = address.Address.addressNumber;
+        const postalCode = address.Address.zipcode;
+        const city = address.Address.city.fr;
+        const denomination = await fetch(
+          `${this.baseUrl}enterprise/${vat}/denominations`,
+          {
+            headers: {
+              Authorization: `Bearer ${BCE_KEY}`,
+            },
+          },
+        ).then((response) => response.json());
+        const entrepriseName = denomination[0].Denomination.value;
+        return {
+          street,
+          addressNumber,
+          postalCode,
+          city,
+          entrepriseName,
+        };
       }
     } else {
       console.log('error', response.headers);
