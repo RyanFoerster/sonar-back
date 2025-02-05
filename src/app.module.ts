@@ -28,6 +28,7 @@ import { UserSecondaryAccountModule } from './user-secondary-account/user-second
 import { UsersModule } from './users/users.module';
 import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
 import { NotificationModule } from './notification/notification.module';
+import { BeneficiariesModule } from './beneficiaries/beneficiaries.module';
 
 @Module({
   imports: [
@@ -98,6 +99,7 @@ import { NotificationModule } from './notification/notification.module';
     HttpModule,
     S3Module,
     NotificationModule,
+    BeneficiariesModule,
   ],
   controllers: [AppController],
   providers: [AppService, BceService],
