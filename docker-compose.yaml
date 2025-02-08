@@ -4,8 +4,6 @@ services:
     container_name: sonar-back
     user: '${UID}:${GID}'
     restart: unless-stopped
-    ports:
-      - ${SONAR_PORT}:3000
     env_file:
       - .env
     depends_on:
@@ -13,7 +11,22 @@ services:
         condition: service_healthy
     networks:
       - sonar-network
-
+      - traefik-network
+    labels:
+      - "traefik.enable=true"
+      # HTTP router (for redirect)
+      - "traefik.http.routers.sonar-back.entrypoints=web"
+      - "traefik.http.routers.sonar-back.rule=Host(`${SONAR_BACKEND_HOST}`)"
+      - "traefik.http.routers.sonar-back.middlewares=https-redirect"
+      # HTTPS router
+      - "traefik.http.routers.sonar-back-secure.entrypoints=websecure"
+      - "traefik.http.routers.sonar-back-secure.rule=Host(`${SONAR_BACKEND_HOST}`)"
+      - "traefik.http.routers.sonar-back-secure.tls=true"
+      - "traefik.http.routers.sonar-back-secure.tls.certresolver=letsencrypt"
+      # Service configuration
+      - "traefik.http.services.sonar-back.loadbalancer.server.port=3000"
+      # Use common middleware for HTTPS redirect
+      - "traefik.http.middlewares.https-redirect.redirectscheme.scheme=https"
   db:
     image: postgres:latest
     container_name: sonar-db
@@ -42,6 +55,8 @@ services:
       start_period: 30s
 
 networks:
+  traefik-network:
+    external: true
   sonar-network:
     driver: bridge
 
