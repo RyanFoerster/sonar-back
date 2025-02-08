@@ -17,7 +17,7 @@ import { JwtService } from '@nestjs/jwt';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { v4 as uuidv4 } from 'uuid';
 import { ResetToken } from './entities/reset-token.entity';
-import { MailService } from '../services/mail.services';
+import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
 import { EmailException } from '../users/exceptions/email.exception';
 import { UsernameException } from '../users/exceptions/username.exception';
@@ -40,17 +40,7 @@ export class AuthService {
   async signup(signupDto: SignupDto, id?: number) {
     console.log('Je passe ici');
 
-    const {
-      email,
-      username,
-      password,
-      confirmPassword,
-      name,
-      firstName,
-      numeroNational,
-      telephone,
-      iban,
-    } = signupDto;
+    const { email, username, password, confirmPassword } = signupDto;
     let admin = undefined;
     // Check if email already exists
     const emailInUse = await this.usersService.findOneByEmail(email);

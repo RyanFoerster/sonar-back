@@ -18,6 +18,12 @@ import { CreateVirementSepaDto } from './dto/create-virement-sepa.dto';
 import { VirementSepa } from './entities/virement-sepa.entity';
 import { MailService } from '../mail/mail.service';
 import { PdfService } from '../services/pdf.service';
+import { ConfigService } from '@nestjs/config';
+import * as libre from 'libreoffice-convert';
+import { promisify } from 'util';
+import sharp from 'sharp';
+
+const libreConvert = promisify(libre.convert);
 
 @Injectable()
 export class VirementSepaService {
@@ -30,6 +36,7 @@ export class VirementSepaService {
     private s3Service: S3Service,
     private mailService: MailService,
     private pdfService: PdfService,
+    private configService: ConfigService,
   ) {}
 
   async create(
@@ -231,6 +238,16 @@ export class VirementSepaService {
 
       Logger.debug(`Nombre de virements trouvés: ${validatedTransfers.length}`);
 
+      const to = this.configService.get('isProd')
+        ? 'achat-0700273583@soligere.clouddemat.be'
+        : 'ryanfoerster@dimagin.be';
+
+      // const cc = this.configService.get('isProd')
+      //   ? 'comptabilite@sonar.management'
+      //   : '';
+
+      const cc = '';
+
       for (const transfer of validatedTransfers) {
         try {
           Logger.debug(`Traitement du virement ${transfer.id}`);
@@ -263,12 +280,11 @@ export class VirementSepaService {
           Logger.debug(`Amount: ${transfer.amount_total}`);
 
           await this.mailService.sendVirementSepaEmail(
-            'kevin@sonarartists.be',
+            to,
             transfer.account_owner,
-            transfer.projet_username,
-            transfer.amount_total,
             base64Content,
             transfer.id,
+            cc,
           );
 
           // Mettre à jour le statut en PAID
@@ -297,6 +313,84 @@ export class VirementSepaService {
       throw new BadRequestException(
         `Erreur lors de l'initiation des virements SEPA: ${error.message}`,
       );
+    }
+  }
+
+  async convertToPdf(file: Express.Multer.File): Promise<Buffer> {
+    try {
+      const mimeType = file.mimetype;
+      let buffer = file.buffer;
+
+      // Si c'est une image
+      if (mimeType.startsWith('image/')) {
+        // Créer un PDF à partir de l'image
+        const image = sharp(buffer);
+        const metadata = await image.metadata();
+
+        // Redimensionner l'image si nécessaire tout en conservant les proportions
+        const resizedImage = await image
+          .resize(1240, undefined, {
+            fit: 'inside',
+            withoutEnlargement: true,
+          })
+          .toBuffer();
+
+        // Convertir en PDF en utilisant PDFKit
+        const PDFDocument = require('pdfkit');
+        const doc = new PDFDocument({
+          size: 'A4',
+          margin: 0,
+        });
+
+        // Collecter les chunks du PDF dans un buffer
+        return new Promise((resolve, reject) => {
+          const chunks: Buffer[] = [];
+          doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+          doc.on('end', () => resolve(Buffer.concat(chunks)));
+          doc.on('error', reject);
+
+          // Calculer les dimensions pour centrer l'image sur la page
+          const pdfWidth = 595.28; // Largeur A4 en points
+          const pdfHeight = 841.89; // Hauteur A4 en points
+          const imageAspectRatio = metadata.width / metadata.height;
+          let finalWidth = pdfWidth - 40; // Marge de 20 points de chaque côté
+          let finalHeight = finalWidth / imageAspectRatio;
+
+          // Ajuster si l'image est trop haute
+          if (finalHeight > pdfHeight - 40) {
+            finalHeight = pdfHeight - 40;
+            finalWidth = finalHeight * imageAspectRatio;
+          }
+
+          // Centrer l'image sur la page
+          const x = (pdfWidth - finalWidth) / 2;
+          const y = (pdfHeight - finalHeight) / 2;
+
+          // Ajouter l'image au PDF
+          doc.image(resizedImage, x, y, {
+            width: finalWidth,
+            height: finalHeight,
+          });
+
+          doc.end();
+        });
+      }
+      // Si c'est un document Office
+      else if (
+        mimeType.includes('officedocument') ||
+        mimeType.includes('opendocument')
+      ) {
+        buffer = await libreConvert(buffer, '.pdf', undefined);
+      }
+      // Si le format n'est pas supporté
+      else {
+        throw new BadRequestException('Format de fichier non supporté');
+      }
+
+      return buffer;
+    } catch (error) {
+      Logger.error('Erreur lors de la conversion en PDF:', error);
+      throw new BadRequestException('Erreur lors de la conversion en PDF');
     }
   }
 }

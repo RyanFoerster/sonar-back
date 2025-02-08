@@ -11,6 +11,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsersModule } from '../users/users.module';
 import { ComptePrincipalModule } from '../compte_principal/compte_principal.module';
 import { HttpModule } from '@nestjs/axios';
+import { MailModule } from '@/mail/mail.module';
 
 @Module({
   controllers: [AuthController],
@@ -29,6 +30,7 @@ import { HttpModule } from '@nestjs/axios';
     UsersModule,
     ComptePrincipalModule,
     HttpModule,
+    MailModule,
   ], // Assurez-vous que cela est correct
 })
 export class AuthModule {}

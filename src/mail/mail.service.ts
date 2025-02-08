@@ -13,10 +13,9 @@ export class MailService {
     firstName: string,
     name: string,
   ) {
-    const API_KEY =
-      this.configService.get('stage') === 'prod'
-        ? this.configService.get('mailhub.api_key_prod')
-        : this.configService.get('mailhub.api_key_dev');
+    const API_KEY = this.configService.get('isProd')
+      ? this.configService.get('mailhub.api_key_prod')
+      : this.configService.get('mailhub.api_key_dev');
     try {
       Logger.debug('API_KEY', API_KEY);
       fetch(`https://api.mailhub.sh/v1/send`, {
@@ -130,10 +129,9 @@ export class MailService {
   async sendVirementSepaEmail(
     to: string,
     accountOwner: string,
-    projectName: string,
-    amount: number,
     pdfContent: string,
     virementId: number,
+    cc?: string | null,
   ) {
     const API_KEY = this.configService.get('isProd')
       ? this.configService.get('mailhub.api_key_prod')
@@ -155,6 +153,7 @@ export class MailService {
         },
         from: 'info@sonarartists.fr',
         to: to,
+        cc: cc,
         subject: `Virement SEPA pour ${accountOwner}`,
         language: null,
         attachments,

@@ -126,4 +126,26 @@ export class VirementSepaController {
       throw error;
     }
   }
+
+  @Post('convert-pdf')
+  @UseInterceptors(FileInterceptor('file'))
+  async convertToPdf(
+    @UploadedFile() file: Express.Multer.File,
+    @Res() res: Response,
+  ) {
+    try {
+      const pdfBuffer = await this.virementSepaService.convertToPdf(file);
+
+      // Définir explicitement les headers pour le PDF
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="${file.originalname.split('.')[0]}.pdf"`,
+        'Content-Length': pdfBuffer.length,
+      });
+
+      return res.send(pdfBuffer);
+    } catch (error) {
+      throw new BadRequestException('Erreur lors de la conversion en PDF');
+    }
+  }
 }
