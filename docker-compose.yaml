@@ -55,6 +55,8 @@ services:
 networks:
   traefik-network:
     external: true
+  sonar-network:
+    driver: bridge
 
 volumes:
   sonar-db-data:
