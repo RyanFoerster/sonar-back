@@ -54,10 +54,12 @@ export class MailService {
     attachment?: Buffer,
   ) {
     const API_KEY =
-      this.configService.get('stage') === 'prod'
+      this.configService.get('isProd') === true
         ? this.configService.get('mailhub.api_key_prod')
         : this.configService.get('mailhub.api_key_dev');
     const config = this.configService.get('isProd') ? 'PROD' : 'DEV';
+
+    Logger.debug('stage', this.configService.get('stage'));
 
     try {
       // Convertir le buffer en base64
@@ -118,7 +120,7 @@ export class MailService {
 
   async sendInvoiceEmail(quote: Quote, user: User, pdfContent: any) {
     const API_KEY =
-      this.configService.get('stage') === 'prod'
+      this.configService.get('isProd') === true
         ? this.configService.get('mailhub.api_key_prod')
         : this.configService.get('mailhub.api_key_dev');
 
