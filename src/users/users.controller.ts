@@ -38,6 +38,11 @@ export class UsersController {
     return this.usersService.findAll();
   }
 
+  @Get('all-without-relations')
+  async findAllWithoutRelations() {
+    return this.usersService.findAllWithoutRelations();
+  }
+
   @Get('groups')
   async findAllUsersGroup(@Request() req, @Query() params: string) {
     return await this.usersService.findAllUsersGroup(params);

@@ -19,6 +19,7 @@ import { UsersService } from '../users/users.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ComptePrincipal } from '../compte_principal/entities/compte_principal.entity';
 import { CompteGroupe } from '../compte_groupe/entities/compte_groupe.entity';
+import { S3Service } from '@/services/s3/s3.service';
 
 @Injectable()
 export class QuoteService {
@@ -31,6 +32,7 @@ export class QuoteService {
     private comptePrincipalService: ComptePrincipalService,
     private compteGroupeService: CompteGroupeService,
     private readonly mailService: MailService,
+    private readonly s3Service: S3Service,
   ) {}
 
   private async updateAccountAndGetQuoteNumber(
@@ -86,7 +88,11 @@ export class QuoteService {
     return result;
   }
 
-  async create(createQuoteDto: CreateQuoteDto, user_id: number) {
+  async create(
+    createQuoteDto: CreateQuoteDto,
+    user_id: number,
+    file: Express.Multer.File,
+  ) {
     Logger.debug(
       `[QuotesService] Create a quote for user ${user_id} with ${JSON.stringify(createQuoteDto, null, 2)}`,
     );
@@ -142,8 +148,34 @@ export class QuoteService {
       quote.validation_deadline = createQuoteDto.validation_deadline;
     }
 
+    // Gestion de l'attachement
+    let attachment_mail = null;
+    let attachment_key = null;
+    if (file) {
+      try {
+        // Upload du fichier sur S3
+        attachment_key = await this.s3Service.uploadFile(
+          file,
+          `quote/${quote.quote_number}`,
+        );
+
+        // Stocker l'URL publique dans quote
+        quote.attachment_url = this.s3Service.getFileUrl(attachment_key);
+
+        // Utiliser directement le buffer du fichier uploadé pour l'email
+        attachment_mail = file.buffer;
+      } catch (error) {
+        Logger.error(`Erreur lors de la gestion du fichier: ${error.message}`);
+        // On continue même si l'upload échoue
+      }
+    }
+
     const userConnected = await this.usersService.findOne(user_id);
     quote = await this.quoteRepository.save(quote);
+
+    Logger.debug(
+      `[QuotesService] Quote information: ${quote.client.email}, ${quote.client.name}, ${quote.id}`,
+    );
 
     // Envoi des emails
     await Promise.all([
@@ -152,6 +184,8 @@ export class QuoteService {
         quote.client.name,
         quote.id,
         'CLIENT',
+        '',
+        attachment_mail,
       ),
       this.mailService.sendDevisAcceptationEmail(
         userConnected.email,
@@ -159,8 +193,11 @@ export class QuoteService {
         quote.id,
         'GROUP',
         userConnected.name,
+        attachment_mail,
       ),
     ]);
+
+    throw new Error('test');
 
     return quote;
   }

@@ -7,18 +7,27 @@ import {
   Param,
   Delete,
   Req,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
 import { QuoteService } from './quote.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('quote')
 export class QuoteController {
   constructor(private readonly quoteService: QuoteService) {}
 
   @Post()
-  create(@Body() createQuoteDto: CreateQuoteDto, @Req() req) {
-    return this.quoteService.create(createQuoteDto, req.user.id);
+  @UseInterceptors(FileInterceptor('attachment'))
+  create(
+    @Body() body: { data: string },
+    @Req() req,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    const createQuoteDto = JSON.parse(body.data) as CreateQuoteDto;
+    return this.quoteService.create(createQuoteDto, req.user.id, file);
   }
 
   @Get()

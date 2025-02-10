@@ -4,6 +4,7 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
+  DeleteObjectCommand,
 } from '@aws-sdk/client-s3';
 import s3Config from '../../config/s3.config';
 
@@ -64,5 +65,11 @@ export class S3Service {
 
   getFileUrl(key: string): string {
     return `https://${this.bucket}.s3.${this.configService.get('aws.region')}.amazonaws.com/${key}`;
+  }
+
+  async deleteFile(key: string): Promise<void> {
+    await this.s3Client.send(
+      new DeleteObjectCommand({ Bucket: this.bucket, Key: key }),
+    );
   }
 }
