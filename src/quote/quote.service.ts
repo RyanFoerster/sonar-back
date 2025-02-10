@@ -197,8 +197,6 @@ export class QuoteService {
       ),
     ]);
 
-    throw new Error('test');
-
     return quote;
   }
 
