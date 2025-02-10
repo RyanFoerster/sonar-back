@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 import { Quote } from '../quote/entities/quote.entity';
 import { User } from '../users/entities/user.entity';
+import axios from 'axios';
 
 @Injectable()
 export class MailService {
@@ -50,37 +51,68 @@ export class MailService {
     quote_id: number,
     role: 'GROUP' | 'CLIENT',
     name?: string,
+    attachment?: Buffer,
   ) {
-    const API_KEY = this.configService.get('isProd')
-      ? this.configService.get('mailhub.api_key_prod')
-      : this.configService.get('mailhub.api_key_dev');
-
+    const API_KEY =
+      this.configService.get('stage') === 'prod'
+        ? this.configService.get('mailhub.api_key_prod')
+        : this.configService.get('mailhub.api_key_dev');
     const config = this.configService.get('isProd') ? 'PROD' : 'DEV';
 
     try {
-      fetch(`https://api.mailhub.sh/v1/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${API_KEY}`,
+      // Convertir le buffer en base64
+      const base64Attachment = attachment
+        ? attachment.toString('base64')
+        : null;
+
+      const payload = {
+        layout_identifier: 'tp-3fab551a26be4e9a',
+        variables: {
+          firstName,
+          name,
+          quote_id,
+          role,
+          config,
         },
-        body: JSON.stringify({
-          layout_identifier: 'tp-3fab551a26be4e9a',
-          variables: {
-            firstName,
-            name,
-            quote_id,
-            role,
-            config,
+        from: 'info@sonarartists.fr',
+        to,
+        subject: "Demande d'acceptation de devis",
+        language: null,
+      };
+
+      // Ajouter la pièce jointe seulement si elle existe
+      if (base64Attachment) {
+        payload['attachments'] = [
+          {
+            filename: `devis-${quote_id}.pdf`,
+            content: base64Attachment,
+            encoding: 'base64',
+            contentType: 'application/pdf',
           },
-          from: 'info@sonarartists.fr',
-          to,
-          subject: "Demande d'acceptation de devis",
-          language: null,
-        }),
-      }).then((data) => console.log(data));
+        ];
+      }
+
+      const response = await axios.post(
+        'https://api.mailhub.sh/v1/send',
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${API_KEY}`,
+          },
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+        },
+      );
+
+      Logger.debug(`Email envoyé avec succès pour le devis ${quote_id}`);
+      return response.data;
     } catch (error) {
-      console.error('Error:', error);
+      Logger.error(
+        `Erreur lors de l'envoi de l'email pour le devis ${quote_id}:`,
+        error.response?.data || error.message,
+      );
+      throw error;
     }
   }
 

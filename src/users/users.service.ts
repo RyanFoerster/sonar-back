@@ -50,20 +50,20 @@ export class UsersService {
   }
 
   async findAll() {
-    return await this.usersRepository.find({
-      select: {
-        id: true,
-        email: true,
-        username: true,
-        firstName: true,
-        name: true,
-      },
-      relations: {
-        clients: false,
-        comptePrincipal: false,
-        userSecondaryAccounts: false,
-      },
-    });
+    return await this.usersRepository.createQueryBuilder('user').getMany();
+  }
+
+  async findAllWithoutRelations() {
+    return await this.usersRepository
+      .createQueryBuilder('user')
+      .select([
+        'user.id',
+        'user.email',
+        'user.username',
+        'user.firstName',
+        'user.name',
+      ])
+      .getMany();
   }
 
   async findOneByEmail(email: string) {

@@ -74,6 +74,9 @@ export class Quote {
   @Column({ default: false })
   isVatIncluded: boolean;
 
+  @Column({ default: null, nullable: true })
+  attachment_url: string;
+
   @ManyToOne(
     () => ComptePrincipal,
     (comptePrincipal) => comptePrincipal.quote,
