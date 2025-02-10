@@ -197,7 +197,7 @@ export class QuoteService {
       ),
     ]);
 
-    return quote;
+    return quote ? true : false;
   }
 
   findAll() {
