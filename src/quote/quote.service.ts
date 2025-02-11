@@ -212,8 +212,10 @@ export class QuoteService {
         '',
         attachment_mail,
         file
-          ? this.extractFileName(file.filename)
-          : this.extractFileName(createQuoteDto.attachment_key),
+          ? file.originalname
+          : createQuoteDto.attachment_key
+            ? this.extractFileName(createQuoteDto.attachment_key)
+            : null,
       ),
       this.mailService.sendDevisAcceptationEmail(
         userConnected.email,
@@ -223,8 +225,10 @@ export class QuoteService {
         userConnected.name,
         attachment_mail,
         file
-          ? this.extractFileName(file.filename)
-          : this.extractFileName(createQuoteDto.attachment_key),
+          ? file.originalname
+          : createQuoteDto.attachment_key
+            ? this.extractFileName(createQuoteDto.attachment_key)
+            : null,
       ),
     ]);
 
@@ -240,7 +244,9 @@ export class QuoteService {
 
   findOne(id: number) {
     Logger.debug('Id', id);
-    return this.quoteRepository.findOneBy({ id });
+    const response = this.quoteRepository.findOneBy({ id });
+    Logger.debug('Response', JSON.stringify(response, null, 2));
+    return response;
   }
 
   findOneWithoutRelation(id: number) {

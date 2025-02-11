@@ -14,6 +14,7 @@ import { QuoteService } from './quote.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Public } from '@/auth/decorators/public.decorator';
 
 @Controller('quote')
 export class QuoteController {
@@ -36,6 +37,7 @@ export class QuoteController {
   }
 
   @Get(':id')
+  @Public()
   findOne(@Param('id') id: string) {
     return this.quoteService.findOne(+id);
   }
@@ -55,21 +57,25 @@ export class QuoteController {
   }
 
   @Patch(':id/group_acceptance')
+  @Public()
   updateQuoteGroupAcceptance(@Param('id') id: string) {
     return this.quoteService.updateQuoteGroupAcceptance(+id);
   }
 
   @Patch(':id/order_giver_acceptance')
+  @Public()
   updateOrderGiverAcceptance(@Param('id') id: string) {
     return this.quoteService.updateOrderGiverAcceptance(+id);
   }
 
   @Patch(':id/group_rejection')
+  @Public()
   updateQuoteGroupRejection(@Param('id') id: string) {
     return this.quoteService.updateQuoteGroupRejection(+id);
   }
 
   @Patch(':id/order_giver_rejection')
+  @Public()
   updateOrderGiverRejection(@Param('id') id: string) {
     return this.quoteService.updateOrderGiverRejection(+id);
   }
