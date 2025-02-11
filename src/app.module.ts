@@ -29,6 +29,7 @@ import { UsersModule } from './users/users.module';
 import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
 import { NotificationModule } from './notification/notification.module';
 import { BeneficiariesModule } from './beneficiaries/beneficiaries.module';
+import { UserAttachmentModule } from './user-attachment/user-attachment.module';
 
 @Module({
   imports: [
@@ -100,6 +101,7 @@ import { BeneficiariesModule } from './beneficiaries/beneficiaries.module';
     S3Module,
     NotificationModule,
     BeneficiariesModule,
+    UserAttachmentModule,
   ],
   controllers: [AppController],
   providers: [AppService, BceService],

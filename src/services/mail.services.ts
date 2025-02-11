@@ -52,14 +52,13 @@ export class MailService {
     role: 'GROUP' | 'CLIENT',
     name?: string,
     attachment?: Buffer,
+    attachmentName?: string,
   ) {
     const API_KEY =
       this.configService.get('isProd') === true
         ? this.configService.get('mailhub.api_key_prod')
         : this.configService.get('mailhub.api_key_dev');
     const config = this.configService.get('isProd') ? 'PROD' : 'DEV';
-
-    Logger.debug('stage', this.configService.get('stage'));
 
     try {
       // Convertir le buffer en base64
@@ -83,10 +82,10 @@ export class MailService {
       };
 
       // Ajouter la pièce jointe seulement si elle existe
-      if (base64Attachment) {
+      if (base64Attachment && attachmentName) {
         payload['attachments'] = [
           {
-            filename: `devis-${quote_id}.pdf`,
+            filename: `${attachmentName}`,
             content: base64Attachment,
             encoding: 'base64',
             contentType: 'application/pdf',
@@ -125,8 +124,8 @@ export class MailService {
         : this.configService.get('mailhub.api_key_dev');
 
     try {
-      // Extraire le contenu base64 du Data URI
-      // const base64Content = pdfContent.split(',')[1];
+      // Convertir l'arraybuffer en base64
+      const base64Content = Buffer.from(pdfContent).toString('base64');
 
       const requestBody = {
         layout_identifier: 'tp-5eded5ab563d474d',
@@ -135,29 +134,41 @@ export class MailService {
           account_name: quote.main_account ? quote.main_account.username : '',
         },
         from: 'info@sonarartists.fr',
-        to: 'ryanfoerster@outlook.be',
+        to: quote.client.email, // Utiliser l'email du client au lieu d'une adresse en dur
         subject: `Facture de ${quote.client.name}`,
         language: null,
         attachments: [
           {
             filename: `facture_${quote.id}_${quote.client.name}.pdf`,
-            content: pdfContent,
+            content: base64Content,
             contentType: 'application/pdf',
           },
         ],
       };
 
-      fetch(`https://api.mailhub.sh/v1/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          // Authorization: `Bearer ${API_KEY}`,
-          Authorization: `Bearer mh_live_65df249bc37d49aaa3505171f790c70dc5d6fa7fa76441f0ba921ae7e304f9fd`,
+      const response = await axios.post(
+        'https://api.mailhub.sh/v1/send',
+        requestBody,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${API_KEY}`,
+          },
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
         },
-        body: JSON.stringify(requestBody),
-      }).then((data) => console.log(data));
+      );
+
+      Logger.debug(
+        `Email de facture envoyé avec succès pour le devis ${quote.id}`,
+      );
+      return response.data;
     } catch (error) {
-      console.error('Error:', error);
+      Logger.error(
+        `Erreur lors de l'envoi de l'email de facture pour le devis ${quote.id}:`,
+        error.response?.data || error.message,
+      );
+      throw error;
     }
   }
 

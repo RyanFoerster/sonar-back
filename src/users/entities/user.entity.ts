@@ -14,6 +14,7 @@ import { Meet } from '../../meet/entities/meet.entity';
 import { UserSecondaryAccount } from '../../user-secondary-account/entities/user-secondary-account.entity';
 import { Comment } from '../../comment/entities/comment.entity';
 import { Beneficiary } from '@/beneficiaries/entities/beneficiary.entity';
+import { UserAttachmentEntity } from '@/user-attachment/entities/user-attachment.entity';
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
@@ -90,4 +91,10 @@ export class User {
 
   @OneToMany(() => Beneficiary, (beneficiary) => beneficiary.user)
   beneficiary: Beneficiary;
+
+  @OneToMany(
+    () => UserAttachmentEntity,
+    (userAttachment) => userAttachment.user,
+  )
+  attachments: UserAttachmentEntity[];
 }

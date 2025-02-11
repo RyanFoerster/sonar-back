@@ -13,10 +13,16 @@ export class S3Service {
   private readonly s3Client: S3Client;
   private readonly bucket: string;
   private readonly logger = new Logger(S3Service.name);
+  private readonly cdnUrl: string;
 
   constructor(private readonly configService: ConfigService) {
     this.s3Client = new S3Client(s3Config(configService));
     this.bucket = configService.get('aws.bucket_name');
+    this.cdnUrl = configService.get('aws.cdnUrl');
+
+    if (!this.cdnUrl) {
+      this.logger.warn("AWS_CDN_URL n'est pas configuré");
+    }
   }
 
   async uploadFile(file: Express.Multer.File, folder: string): Promise<string> {
