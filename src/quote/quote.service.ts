@@ -88,6 +88,11 @@ export class QuoteService {
     return result;
   }
 
+  private extractFileName(path: string): string {
+    const match = path.match(/attachments\/(.*)/);
+    return match ? match[1] : path;
+  }
+
   async create(
     createQuoteDto: CreateQuoteDto,
     user_id: number,
@@ -151,15 +156,21 @@ export class QuoteService {
     // Gestion de l'attachement
     let attachment_mail = null;
     let attachment_key = null;
+
+    Logger.debug(
+      `[QuotesService] Create quote dto: ${JSON.stringify(createQuoteDto, null, 2)}`,
+    );
+
     if (file) {
       try {
+        Logger.debug(`[QuotesService] File`);
         // Upload du fichier sur S3
         attachment_key = await this.s3Service.uploadFile(
           file,
           `quote/${quote.quote_number}`,
         );
 
-        // Stocker l'URL publique dans quote
+        // Stocker la clé dans quote
         quote.attachment_url = this.s3Service.getFileUrl(attachment_key);
 
         // Utiliser directement le buffer du fichier uploadé pour l'email
@@ -168,14 +179,28 @@ export class QuoteService {
         Logger.error(`Erreur lors de la gestion du fichier: ${error.message}`);
         // On continue même si l'upload échoue
       }
+    } else if (createQuoteDto.attachment_key) {
+      try {
+        Logger.debug(
+          `[QuotesService] Attachment key: ${createQuoteDto.attachment_key}`,
+        );
+        // Si on a une clé d'attachement mais pas de fichier, c'est une pièce jointe existante
+        attachment_mail = await this.s3Service.getFile(
+          createQuoteDto.attachment_key,
+        );
+        quote.attachment_url = this.s3Service.getFileUrl(
+          createQuoteDto.attachment_key,
+        );
+      } catch (error) {
+        Logger.error(
+          `Erreur lors de la récupération du fichier S3: ${error.message}`,
+        );
+        // On continue même si la récupération échoue
+      }
     }
 
     const userConnected = await this.usersService.findOne(user_id);
     quote = await this.quoteRepository.save(quote);
-
-    Logger.debug(
-      `[QuotesService] Quote information: ${quote.client.email}, ${quote.client.name}, ${quote.id}`,
-    );
 
     // Envoi des emails
     await Promise.all([
@@ -186,6 +211,9 @@ export class QuoteService {
         'CLIENT',
         '',
         attachment_mail,
+        file
+          ? this.extractFileName(file.filename)
+          : this.extractFileName(createQuoteDto.attachment_key),
       ),
       this.mailService.sendDevisAcceptationEmail(
         userConnected.email,
@@ -194,10 +222,16 @@ export class QuoteService {
         'GROUP',
         userConnected.name,
         attachment_mail,
+        file
+          ? this.extractFileName(file.filename)
+          : this.extractFileName(createQuoteDto.attachment_key),
       ),
     ]);
 
-    return quote;
+    // Laisser l'erreur pour le moment car permet de faire des tests
+    // throw new BadRequestException('test');
+
+    return quote ? true : false;
   }
 
   findAll() {

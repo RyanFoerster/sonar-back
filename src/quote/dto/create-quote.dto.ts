@@ -1,4 +1,10 @@
-import { IsArray, IsBoolean, IsDate, IsNumber, IsString } from "class-validator";
+import {
+  IsArray,
+  IsBoolean,
+  IsDate,
+  IsNumber,
+  IsString,
+} from 'class-validator';
 
 export class CreateQuoteDto {
   @IsDate()
@@ -31,4 +37,7 @@ export class CreateQuoteDto {
 
   @IsString()
   comment: string;
+
+  @IsString()
+  attachment_key?: string;
 }
