@@ -40,4 +40,13 @@ export class CreateQuoteDto {
 
   @IsString()
   attachment_key?: string;
+
+  @IsString()
+  created_by?: string;
+
+  @IsString()
+  created_by_mail?: string;
+
+  @IsString()
+  created_by_phone?: string;
 }

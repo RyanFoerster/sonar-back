@@ -77,6 +77,15 @@ export class Quote {
   @Column({ default: null, nullable: true })
   attachment_url: string;
 
+  @Column({ default: null, nullable: true })
+  created_by: string;
+
+  @Column({ default: null, nullable: true })
+  created_by_mail: string;
+
+  @Column({ default: null, nullable: true })
+  created_by_phone: string;
+
   @ManyToOne(
     () => ComptePrincipal,
     (comptePrincipal) => comptePrincipal.quote,
