@@ -264,7 +264,12 @@ export class QuoteService {
     return await this.quoteRepository.save(quote);
   }
 
-  async update(id: string, updateQuoteDto: UpdateQuoteDto, user_id: number) {
+  async update(
+    id: string,
+    updateQuoteDto: UpdateQuoteDto,
+    user_id: number,
+    file: Express.Multer.File,
+  ) {
     let quote: Quote = await this.findOne(+id);
 
     quote.quote_date = updateQuoteDto.quote_date;
@@ -314,6 +319,48 @@ export class QuoteService {
     quote.group_acceptance = 'pending';
     quote.order_giver_acceptance = 'pending';
 
+    // Gestion de l'attachement
+    let attachment_mail = null;
+    let attachment_key = null;
+
+    if (file) {
+      try {
+        Logger.debug(`[QuotesService] File`);
+        // Upload du fichier sur S3
+        attachment_key = await this.s3Service.uploadFile(
+          file,
+          `quote/${quote.quote_number}`,
+        );
+
+        // Stocker la clé dans quote
+        quote.attachment_url = this.s3Service.getFileUrl(attachment_key);
+
+        // Utiliser directement le buffer du fichier uploadé pour l'email
+        attachment_mail = file.buffer;
+      } catch (error) {
+        Logger.error(`Erreur lors de la gestion du fichier: ${error.message}`);
+        // On continue même si l'upload échoue
+      }
+    } else if (updateQuoteDto.attachment_key) {
+      try {
+        Logger.debug(
+          `[QuotesService] Attachment key: ${updateQuoteDto.attachment_key}`,
+        );
+        // Si on a une clé d'attachement mais pas de fichier, c'est une pièce jointe existante
+        attachment_mail = await this.s3Service.getFile(
+          updateQuoteDto.attachment_key,
+        );
+        quote.attachment_url = this.s3Service.getFileUrl(
+          updateQuoteDto.attachment_key,
+        );
+      } catch (error) {
+        Logger.error(
+          `Erreur lors de la récupération du fichier S3: ${error.message}`,
+        );
+        // On continue même si la récupération échoue
+      }
+    }
+
     quote = await this.quoteRepository.save(quote);
 
     await this.mailService.sendDevisAcceptationEmail(
@@ -321,6 +368,13 @@ export class QuoteService {
       quote.client.name,
       quote.id,
       'CLIENT',
+      '',
+      attachment_mail,
+      file
+        ? file.originalname
+        : updateQuoteDto.attachment_key
+          ? this.extractFileName(updateQuoteDto.attachment_key)
+          : null,
     );
     await this.mailService.sendDevisAcceptationEmail(
       userConnected.email,
@@ -328,6 +382,12 @@ export class QuoteService {
       quote.id,
       'GROUP',
       userConnected.name,
+      attachment_mail,
+      file
+        ? file.originalname
+        : updateQuoteDto.attachment_key
+          ? this.extractFileName(updateQuoteDto.attachment_key)
+          : null,
     );
 
     return quote;

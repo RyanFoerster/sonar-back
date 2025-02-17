@@ -52,7 +52,7 @@ export class VirementSepaService {
 
     if (params.typeOfProjet === 'PRINCIPAL') {
       principalAccount = await this.comptePrincipalService.findOne(params.id);
-      if (principalAccount.solde - createVirementSepaDto.amount_htva <= 0) {
+      if (principalAccount.solde - createVirementSepaDto.amount_htva < 0) {
         throw new BadRequestException('Solde insuffisant');
       }
     }
@@ -91,7 +91,7 @@ export class VirementSepaService {
         }
       }
 
-      if (groupAccount.solde - createVirementSepaDto.amount_htva <= 0) {
+      if (groupAccount.solde - createVirementSepaDto.amount_htva < 0) {
         throw new BadRequestException('Solde insuffisant');
       }
     }

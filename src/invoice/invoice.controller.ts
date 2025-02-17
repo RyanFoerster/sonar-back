@@ -63,7 +63,7 @@ export class InvoiceController {
   createCreditNoteWithoutInvoice(
     @Body() createCreditNoteDto: any,
     @Query() params: { account_id: number; type: 'PRINCIPAL' | 'GROUP' },
-  ): Promise<Invoice> {
+  ): Promise<boolean> {
     return this.invoiceService.createCreditNoteWithoutInvoice(
       createCreditNoteDto,
       params.account_id,
