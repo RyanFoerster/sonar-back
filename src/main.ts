@@ -3,6 +3,7 @@ import { ExpressAdapter } from '@nestjs/platform-express';
 
 import { INestApplication, Logger } from '@nestjs/common';
 import express from 'express';
+import { join } from 'path';
 
 import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
@@ -21,6 +22,9 @@ export const createNestServer = async (expressInstance: express.Express) => {
   );
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+
+  // Configuration pour servir les fichiers statiques
+  app.use('/assets', express.static(join(__dirname, 'assets')));
 
   app.enableCors({
     origin: ['https://sonarartists.fr', 'http://localhost:4200'],

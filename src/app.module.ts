@@ -30,6 +30,7 @@ import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
 import { NotificationModule } from './notification/notification.module';
 import { BeneficiariesModule } from './beneficiaries/beneficiaries.module';
 import { UserAttachmentModule } from './user-attachment/user-attachment.module';
+import { AssetsService } from './services/assets.service';
 
 @Module({
   imports: [
@@ -104,6 +105,6 @@ import { UserAttachmentModule } from './user-attachment/user-attachment.module';
     UserAttachmentModule,
   ],
   controllers: [AppController],
-  providers: [AppService, BceService],
+  providers: [AppService, BceService, AssetsService],
 })
 export class AppModule {}

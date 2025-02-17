@@ -10,10 +10,11 @@ import { QuoteModule } from '../quote/quote.module';
 import { CompteGroupeModule } from '../compte_groupe/compte_groupe.module';
 import { ComptePrincipalModule } from '../compte_principal/compte_principal.module';
 import { MailService } from '../services/mail.services';
+import { AssetsService } from '../services/assets.service';
 
 @Module({
   controllers: [InvoiceController],
-  providers: [InvoiceService, MailService],
+  providers: [InvoiceService, MailService, AssetsService],
   exports: [InvoiceService],
   imports: [
     TypeOrmModule.forFeature([Invoice]),

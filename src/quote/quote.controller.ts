@@ -47,8 +47,9 @@ export class QuoteController {
     @Param('id') id: string,
     @Body() updateQuoteDto: UpdateQuoteDto,
     @Req() req,
+    @UploadedFile() file: Express.Multer.File,
   ) {
-    return this.quoteService.update(id, updateQuoteDto, req.user.id);
+    return this.quoteService.update(id, updateQuoteDto, req.user.id, file);
   }
 
   @Delete(':id')

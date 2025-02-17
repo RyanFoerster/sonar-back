@@ -4,6 +4,7 @@ import * as nodemailer from 'nodemailer';
 import { Quote } from '../quote/entities/quote.entity';
 import { User } from '../users/entities/user.entity';
 import axios from 'axios';
+import { Invoice } from '@/invoice/entities/invoice.entity';
 
 @Injectable()
 export class MailService {
@@ -54,10 +55,13 @@ export class MailService {
     attachment?: Buffer,
     attachmentName?: string,
   ) {
-    const API_KEY =
-      this.configService.get('isProd') === true
-        ? this.configService.get('mailhub.api_key_prod')
-        : this.configService.get('mailhub.api_key_dev');
+    // const API_KEY =
+    //   this.configService.get('isProd') === true
+    //     ? this.configService.get('mailhub.api_key_prod')
+    //     : this.configService.get('mailhub.api_key_dev');
+
+    const API_KEY = this.configService.get('mailhub.api_key_prod');
+
     const config = this.configService.get('isProd') ? 'PROD' : 'DEV';
 
     try {
@@ -117,7 +121,7 @@ export class MailService {
     }
   }
 
-  async sendInvoiceEmail(quote: Quote, user: User, pdfContent: any) {
+  async sendInvoiceEmail(quote: Quote, pdfContent: any) {
     const API_KEY =
       this.configService.get('isProd') === true
         ? this.configService.get('mailhub.api_key_prod')
@@ -166,6 +170,65 @@ export class MailService {
     } catch (error) {
       Logger.error(
         `Erreur lors de l'envoi de l'email de facture pour le devis ${quote.id}:`,
+        error.response?.data || error.message,
+      );
+      throw error;
+    }
+  }
+
+  async sendCreditNoteEmail(creditNote: Invoice, pdfContent: any) {
+    // const API_KEY =
+    //   this.configService.get('isProd') === true
+    //     ? this.configService.get('mailhub.api_key_prod')
+    //     : this.configService.get('mailhub.api_key_dev');
+
+    const API_KEY = this.configService.get('mailhub.api_key_prod');
+
+    try {
+      // Convertir l'arraybuffer en base64
+      const base64Content = Buffer.from(pdfContent).toString('base64');
+
+      const requestBody = {
+        layout_identifier: 'tp-5eded5ab563d474d',
+        variables: {
+          invoice_number: creditNote.invoice_number,
+          account_name: creditNote.main_account
+            ? creditNote.main_account.username
+            : '',
+        },
+        from: 'info@sonarartists.fr',
+        to: creditNote.client.email, // Utiliser l'email du client au lieu d'une adresse en dur
+        subject: `Facture de ${creditNote.client.name}`,
+        language: null,
+        attachments: [
+          {
+            filename: `facture_${creditNote.id}_${creditNote.client.name}.pdf`,
+            content: base64Content,
+            contentType: 'application/pdf',
+          },
+        ],
+      };
+
+      const response = await axios.post(
+        'https://api.mailhub.sh/v1/send',
+        requestBody,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${API_KEY}`,
+          },
+          maxBodyLength: Infinity,
+          maxContentLength: Infinity,
+        },
+      );
+
+      Logger.debug(
+        `Email de facture envoyé avec succès pour le devis ${creditNote.id}`,
+      );
+      return response.data;
+    } catch (error) {
+      Logger.error(
+        `Erreur lors de l'envoi de l'email de facture pour le devis ${creditNote.id}:`,
         error.response?.data || error.message,
       );
       throw error;
