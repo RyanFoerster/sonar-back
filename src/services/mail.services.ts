@@ -121,7 +121,7 @@ export class MailService {
     }
   }
 
-  async sendInvoiceEmail(quote: Quote, pdfContent: any) {
+  async sendInvoiceEmail(quote: Quote | Invoice, pdfContent: any) {
     const API_KEY =
       this.configService.get('isProd') === true
         ? this.configService.get('mailhub.api_key_prod')
@@ -131,10 +131,15 @@ export class MailService {
       // Convertir l'arraybuffer en base64
       const base64Content = Buffer.from(pdfContent).toString('base64');
 
+      const invoiceNumber =
+        typeof quote === 'object' && 'invoice_number' in quote
+          ? quote.invoice_number
+          : quote.id;
+
       const requestBody = {
         layout_identifier: 'tp-5eded5ab563d474d',
         variables: {
-          invoice_number: quote.invoice.id,
+          invoice_number: invoiceNumber,
           account_name: quote.main_account ? quote.main_account.username : '',
         },
         from: 'info@sonarartists.fr',
@@ -177,12 +182,10 @@ export class MailService {
   }
 
   async sendCreditNoteEmail(creditNote: Invoice, pdfContent: any) {
-    // const API_KEY =
-    //   this.configService.get('isProd') === true
-    //     ? this.configService.get('mailhub.api_key_prod')
-    //     : this.configService.get('mailhub.api_key_dev');
-
-    const API_KEY = this.configService.get('mailhub.api_key_prod');
+    const API_KEY =
+      this.configService.get('isProd') === true
+        ? this.configService.get('mailhub.api_key_prod')
+        : this.configService.get('mailhub.api_key_dev');
 
     try {
       // Convertir l'arraybuffer en base64

@@ -125,7 +125,7 @@ export class InvoiceService {
     quoteFromDB.status = 'invoiced';
     quoteFromDB.invoice = invoiceCreated;
     await this.quoteService.save(quoteFromDB);
-    const pdf = this.generateInvoicePDF(quoteFromDB, userFromDB);
+    const pdf = this.generateInvoicePDF(quoteFromDB);
     this.mailService.sendInvoiceEmail(quoteFromDB, pdf);
     return await this._invoiceRepository.findOneBy({ id: invoiceCreated.id });
   }
@@ -348,7 +348,7 @@ export class InvoiceService {
     doc.text(`BIC: ${this.COMPANY_INFO.bic}`, 150, pageHeight - 30);
   }
 
-  generateInvoicePDF(quote: Quote, user: User): ArrayBuffer {
+  async generateInvoicePDF(quote: Quote): Promise<ArrayBuffer> {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -425,6 +425,10 @@ export class InvoiceService {
     const quoteWithoutInvoice =
       await this.quoteService.findQuoteWithoutInvoice();
 
+    this.logger.log(
+      `Nombre de devis récupérer : ${quoteWithoutInvoice.length}`,
+    );
+
     const currentQuotes: Quote[] = [];
 
     for (const quote of quoteWithoutInvoice) {
@@ -432,18 +436,18 @@ export class InvoiceService {
       const dateUnJourPlus = new Date(
         serviceDate.getTime() + 24 * 60 * 60 * 1000,
       );
-      const sameDate =
-        currentDate.getFullYear() === dateUnJourPlus.getFullYear() &&
-        currentDate.getMonth() === dateUnJourPlus.getMonth() &&
-        currentDate.getDate() === dateUnJourPlus.getDate();
+      const isAfterServiceDate =
+        currentDate.getTime() >= dateUnJourPlus.getTime();
       if (
-        sameDate &&
+        isAfterServiceDate &&
         quote.group_acceptance === 'accepted' &&
         quote.order_giver_acceptance === 'accepted'
       ) {
         currentQuotes.push(quote);
       }
     }
+
+    this.logger.log(`Nombre de devis à facturer : ${currentQuotes.length}`);
 
     if (currentQuotes.length > 0) {
       for (const quote of currentQuotes) {
@@ -459,25 +463,41 @@ export class InvoiceService {
         invoice.validation_deadline = quote.validation_deadline;
         invoice.status = 'pending';
 
+        if (quote.main_account) {
+          invoice.main_account = await this.comptePrincipalService.findOne(
+            quote.main_account.id,
+          );
+          this.logger.log(
+            `Compte principal trouvé : ${invoice.main_account.next_invoice_number}`,
+          );
+          invoice.invoice_number = invoice.main_account.next_invoice_number;
+          invoice.main_account.next_invoice_number += 1;
+          await this.comptePrincipalService.save(invoice.main_account);
+        }
+
+        if (quote.group_account) {
+          invoice.group_account = await this.compteGroupeService.findOne(
+            quote.group_account.id,
+          );
+          invoice.invoice_number = invoice.group_account.next_invoice_number;
+          invoice.group_account.next_invoice_number += 1;
+          await this.compteGroupeService.save(invoice.group_account);
+        }
+
         const invoiceCreated = await this._invoiceRepository.save(invoice);
         invoiceCreated.quote = await this.quoteService.findOne(quote.id);
         invoiceCreated.client = await this.clientService.findOne(
           quote.client.id,
         );
-        if (quote.main_account) {
-          invoiceCreated.main_account =
-            await this.comptePrincipalService.findOne(quote.main_account.id);
-        }
 
-        if (quote.group_account) {
-          invoiceCreated.group_account = await this.compteGroupeService.findOne(
-            quote.group_account.id,
-          );
-        }
-        await this._invoiceRepository.update(invoiceCreated.id, invoiceCreated);
+        invoiceCreated.products = [...quote.products];
+
+        await this._invoiceRepository.save(invoiceCreated);
         quote.status = 'invoiced';
         quote.invoice = invoiceCreated;
         await this.quoteService.save(quote);
+        const pdf = await this.generateInvoicePDF(quote);
+        await this.mailService.sendInvoiceEmail(invoiceCreated, pdf);
       }
     }
   }

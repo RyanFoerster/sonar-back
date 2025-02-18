@@ -9,6 +9,7 @@ import {
   Req,
   UseInterceptors,
   UploadedFile,
+  Logger,
 } from '@nestjs/common';
 import { QuoteService } from './quote.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
@@ -42,13 +43,15 @@ export class QuoteController {
     return this.quoteService.findOne(+id);
   }
 
-  @Patch(':id')
+  @Post(':id/update')
+  @UseInterceptors(FileInterceptor('attachment'))
   update(
     @Param('id') id: string,
-    @Body() updateQuoteDto: UpdateQuoteDto,
+    @Body() body: { data: string },
     @Req() req,
     @UploadedFile() file: Express.Multer.File,
   ) {
+    const updateQuoteDto = JSON.parse(body.data) as UpdateQuoteDto;
     return this.quoteService.update(id, updateQuoteDto, req.user.id, file);
   }
 

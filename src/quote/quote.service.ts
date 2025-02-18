@@ -272,9 +272,13 @@ export class QuoteService {
   ) {
     let quote: Quote = await this.findOne(+id);
 
+    Logger.debug('isFile', file !== null);
+    Logger.debug('isFileUndefined', file !== undefined);
+
     quote.quote_date = updateQuoteDto.quote_date;
     quote.service_date = updateQuoteDto.service_date;
     quote.validation_deadline = updateQuoteDto.validation_deadline;
+    quote.payment_deadline = updateQuoteDto.payment_deadline;
 
     if (!quote) {
       throw new NotFoundException('Quote not found');
@@ -283,6 +287,7 @@ export class QuoteService {
     quote.client = await this.clientService.findOne(updateQuoteDto.client_id);
 
     let products: Product[] = [];
+    Logger.debug('Update quote dto', JSON.stringify(updateQuoteDto, null, 2));
     for (const productId of updateQuoteDto.products_id) {
       let product = await this.productService.findOne(productId);
       products.push(product);
@@ -361,7 +366,14 @@ export class QuoteService {
       }
     }
 
+    // Gestion du commentaire du devis
+    if (updateQuoteDto.comment) {
+      quote.comment = updateQuoteDto.comment;
+    }
+
     quote = await this.quoteRepository.save(quote);
+
+    Logger.debug('attachment_key', attachment_key);
 
     await this.mailService.sendDevisAcceptationEmail(
       quote.client.email,
@@ -481,6 +493,18 @@ export class QuoteService {
     }
 
     return total;
+  }
+
+  async findQuoteWithProducts(id: number) {
+    return this.quoteRepository.findOne({
+      where: { id },
+      relations: {
+        products: true,
+        client: true,
+        group_account: true,
+        main_account: true,
+      },
+    });
   }
 
   async findQuoteWithoutInvoice() {
