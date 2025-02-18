@@ -495,6 +495,18 @@ export class QuoteService {
     return total;
   }
 
+  async findQuoteWithProducts(id: number) {
+    return this.quoteRepository.findOne({
+      where: { id },
+      relations: {
+        products: true,
+        client: true,
+        group_account: true,
+        main_account: true,
+      },
+    });
+  }
+
   async findQuoteWithoutInvoice() {
     return this.quoteRepository.find({
       where: {

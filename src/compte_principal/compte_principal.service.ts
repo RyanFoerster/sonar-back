@@ -33,11 +33,19 @@ export class ComptePrincipalService {
   }
 
   findAll() {
-    return this.comptePrincipalRepository.find({
-      relations: {
-        user: true,
-      },
-    });
+    return this.comptePrincipalRepository
+      .createQueryBuilder('comptePrincipal')
+      .leftJoinAndSelect('comptePrincipal.user', 'user')
+      .select([
+        'comptePrincipal',
+        'user.email',
+        'user.name',
+        'user.firstName',
+        'user.numeroNational',
+        'user.iban',
+        'user.telephone',
+      ])
+      .getMany();
   }
 
   async findOne(id: number) {
