@@ -82,6 +82,12 @@ export class CompteGroupeService {
     return this.compteGroupeRepository.findOneBy({ username });
   }
 
+  findAllByUser(id: number) {
+    return this.compteGroupeRepository.find({
+      where: { userSecondaryAccount: { user: { id } } },
+    });
+  }
+
   findAllMembers(id: number) {
     return this.userSecondaryAccountService.findAllBySecondaryAccountId(id);
   }

@@ -42,6 +42,11 @@ export class CompteGroupeController {
     return this.compteGroupeService.findOne(+id);
   }
 
+  @Get('user/:id')
+  findAllByUser(@Param('id') id: string) {
+    return this.compteGroupeService.findAllByUser(+id);
+  }
+
   @Get(':id/members')
   findAllMembers(@Param('id') id: string) {
     return this.compteGroupeService.findAllMembers(+id);
