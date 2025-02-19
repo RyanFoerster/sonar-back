@@ -73,14 +73,20 @@ export class ComptePrincipalService {
   }
 
   findAllMembers(id: number) {
-    return this.comptePrincipalRepository.find({
-      where: {
-        id,
-      },
-      relations: {
-        user: true,
-      },
-    });
+    return this.comptePrincipalRepository
+      .createQueryBuilder('comptePrincipal')
+      .leftJoinAndSelect('comptePrincipal.user', 'user')
+      .select([
+        'comptePrincipal',
+        'user.email',
+        'user.name',
+        'user.firstName',
+        'user.numeroNational',
+        'user.iban',
+        'user.telephone',
+      ])
+      .where('comptePrincipal.id = :id', { id })
+      .getMany();
   }
 
   update(updateComptePrincipalDto: UpdateComptePrincipalDto) {
