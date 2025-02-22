@@ -28,6 +28,6 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
             cd sonar-back-dev
-            UID=$(id -u) GID=$(id -g) docker compose down
-            UID=$(id -u) GID=$(id -g) docker compose pull
-            UID=$(id -u) GID=$(id -g) docker compose up -d --force-recreate
+            docker compose down
+            docker compose pull
+            docker compose up -d --force-recreate

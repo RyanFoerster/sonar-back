@@ -2,10 +2,7 @@ services:
   backend:
     image: dimagin/sonar-back:latest
     container_name: sonar-back
-    user: '${UID}:${GID}'
     restart: unless-stopped
-    ports:
-      - ${SONAR_PORT}:3000
     env_file:
       - .env
     depends_on:
@@ -13,17 +10,24 @@ services:
         condition: service_healthy
     networks:
       - sonar-network
+      - traefik-network
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.sonar-back.entrypoints=websecure
+      - traefik.http.routers.sonar-back.tls=true
+      - traefik.http.routers.sonar-back.rule=Host(`${backend.sonarartists.be}`)
+      - traefik.http.routers.sonar-back.service=sonar-back
+      - traefik.http.services.sonar-back.loadbalancer.server.port=3000
 
   db:
     image: postgres:latest
     container_name: sonar-db
     restart: unless-stopped
-    ports:
-      - ${POSTGRES_PORT}:5432
     volumes:
       - sonar-db-data:/var/lib/postgresql/data:rw
     networks:
       - sonar-network
+      - traefik-network
     env_file:
       - .env
     healthcheck:
@@ -40,10 +44,19 @@ services:
       retries: 5
       start_interval: 5s
       start_period: 30s
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.sonar-db.entrypoints=websecure
+      - traefik.http.routers.sonar-db.tls=true
+      - traefik.http.routers.sonar-db.rule=Host(`${database.sonarartists.be}`)
+      - traefik.http.routers.sonar-db.service=sonar-db
+      - traefik.http.services.sonar-db.loadbalancer.server.port=5432
 
 networks:
   sonar-network:
     driver: bridge
+  traefik-network:
+    external: true
 
 volumes:
   sonar-db-data:
