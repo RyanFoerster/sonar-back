@@ -15,9 +15,10 @@ services:
       - traefik.enable=true
       - traefik.http.routers.sonar-back.entrypoints=websecure
       - traefik.http.routers.sonar-back.tls=true
-      - traefik.http.routers.sonar-back.rule=Host(`${backend.sonarartists.be}`)
+      - traefik.http.routers.sonar-back.rule=Host(`backend.sonarartists.be`)
       - traefik.http.routers.sonar-back.service=sonar-back
       - traefik.http.services.sonar-back.loadbalancer.server.port=3000
+      - traefik.http.routers.sonar-back.service=api@internal
 
   db:
     image: postgres:latest
@@ -48,9 +49,9 @@ services:
       - traefik.enable=true
       - traefik.http.routers.sonar-db.entrypoints=websecure
       - traefik.http.routers.sonar-db.tls=true
-      - traefik.http.routers.sonar-db.rule=Host(`${database.sonarartists.be}`)
-      - traefik.http.routers.sonar-db.service=sonar-db
+      - traefik.http.routers.sonar-db.rule=Host(`database.sonarartists.be`)
       - traefik.http.services.sonar-db.loadbalancer.server.port=5432
+      - traefik.http.routers.sonar-db.service=api@internal
 
 networks:
   sonar-network:
