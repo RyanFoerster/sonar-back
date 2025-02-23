@@ -19,7 +19,7 @@ services:
       - traefik.http.routers.sonar-back.rule=Host(`${backend.sonarartists.be}`)
       - traefik.http.routers.sonar-back.service=sonar-back
       - traefik.http.services.sonar-back.loadbalancer.server.port=3000
-
+      - traefik.http.routers.sonar-back.service=sonar-back
   db:
       - traefik-network
     labels:
