@@ -16,8 +16,9 @@ services:
       - traefik.http.routers.sonar-back.rule=Host(`${BACKEND_HOST}`)
       - traefik.http.routers.sonar-back.entrypoints=websecure
       - traefik.http.routers.sonar-back.tls=true
+      - traefik.http.routers.sonar-back.tls.certresolver=cloudflare
       - traefik.http.services.sonar-back.loadbalancer.server.port=3000
-
+      - traefik.http.routers.sonar-back.service=sonar-back
   db:
     image: postgres:latest
     container_name: sonar-db
