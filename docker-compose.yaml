@@ -9,7 +9,6 @@ services:
       db:
         condition: service_healthy
     networks:
-      - sonar-network
       - traefik-network
     labels:
       - traefik.enable=true
@@ -26,7 +25,6 @@ services:
     volumes:
       - sonar-db-data:/var/lib/postgresql/data:rw
     networks:
-      - sonar-network
       - traefik-network
     env_file:
       - .env
@@ -54,8 +52,6 @@ services:
       - traefik.tcp.routers.sonar-db.service=sonar-db
 
 networks:
-  sonar-network:
-    driver: bridge
   traefik-network:
     external: true
 
