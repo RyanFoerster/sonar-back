@@ -13,6 +13,7 @@ services:
       - traefik-network
     labels:
       - traefik.enable=true
+      - traefik.http.routers.sonar-back.rule=Host(`${BACKEND_HOST}`)
       - traefik.http.routers.sonar-back.entrypoints=websecure
       - traefik.http.routers.sonar-back.tls=true
       - traefik.http.routers.sonar-back.rule=Host(`${backend.sonarartists.be}`)
