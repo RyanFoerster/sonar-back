@@ -45,10 +45,12 @@ services:
       start_period: 30s
     labels:
       - traefik.enable=true
-      - traefik.http.routers.sonar-db.entrypoints=websecure
-      - traefik.http.routers.sonar-db.tls=true
-      - traefik.http.routers.sonar-db.rule=Host(`${DATABASE_HOST}`)
-      - traefik.http.services.sonar-db.loadbalancer.server.port=5432
+      - traefik.tcp.routers.sonar-db.rule=HostSNI(`${DATABASE_HOST}`)
+      - traefik.tcp.routers.sonar-db.entrypoints=postgresql
+      - traefik.tcp.routers.sonar-db.tls=true
+      - traefik.tcp.routers.sonar-db.tls.certresolver=cloudflare
+      - traefik.tcp.services.sonar-db.loadbalancer.server.port=5432
+      - traefik.tcp.routers.sonar-db.service=sonar-db
 
 networks:
   sonar-network:
