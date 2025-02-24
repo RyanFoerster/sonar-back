@@ -12,7 +12,7 @@ services:
       - traefik-network
     labels:
       - traefik.enable=true
-      - traefik.http.routers.sonar-back.rule=Host(`${BACKEND_HOST}`)
+      - traefik.http.routers.sonar-back.rule=Host(`${SONAR_BACKEND_HOST}`)
       - traefik.http.routers.sonar-back.entrypoints=websecure
       - traefik.http.routers.sonar-back.tls=true
       - traefik.http.routers.sonar-back.tls.certresolver=cloudflare
@@ -45,7 +45,7 @@ services:
       start_period: 30s
     labels:
       - traefik.enable=true
-      - traefik.tcp.routers.sonar-db.rule=HostSNI(`${DB_HOST}`)
+      - traefik.tcp.routers.sonar-db.rule=HostSNI(`${SONAR_DB_HOST}`)
       - traefik.tcp.routers.sonar-db.entrypoints=postgresql
       - traefik.tcp.routers.sonar-db.tls=true
       - traefik.tcp.routers.sonar-db.tls.certresolver=cloudflare
