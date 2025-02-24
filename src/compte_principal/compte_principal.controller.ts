@@ -35,6 +35,11 @@ export class ComptePrincipalController {
     return this.comptePrincipalService.findOne(+id);
   }
 
+  @Get(':id/relations')
+  findOneWithRelations(@Param('id') id: string) {
+    return this.comptePrincipalService.findOneWithRelations(+id);
+  }
+
   @Get(':id/members')
   findAllMembers(@Param('id') id: string) {
     return this.comptePrincipalService.findAllMembers(+id);

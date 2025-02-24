@@ -49,6 +49,23 @@ export class ComptePrincipalService {
   }
 
   async findOne(id: number) {
+    return await this.comptePrincipalRepository
+      .createQueryBuilder('comptePrincipal')
+      .leftJoinAndSelect('comptePrincipal.user', 'user')
+      .select([
+        'comptePrincipal',
+        'user.email',
+        'user.name',
+        'user.firstName',
+        'user.numeroNational',
+        'user.iban',
+        'user.telephone',
+      ])
+      .where('comptePrincipal.id = :id', { id })
+      .getOne();
+  }
+
+  async findOneWithRelations(id: number) {
     return await this.comptePrincipalRepository.findOne({
       where: {
         id,
