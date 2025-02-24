@@ -1,5 +1,5 @@
 services:
-  backend:
+  sonarbackend:
     image: dimagin/sonar-back:latest
     container_name: sonar-back
     restart: unless-stopped
@@ -19,7 +19,7 @@ services:
       - traefik.http.services.sonar-back.loadbalancer.server.port=3000
       - traefik.http.routers.sonar-back.service=sonar-back
       - traefik.http.routers.sonar-back.tls.options=default
-  db:
+  sonardatabase:
     image: postgres:latest
     container_name: sonar-db
     restart: unless-stopped
