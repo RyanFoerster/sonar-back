@@ -52,24 +52,13 @@ export class MailService {
     quote_id: number,
     role: 'GROUP' | 'CLIENT',
     name?: string,
-    attachment?: Buffer,
-    attachmentName?: string,
+    attachments?: Buffer[],
+    attachmentNames?: string[],
   ) {
-    // const API_KEY =
-    //   this.configService.get('isProd') === true
-    //     ? this.configService.get('mailhub.api_key_prod')
-    //     : this.configService.get('mailhub.api_key_dev');
-
     const API_KEY = this.configService.get('mailhub.api_key_prod');
-
     const config = this.configService.get('isProd') ? 'PROD' : 'DEV';
 
     try {
-      // Convertir le buffer en base64
-      const base64Attachment = attachment
-        ? attachment.toString('base64')
-        : null;
-
       const payload = {
         layout_identifier: 'tp-3fab551a26be4e9a',
         variables: {
@@ -85,16 +74,14 @@ export class MailService {
         language: null,
       };
 
-      // Ajouter la pièce jointe seulement si elle existe
-      if (base64Attachment && attachmentName) {
-        payload['attachments'] = [
-          {
-            filename: `${attachmentName}`,
-            content: base64Attachment,
-            encoding: 'base64',
-            contentType: 'application/pdf',
-          },
-        ];
+      // Ajouter les pièces jointes si elles existent
+      if (attachments?.length && attachmentNames?.length) {
+        payload['attachments'] = attachments.map((attachment, index) => ({
+          filename: attachmentNames[index],
+          content: attachment.toString('base64'),
+          encoding: 'base64',
+          contentType: 'application/pdf',
+        }));
       }
 
       const response = await axios.post(
@@ -115,7 +102,7 @@ export class MailService {
     } catch (error) {
       Logger.error(
         `Erreur lors de l'envoi de l'email pour le devis ${quote_id}:`,
-        error.response?.data || error.message,
+        JSON.stringify(error.response?.data),
       );
       throw error;
     }

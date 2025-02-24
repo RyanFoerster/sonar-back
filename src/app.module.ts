@@ -29,8 +29,8 @@ import { UsersModule } from './users/users.module';
 import { VirementSepaModule } from './virement-sepa/virement-sepa.module';
 import { NotificationModule } from './notification/notification.module';
 import { BeneficiariesModule } from './beneficiaries/beneficiaries.module';
-import { UserAttachmentModule } from './user-attachment/user-attachment.module';
 import { AssetsService } from './services/assets.service';
+import { ProjectAttachmentModule } from './user-attachment/user-attachment.module';
 
 @Module({
   imports: [
@@ -102,7 +102,7 @@ import { AssetsService } from './services/assets.service';
     S3Module,
     NotificationModule,
     BeneficiariesModule,
-    UserAttachmentModule,
+    ProjectAttachmentModule,
   ],
   controllers: [AppController],
   providers: [AppService, BceService, AssetsService],

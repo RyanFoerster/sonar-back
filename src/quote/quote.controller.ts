@@ -8,28 +8,31 @@ import {
   Delete,
   Req,
   UseInterceptors,
-  UploadedFile,
+  UploadedFiles,
   Logger,
+  Res,
+  NotFoundException,
 } from '@nestjs/common';
 import { QuoteService } from './quote.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { Public } from '@/auth/decorators/public.decorator';
+import { Response } from 'express';
 
 @Controller('quote')
 export class QuoteController {
   constructor(private readonly quoteService: QuoteService) {}
 
   @Post()
-  @UseInterceptors(FileInterceptor('attachment'))
+  @UseInterceptors(FilesInterceptor('attachments'))
   create(
     @Body() body: { data: string },
     @Req() req,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: Express.Multer.File[],
   ) {
     const createQuoteDto = JSON.parse(body.data) as CreateQuoteDto;
-    return this.quoteService.create(createQuoteDto, req.user.id, file);
+    return this.quoteService.create(createQuoteDto, req.user.id, files || []);
   }
 
   @Get()
@@ -44,15 +47,20 @@ export class QuoteController {
   }
 
   @Post(':id/update')
-  @UseInterceptors(FileInterceptor('attachment'))
+  @UseInterceptors(FilesInterceptor('attachments'))
   update(
     @Param('id') id: string,
     @Body() body: { data: string },
     @Req() req,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: Express.Multer.File[],
   ) {
     const updateQuoteDto = JSON.parse(body.data) as UpdateQuoteDto;
-    return this.quoteService.update(id, updateQuoteDto, req.user.id, file);
+    return this.quoteService.update(
+      id,
+      updateQuoteDto,
+      req.user.id,
+      files || [],
+    );
   }
 
   @Delete(':id')
@@ -93,5 +101,53 @@ export class QuoteController {
       +id,
       updateReportDateDto.report_date,
     );
+  }
+
+  @Get('attachment/:key')
+  @Public()
+  async downloadAttachment(@Param('key') key: string, @Res() res: Response) {
+    try {
+      const fileBuffer = await this.quoteService.getAttachment(key);
+      Logger.debug('Downloading file with key:', key);
+
+      // Extraire le nom du fichier de la clé
+      const fileName = key.split('/').pop() || 'attachment';
+      Logger.debug('Filename:', fileName);
+
+      // Déterminer le type MIME en fonction de l'extension
+      const extension = fileName.split('.').pop()?.toLowerCase() || '';
+      const mimeType = this.getMimeType(extension);
+      Logger.debug('MIME Type:', mimeType);
+
+      // Configurer les en-têtes de la réponse
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${encodeURIComponent(fileName)}"`,
+      );
+      res.setHeader('Content-Length', fileBuffer.length);
+
+      // Envoyer le fichier
+      res.send(fileBuffer);
+    } catch (error) {
+      Logger.error('Error downloading file:', error);
+      throw new NotFoundException('Fichier non trouvé');
+    }
+  }
+
+  private getMimeType(extension: string): string {
+    const mimeTypes: { [key: string]: string } = {
+      pdf: 'application/pdf',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xls: 'application/vnd.ms-excel',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      gif: 'image/gif',
+    };
+
+    return mimeTypes[extension] || 'application/octet-stream';
   }
 }

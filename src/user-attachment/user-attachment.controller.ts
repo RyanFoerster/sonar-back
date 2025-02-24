@@ -8,21 +8,23 @@ import {
   UploadedFile,
   Body,
   UseGuards,
-  Request,
-  MaxFileSizeValidator,
+  Query,
   ParseFilePipe,
+  MaxFileSizeValidator,
   FileTypeValidator,
   Res,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { UserAttachmentService } from './user-attachment.service';
+import { ProjectAttachmentService } from './user-attachment.service';
 import { Response } from 'express';
 import { JwtAuthGuard } from '@/guards/auth.guard';
 
-@Controller('user-attachments')
+@Controller('project-attachments')
 @UseGuards(JwtAuthGuard)
-export class UserAttachmentController {
-  constructor(private readonly userAttachmentService: UserAttachmentService) {}
+export class ProjectAttachmentController {
+  constructor(
+    private readonly projectAttachmentService: ProjectAttachmentService,
+  ) {}
 
   @Post()
   @UseInterceptors(FileInterceptor('file'))
@@ -36,32 +38,46 @@ export class UserAttachmentController {
       }),
     )
     file: Express.Multer.File,
-    @Body('description') description: string,
-    @Request() req: any,
+    @Body('projectType') projectType: 'principal' | 'groupe',
+    @Body('projectId') projectId: string,
+    @Body('description') description?: string,
   ) {
-    return this.userAttachmentService.create(file, req.user.id, description);
+    return this.projectAttachmentService.create(
+      file,
+      projectType,
+      parseInt(projectId),
+      description,
+    );
   }
 
   @Get()
-  async getUserAttachments(@Request() req: any) {
-    return this.userAttachmentService.findAllByUser(req.user.id);
+  async getProjectAttachments(
+    @Query('projectType') projectType: 'principal' | 'groupe',
+    @Query('projectId') projectId: string,
+  ) {
+    return this.projectAttachmentService.findAllByProject(
+      projectType,
+      parseInt(projectId),
+    );
   }
 
   @Get(':id/download')
   async downloadAttachment(
     @Param('id') id: string,
-    @Request() req: any,
+    @Query('projectType') projectType: 'principal' | 'groupe',
+    @Query('projectId') projectId: string,
     @Res() res: Response,
   ) {
-    const attachment = await this.userAttachmentService.findOne(
+    const attachment = await this.projectAttachmentService.findOne(
       +id,
-      req.user.id,
+      projectType,
+      parseInt(projectId),
     );
     if (!attachment) {
       return res.status(404).send('Pièce jointe non trouvée');
     }
 
-    const fileBuffer = await this.userAttachmentService.getFileBuffer(
+    const fileBuffer = await this.projectAttachmentService.getFileBuffer(
       attachment.key,
     );
 
@@ -74,7 +90,15 @@ export class UserAttachmentController {
   }
 
   @Delete(':id')
-  async deleteAttachment(@Param('id') id: string, @Request() req: any) {
-    return this.userAttachmentService.delete(+id, req.user.id);
+  async deleteAttachment(
+    @Param('id') id: string,
+    @Query('projectType') projectType: 'principal' | 'groupe',
+    @Query('projectId') projectId: string,
+  ) {
+    return this.projectAttachmentService.delete(
+      +id,
+      projectType,
+      parseInt(projectId),
+    );
   }
 }
