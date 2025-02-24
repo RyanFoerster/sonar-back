@@ -38,8 +38,8 @@ export class CreateQuoteDto {
   @IsString()
   comment: string;
 
-  @IsString()
-  attachment_key?: string;
+  @IsString({ each: true })
+  attachment_keys?: string[];
 
   @IsString()
   created_by?: string;

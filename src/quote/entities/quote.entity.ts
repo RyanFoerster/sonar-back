@@ -74,8 +74,8 @@ export class Quote {
   @Column({ default: false })
   isVatIncluded: boolean;
 
-  @Column({ default: null, nullable: true })
-  attachment_url: string;
+  @Column('text', { array: true, nullable: true, default: [] })
+  attachment_url: string[];
 
   @Column({ default: null, nullable: true })
   created_by: string;

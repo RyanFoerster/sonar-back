@@ -96,7 +96,7 @@ export class QuoteService {
   async create(
     createQuoteDto: CreateQuoteDto,
     user_id: number,
-    file: Express.Multer.File,
+    files: Express.Multer.File[],
   ) {
     Logger.debug(
       `[QuotesService] Create a quote for user ${user_id} with ${JSON.stringify(createQuoteDto, null, 2)}`,
@@ -155,87 +155,108 @@ export class QuoteService {
       quote.validation_deadline = createQuoteDto.validation_deadline;
     }
 
-    // Gestion de l'attachement
-    let attachment_mail = null;
-    let attachment_key = null;
+    // Gestion des attachements
+    let attachments_mail: Buffer[] = [];
+    let attachment_urls: string[] = [];
 
-    Logger.debug(
-      `[QuotesService] Create quote dto: ${JSON.stringify(createQuoteDto, null, 2)}`,
-    );
-
-    if (file) {
-      try {
-        Logger.debug(`[QuotesService] File`);
-        // Upload du fichier sur S3
-        attachment_key = await this.s3Service.uploadFile(
-          file,
-          `quote/${quote.quote_number}`,
-        );
-
-        // Stocker la clé dans quote
-        quote.attachment_url = this.s3Service.getFileUrl(attachment_key);
-
-        // Utiliser directement le buffer du fichier uploadé pour l'email
-        attachment_mail = file.buffer;
-      } catch (error) {
-        Logger.error(`Erreur lors de la gestion du fichier: ${error.message}`);
-        // On continue même si l'upload échoue
-      }
-    } else if (createQuoteDto.attachment_key) {
+    // D'abord traiter les pièces jointes existantes si présentes
+    if (
+      createQuoteDto.attachment_keys &&
+      createQuoteDto.attachment_keys.length > 0
+    ) {
       try {
         Logger.debug(
-          `[QuotesService] Attachment key: ${createQuoteDto.attachment_key}`,
+          `[QuotesService] Processing existing attachments: ${createQuoteDto.attachment_keys}`,
         );
-        // Si on a une clé d'attachement mais pas de fichier, c'est une pièce jointe existante
-        attachment_mail = await this.s3Service.getFile(
-          createQuoteDto.attachment_key,
-        );
-        quote.attachment_url = this.s3Service.getFileUrl(
-          createQuoteDto.attachment_key,
-        );
+
+        for (const key of createQuoteDto.attachment_keys) {
+          // Récupérer le fichier S3 pour l'email
+          const fileBuffer = await this.s3Service.getFile(key);
+          attachments_mail.push(fileBuffer);
+
+          // Ajouter l'URL au tableau
+          attachment_urls.push(this.s3Service.getFileUrl(key));
+        }
       } catch (error) {
         Logger.error(
-          `Erreur lors de la récupération du fichier S3: ${error.message}`,
+          `Erreur lors de la récupération des fichiers S3: ${error.message}`,
         );
-        // On continue même si la récupération échoue
       }
     }
+
+    // Ensuite traiter les nouveaux fichiers
+    if (files && files.length > 0) {
+      try {
+        Logger.debug(`[QuotesService] Processing ${files.length} files`);
+
+        for (const file of files) {
+          // Upload du fichier sur S3
+          const attachment_key = await this.s3Service.uploadFile(
+            file,
+            `quote/${quote.quote_number}/${file.originalname}`,
+          );
+
+          // Stocker l'URL dans le tableau
+          attachment_urls.push(this.s3Service.getFileUrl(attachment_key));
+
+          // Ajouter le buffer pour l'email
+          attachments_mail.push(file.buffer);
+        }
+      } catch (error) {
+        Logger.error(
+          `Erreur lors de la gestion des fichiers: ${error.message}`,
+        );
+      }
+    }
+
+    // Assigner toutes les URLs au devis
+    quote.attachment_url = attachment_urls;
 
     const userConnected = await this.usersService.findOne(user_id);
     quote = await this.quoteRepository.save(quote);
 
-    // Envoi des emails
-    await Promise.all([
-      this.mailService.sendDevisAcceptationEmail(
-        quote.client.email,
-        quote.client.name,
-        quote.id,
-        'CLIENT',
-        '',
-        attachment_mail,
-        file
-          ? file.originalname
-          : createQuoteDto.attachment_key
-            ? this.extractFileName(createQuoteDto.attachment_key)
-            : null,
-      ),
-      this.mailService.sendDevisAcceptationEmail(
-        userConnected.email,
-        userConnected.firstName,
-        quote.id,
-        'GROUP',
-        userConnected.name,
-        attachment_mail,
-        file
-          ? file.originalname
-          : createQuoteDto.attachment_key
-            ? this.extractFileName(createQuoteDto.attachment_key)
-            : null,
-      ),
-    ]);
+    // Envoi des emails avec les pièces jointes
+    const sendEmail = async (
+      email: string,
+      name: string,
+      role: 'CLIENT' | 'GROUP',
+    ) => {
+      if (attachments_mail.length === 0) {
+        // Pas de pièces jointes, envoyer un email simple
+        await this.mailService.sendDevisAcceptationEmail(
+          email,
+          name,
+          quote.id,
+          role,
+          role === 'GROUP' ? userConnected.name : '',
+          [],
+          [],
+        );
+        return;
+      }
 
-    // Laisser l'erreur pour le moment car permet de faire des tests
-    // throw new BadRequestException('test');
+      // Extraire les noms de fichiers des URLs
+      const fileNames = attachment_urls.map(
+        (url) => url.split('/').pop() || 'attachment.pdf',
+      );
+
+      // Envoyer l'email avec toutes les pièces jointes
+      await this.mailService.sendDevisAcceptationEmail(
+        email,
+        name,
+        quote.id,
+        role,
+        role === 'GROUP' ? userConnected.name : '',
+        attachments_mail,
+        fileNames,
+      );
+    };
+
+    // Envoyer les emails en parallèle
+    await Promise.all([
+      sendEmail(quote.client.email, quote.client.name, 'CLIENT'),
+      sendEmail(userConnected.email, userConnected.firstName, 'GROUP'),
+    ]);
 
     return quote ? true : false;
   }
@@ -270,12 +291,12 @@ export class QuoteService {
     id: string,
     updateQuoteDto: UpdateQuoteDto,
     user_id: number,
-    file: Express.Multer.File,
+    files: Express.Multer.File[],
   ) {
     let quote: Quote = await this.findOne(+id);
 
-    Logger.debug('isFile', file !== null);
-    Logger.debug('isFileUndefined', file !== undefined);
+    Logger.debug('isFiles', files !== null);
+    Logger.debug('isFilesUndefined', files !== undefined);
 
     quote.quote_date = updateQuoteDto.quote_date;
     quote.service_date = updateQuoteDto.service_date;
@@ -326,47 +347,62 @@ export class QuoteService {
     quote.group_acceptance = 'pending';
     quote.order_giver_acceptance = 'pending';
 
-    // Gestion de l'attachement
-    let attachment_mail = null;
-    let attachment_key = null;
+    // Gestion des attachements
+    let attachments_mail: Buffer[] = [];
+    let attachment_urls: string[] = [];
 
-    if (file) {
-      try {
-        Logger.debug(`[QuotesService] File`);
-        // Upload du fichier sur S3
-        attachment_key = await this.s3Service.uploadFile(
-          file,
-          `quote/${quote.quote_number}`,
-        );
-
-        // Stocker la clé dans quote
-        quote.attachment_url = this.s3Service.getFileUrl(attachment_key);
-
-        // Utiliser directement le buffer du fichier uploadé pour l'email
-        attachment_mail = file.buffer;
-      } catch (error) {
-        Logger.error(`Erreur lors de la gestion du fichier: ${error.message}`);
-        // On continue même si l'upload échoue
-      }
-    } else if (updateQuoteDto.attachment_key) {
+    // D'abord traiter les pièces jointes existantes si présentes
+    if (
+      updateQuoteDto.attachment_keys &&
+      updateQuoteDto.attachment_keys.length > 0
+    ) {
       try {
         Logger.debug(
-          `[QuotesService] Attachment key: ${updateQuoteDto.attachment_key}`,
+          `[QuotesService] Processing existing attachments: ${updateQuoteDto.attachment_keys}`,
         );
-        // Si on a une clé d'attachement mais pas de fichier, c'est une pièce jointe existante
-        attachment_mail = await this.s3Service.getFile(
-          updateQuoteDto.attachment_key,
-        );
-        quote.attachment_url = this.s3Service.getFileUrl(
-          updateQuoteDto.attachment_key,
-        );
+
+        for (const key of updateQuoteDto.attachment_keys) {
+          // Récupérer le fichier S3 pour l'email
+          const fileBuffer = await this.s3Service.getFile(key);
+          attachments_mail.push(fileBuffer);
+
+          // Ajouter l'URL au tableau
+          attachment_urls.push(this.s3Service.getFileUrl(key));
+        }
       } catch (error) {
         Logger.error(
-          `Erreur lors de la récupération du fichier S3: ${error.message}`,
+          `Erreur lors de la récupération des fichiers S3: ${error.message}`,
         );
-        // On continue même si la récupération échoue
       }
     }
+
+    // Ensuite traiter les nouveaux fichiers
+    if (files && files.length > 0) {
+      try {
+        Logger.debug(`[QuotesService] Processing ${files.length} files`);
+
+        for (const file of files) {
+          // Upload du fichier sur S3
+          const attachment_key = await this.s3Service.uploadFile(
+            file,
+            `quote/${quote.quote_number}/${file.originalname}`,
+          );
+
+          // Stocker l'URL dans le tableau
+          attachment_urls.push(this.s3Service.getFileUrl(attachment_key));
+
+          // Ajouter le buffer pour l'email
+          attachments_mail.push(file.buffer);
+        }
+      } catch (error) {
+        Logger.error(
+          `Erreur lors de la gestion des fichiers: ${error.message}`,
+        );
+      }
+    }
+
+    // Assigner toutes les URLs au devis
+    quote.attachment_url = attachment_urls;
 
     // Gestion du commentaire du devis
     if (updateQuoteDto.comment) {
@@ -375,34 +411,48 @@ export class QuoteService {
 
     quote = await this.quoteRepository.save(quote);
 
-    Logger.debug('attachment_key', attachment_key);
+    // Envoi des emails avec les pièces jointes
+    const sendEmail = async (
+      email: string,
+      name: string,
+      role: 'CLIENT' | 'GROUP',
+    ) => {
+      if (attachments_mail.length === 0) {
+        // Pas de pièces jointes, envoyer un email simple
+        await this.mailService.sendDevisAcceptationEmail(
+          email,
+          name,
+          quote.id,
+          role,
+          role === 'GROUP' ? userConnected.name : '',
+          [],
+          [],
+        );
+        return;
+      }
 
-    await this.mailService.sendDevisAcceptationEmail(
-      quote.client.email,
-      quote.client.name,
-      quote.id,
-      'CLIENT',
-      '',
-      attachment_mail,
-      file
-        ? file.originalname
-        : updateQuoteDto.attachment_key
-          ? this.extractFileName(updateQuoteDto.attachment_key)
-          : null,
-    );
-    await this.mailService.sendDevisAcceptationEmail(
-      userConnected.email,
-      userConnected.firstName,
-      quote.id,
-      'GROUP',
-      userConnected.name,
-      attachment_mail,
-      file
-        ? file.originalname
-        : updateQuoteDto.attachment_key
-          ? this.extractFileName(updateQuoteDto.attachment_key)
-          : null,
-    );
+      // Extraire les noms de fichiers des URLs
+      const fileNames = attachment_urls.map(
+        (url) => url.split('/').pop() || 'attachment.pdf',
+      );
+
+      // Envoyer l'email avec toutes les pièces jointes
+      await this.mailService.sendDevisAcceptationEmail(
+        email,
+        name,
+        quote.id,
+        role,
+        role === 'GROUP' ? userConnected.name : '',
+        attachments_mail,
+        fileNames,
+      );
+    };
+
+    // Envoyer les emails en parallèle
+    await Promise.all([
+      sendEmail(quote.client.email, quote.client.name, 'CLIENT'),
+      sendEmail(userConnected.email, userConnected.firstName, 'GROUP'),
+    ]);
 
     return quote;
   }

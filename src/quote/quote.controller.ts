@@ -8,7 +8,7 @@ import {
   Delete,
   Req,
   UseInterceptors,
-  UploadedFile,
+  UploadedFiles,
   Logger,
   Res,
   NotFoundException,
@@ -16,7 +16,7 @@ import {
 import { QuoteService } from './quote.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { Public } from '@/auth/decorators/public.decorator';
 import { Response } from 'express';
 
@@ -25,14 +25,14 @@ export class QuoteController {
   constructor(private readonly quoteService: QuoteService) {}
 
   @Post()
-  @UseInterceptors(FileInterceptor('attachment'))
+  @UseInterceptors(FilesInterceptor('attachments'))
   create(
     @Body() body: { data: string },
     @Req() req,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: Express.Multer.File[],
   ) {
     const createQuoteDto = JSON.parse(body.data) as CreateQuoteDto;
-    return this.quoteService.create(createQuoteDto, req.user.id, file);
+    return this.quoteService.create(createQuoteDto, req.user.id, files || []);
   }
 
   @Get()
@@ -47,15 +47,20 @@ export class QuoteController {
   }
 
   @Post(':id/update')
-  @UseInterceptors(FileInterceptor('attachment'))
+  @UseInterceptors(FilesInterceptor('attachments'))
   update(
     @Param('id') id: string,
     @Body() body: { data: string },
     @Req() req,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: Express.Multer.File[],
   ) {
     const updateQuoteDto = JSON.parse(body.data) as UpdateQuoteDto;
-    return this.quoteService.update(id, updateQuoteDto, req.user.id, file);
+    return this.quoteService.update(
+      id,
+      updateQuoteDto,
+      req.user.id,
+      files || [],
+    );
   }
 
   @Delete(':id')
