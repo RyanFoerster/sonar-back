@@ -20,12 +20,14 @@ services:
       - traefik.http.services.sonar-back.loadbalancer.server.port=3000
       - traefik.http.routers.sonar-back.service=sonar-back
       # CORS
-      - traefik.http.middlewares.sonar-cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS
-      - traefik.http.middlewares.sonar-cors.headers.accesscontrolallowheaders=*
-      - traefik.http.middlewares.sonar-cors.headers.accesscontrolalloworiginlist=*
-      - traefik.http.middlewares.sonar-cors.headers.accesscontrolmaxage=100
-      - traefik.http.middlewares.sonar-cors.headers.addvaryheader=true
-      - traefik.http.routers.sonar-back.middlewares=sonar-cors
+      - traefik.http.middlewares.sonar-back-cors.headers.accesscontrolallowmethods=GET,POST,PUT,DELETE,OPTIONS
+      - traefik.http.middlewares.sonar-back-cors.headers.accesscontrolallowheaders=*
+      - traefik.http.middlewares.sonar-back-cors.headers.accesscontrolalloworiginlist=*
+      - traefik.http.middlewares.sonar-back-cors.headers.accesscontrolmaxage=100
+      - traefik.http.middlewares.sonar-back-cors.headers.addvaryheader=true
+      - traefik.http.routers.sonar-back.middlewares=sonar-back-cors
+      # I use Cloudflare proxies server
+      - traefik.http.routers.sonar-back.tls.options=default
   db:
       - traefik-network
     labels:
