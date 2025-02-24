@@ -86,6 +86,9 @@ export class Quote {
   @Column({ default: null, nullable: true })
   created_by_phone: string;
 
+  @Column({ default: null, nullable: true })
+  created_by_project_name: string;
+
   @ManyToOne(
     () => ComptePrincipal,
     (comptePrincipal) => comptePrincipal.quote,

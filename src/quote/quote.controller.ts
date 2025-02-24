@@ -10,12 +10,15 @@ import {
   UseInterceptors,
   UploadedFile,
   Logger,
+  Res,
+  NotFoundException,
 } from '@nestjs/common';
 import { QuoteService } from './quote.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Public } from '@/auth/decorators/public.decorator';
+import { Response } from 'express';
 
 @Controller('quote')
 export class QuoteController {
@@ -93,5 +96,53 @@ export class QuoteController {
       +id,
       updateReportDateDto.report_date,
     );
+  }
+
+  @Get('attachment/:key')
+  @Public()
+  async downloadAttachment(@Param('key') key: string, @Res() res: Response) {
+    try {
+      const fileBuffer = await this.quoteService.getAttachment(key);
+      Logger.debug('Downloading file with key:', key);
+
+      // Extraire le nom du fichier de la clé
+      const fileName = key.split('/').pop() || 'attachment';
+      Logger.debug('Filename:', fileName);
+
+      // Déterminer le type MIME en fonction de l'extension
+      const extension = fileName.split('.').pop()?.toLowerCase() || '';
+      const mimeType = this.getMimeType(extension);
+      Logger.debug('MIME Type:', mimeType);
+
+      // Configurer les en-têtes de la réponse
+      res.setHeader('Content-Type', mimeType);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${encodeURIComponent(fileName)}"`,
+      );
+      res.setHeader('Content-Length', fileBuffer.length);
+
+      // Envoyer le fichier
+      res.send(fileBuffer);
+    } catch (error) {
+      Logger.error('Error downloading file:', error);
+      throw new NotFoundException('Fichier non trouvé');
+    }
+  }
+
+  private getMimeType(extension: string): string {
+    const mimeTypes: { [key: string]: string } = {
+      pdf: 'application/pdf',
+      doc: 'application/msword',
+      docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      xls: 'application/vnd.ms-excel',
+      xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      gif: 'image/gif',
+    };
+
+    return mimeTypes[extension] || 'application/octet-stream';
   }
 }

@@ -1,53 +1,66 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { UserAttachmentEntity } from './entities/user-attachment.entity';
+import { ProjectAttachmentEntity } from './entities/user-attachment.entity';
 import { S3Service } from '../services/s3/s3.service';
 
 @Injectable()
-export class UserAttachmentService {
+export class ProjectAttachmentService {
   constructor(
-    @InjectRepository(UserAttachmentEntity)
-    private readonly userAttachmentRepository: Repository<UserAttachmentEntity>,
+    @InjectRepository(ProjectAttachmentEntity)
+    private readonly projectAttachmentRepository: Repository<ProjectAttachmentEntity>,
     private readonly s3Service: S3Service,
   ) {}
 
   async create(
     file: Express.Multer.File,
-    userId: number,
+    projectType: 'principal' | 'groupe',
+    projectId: number,
     description?: string,
-  ): Promise<UserAttachmentEntity> {
+  ): Promise<ProjectAttachmentEntity> {
     const key = await this.s3Service.uploadFile(
       file,
-      `user-${userId}/attachments`,
+      `${projectType}-${projectId}/attachments`,
     );
     const url = this.s3Service.getFileUrl(key);
 
-    const attachment = this.userAttachmentRepository.create({
+    const attachment = this.projectAttachmentRepository.create({
       name: file.originalname,
       key,
       url,
       type: file.mimetype,
       description,
-      user: { id: userId },
+      ...(projectType === 'principal'
+        ? { comptePrincipal: { id: projectId } }
+        : { compteGroupe: { id: projectId } }),
     });
 
-    return this.userAttachmentRepository.save(attachment);
+    return this.projectAttachmentRepository.save(attachment);
   }
 
-  async findAllByUser(userId: number): Promise<UserAttachmentEntity[]> {
-    return this.userAttachmentRepository.find({
-      where: { user: { id: userId } },
+  async findAllByProject(
+    projectType: 'principal' | 'groupe',
+    projectId: number,
+  ): Promise<ProjectAttachmentEntity[]> {
+    return this.projectAttachmentRepository.find({
+      where:
+        projectType === 'principal'
+          ? { comptePrincipal: { id: projectId } }
+          : { compteGroupe: { id: projectId } },
       order: { created_at: 'DESC' },
     });
   }
 
   async findOne(
     id: number,
-    userId: number,
-  ): Promise<UserAttachmentEntity | null> {
-    return this.userAttachmentRepository.findOne({
-      where: { id, user: { id: userId } },
+    projectType: 'principal' | 'groupe',
+    projectId: number,
+  ): Promise<ProjectAttachmentEntity | null> {
+    return this.projectAttachmentRepository.findOne({
+      where:
+        projectType === 'principal'
+          ? { id, comptePrincipal: { id: projectId } }
+          : { id, compteGroupe: { id: projectId } },
     });
   }
 
@@ -55,14 +68,21 @@ export class UserAttachmentService {
     return this.s3Service.getFile(key);
   }
 
-  async delete(id: number, userId: number): Promise<void> {
-    const attachment = await this.userAttachmentRepository.findOne({
-      where: { id, user: { id: userId } },
+  async delete(
+    id: number,
+    projectType: 'principal' | 'groupe',
+    projectId: number,
+  ): Promise<void> {
+    const attachment = await this.projectAttachmentRepository.findOne({
+      where:
+        projectType === 'principal'
+          ? { id, comptePrincipal: { id: projectId } }
+          : { id, compteGroupe: { id: projectId } },
     });
 
     if (attachment) {
       await this.s3Service.deleteFile(attachment.key);
-      await this.userAttachmentRepository.remove(attachment);
+      await this.projectAttachmentRepository.remove(attachment);
     }
   }
 }

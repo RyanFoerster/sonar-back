@@ -49,4 +49,7 @@ export class CreateQuoteDto {
 
   @IsString()
   created_by_phone?: string;
+
+  @IsString()
+  created_by_project_name?: string;
 }

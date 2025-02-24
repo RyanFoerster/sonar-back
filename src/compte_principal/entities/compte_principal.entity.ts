@@ -15,7 +15,7 @@ import { Quote } from '../../quote/entities/quote.entity';
 import { Transaction } from '../../transaction/entities/transaction.entity';
 import { User } from '../../users/entities/user.entity';
 import { VirementSepa } from '../../virement-sepa/entities/virement-sepa.entity';
-import { v4 as uuidv4 } from 'uuid';
+import { ProjectAttachmentEntity } from '../../user-attachment/entities/user-attachment.entity';
 
 @Entity()
 export class ComptePrincipal {
@@ -65,4 +65,14 @@ export class ComptePrincipal {
     { nullable: true, eager: true },
   )
   virementSepa?: VirementSepa[];
+
+  @OneToMany(
+    () => ProjectAttachmentEntity,
+    (attachment) => attachment.comptePrincipal,
+    {
+      nullable: true,
+      eager: true,
+    },
+  )
+  attachments: ProjectAttachmentEntity[];
 }

@@ -117,6 +117,7 @@ export class QuoteService {
     if (mainAccountResult) {
       quote.main_account = mainAccountResult.account as ComptePrincipal;
       quote.quote_number = mainAccountResult.quoteNumber;
+      quote.created_by_project_name = mainAccountResult.account.username;
     }
 
     const groupAccountResult = await this.updateAccountAndGetQuoteNumber(
@@ -126,6 +127,7 @@ export class QuoteService {
     if (groupAccountResult) {
       quote.group_account = groupAccountResult.account as CompteGroupe;
       quote.quote_number = groupAccountResult.quoteNumber;
+      quote.created_by_project_name = groupAccountResult.account.username;
     }
 
     // Récupération du client
@@ -606,5 +608,14 @@ export class QuoteService {
         status: 'pending',
       },
     });
+  }
+
+  async getAttachment(key: string) {
+    try {
+      return await this.s3Service.getFile(key);
+    } catch (error) {
+      Logger.error('Error getting attachment from S3:', error);
+      throw new NotFoundException('Pièce jointe non trouvée');
+    }
   }
 }
