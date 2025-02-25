@@ -52,6 +52,7 @@ services:
       - traefik.tcp.routers.sonar-staging-db.tls.certresolver=cloudflare
       - traefik.tcp.services.sonar-staging-db.loadbalancer.server.port=5432
       - traefik.tcp.routers.sonar-staging-db.service=sonar-staging-db
+      - traefik.tcp.services.sonar-staging-db.loadbalancer.server.address=${HOST_IP}
 
 networks:
   traefik-network:
