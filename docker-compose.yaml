@@ -45,7 +45,7 @@ services:
       start_period: 30s
     labels:
       - traefik.enable=true
-      - traefik.tcp.routers.sonar-db.rule=HostSNI(`*`)
+      - traefik.tcp.routers.sonar-db.rule=Host(`${SONAR_DB_HOST}`)
       - traefik.tcp.routers.sonar-db.entrypoints=postgresql
       - traefik.tcp.routers.sonar-db.tls=true
       - traefik.tcp.routers.sonar-db.tls.certresolver=cloudflare
