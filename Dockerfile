@@ -24,4 +24,6 @@ COPY --from=build /app/package*.json ./
 
 EXPOSE 3000
 
-CMD npx typeorm migration:run -d dist/config/typeorm.config.js && STAGE=prod node dist/main
+CMD ["npm", "run", "start:prod"]
+
+# CMD npx typeorm migration:run -d dist/config/typeorm.config.js && STAGE=prod node dist/main
