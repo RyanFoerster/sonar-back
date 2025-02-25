@@ -39,7 +39,6 @@ services:
       - sonar-db-data:/var/lib/postgresql/data:rw
     networks:
       - traefik-network
-      - traefik-network
     env_file:
       - .env
     healthcheck:

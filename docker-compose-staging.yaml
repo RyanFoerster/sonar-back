@@ -54,6 +54,7 @@ services:
       - traefik.tcp.routers.sonar-staging-db.service=sonar-staging-db
       - traefik.tcp.services.sonar-staging-db.loadbalancer.server.address=${HOST_IP}
 
+
 networks:
   traefik-network:
     external: true
