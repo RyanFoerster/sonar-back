@@ -63,7 +63,7 @@ import { ProjectAttachmentModule } from './user-attachment/user-attachment.modul
             ? configService.get('DATABASE_URL')
             : '',
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: false,
+        synchronize: true,
       }),
       inject: [ConfigService],
     }),

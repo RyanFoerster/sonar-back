@@ -15,6 +15,18 @@ services:
       - traefik.http.routers.sonar-back.rule=Host(`${SONAR_BACKEND_HOST}`)
       - traefik.http.routers.sonar-back.entrypoints=websecure
       - traefik.http.routers.sonar-back.tls=true
+      - traefik.http.routers.sonar-back.rule=Host(`${backend.sonarartists.be}`)
+      - traefik.http.routers.sonar-back.service=sonar-back
+      - traefik.http.services.sonar-back.loadbalancer.server.port=3000
+      - traefik.http.routers.sonar-back.service=sonar-back
+      - traefik.http.routers.sonar-back.tls.options=default
+  db:
+      - traefik-network
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.sonar-back.rule=Host(`${SONAR_BACKEND_HOST}`)
+      - traefik.http.routers.sonar-back.entrypoints=websecure
+      - traefik.http.routers.sonar-back.tls=true
       - traefik.http.routers.sonar-back.tls.certresolver=cloudflare
       - traefik.http.services.sonar-back.loadbalancer.server.port=3000
       - traefik.http.routers.sonar-back.service=sonar-back
@@ -54,6 +66,8 @@ services:
 networks:
   traefik-network:
     external: true
+  sonar-network:
+    driver: bridge
 
 volumes:
   sonar-db-data:
