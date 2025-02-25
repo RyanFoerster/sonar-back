@@ -293,59 +293,47 @@ export class QuoteService {
     user_id: number,
     files: Express.Multer.File[],
   ) {
+    Logger.debug(
+      `[QuotesService] Update quote ${id} with ${JSON.stringify(updateQuoteDto, null, 2)}`,
+    );
+
     let quote: Quote = await this.findOne(+id);
-
-    Logger.debug('isFiles', files !== null);
-    Logger.debug('isFilesUndefined', files !== undefined);
-
-    quote.quote_date = updateQuoteDto.quote_date;
-    quote.service_date = updateQuoteDto.service_date;
-    quote.validation_deadline = updateQuoteDto.validation_deadline;
-    quote.payment_deadline = updateQuoteDto.payment_deadline;
-
     if (!quote) {
       throw new NotFoundException('Quote not found');
     }
 
+    // Validation de base
+    if (!updateQuoteDto.client_id || !updateQuoteDto.products_id?.length) {
+      throw new BadRequestException('Client and products are required');
+    }
+
+    // Mise à jour des données de base
+    quote.quote_date = updateQuoteDto.quote_date;
+    quote.service_date = updateQuoteDto.service_date;
+    quote.payment_deadline = updateQuoteDto.payment_deadline;
     quote.client = await this.clientService.findOne(updateQuoteDto.client_id);
 
-    let products: Product[] = [];
-    Logger.debug('Update quote dto', JSON.stringify(updateQuoteDto, null, 2));
-    for (const productId of updateQuoteDto.products_id) {
-      let product = await this.productService.findOne(productId);
-      products.push(product);
-    }
+    // Récupération et mise à jour des produits
+    const productPromises = updateQuoteDto.products_id.map((id) =>
+      this.productService.findOne(id),
+    );
+    quote.products = await Promise.all(productPromises);
 
-    quote.products = products;
+    // Calcul des totaux
+    const totals = this.calculateTotals(quote.products);
+    quote.price_htva = totals.totalHtva;
+    quote.total_vat_6 = totals.totalVat6;
+    quote.total_vat_21 = totals.totalVat21;
+    quote.total = totals.total;
     quote.isVatIncluded = updateQuoteDto.isVatIncluded;
-    quote.price_htva = await this.setTotalHtva(quote.products);
-    quote.total_vat_6 = await this.setTotalTva6(quote.products);
-    quote.total_vat_21 = await this.setTotalTva21(quote.products);
 
-    quote.total = quote.price_htva + quote.total_vat_21 + quote.total_vat_6;
-
-    if (updateQuoteDto.main_account_id !== undefined) {
-      quote.main_account = await this.comptePrincipalService.findOne(
-        updateQuoteDto.main_account_id,
-      );
-    }
-
-    if (updateQuoteDto.group_account_id !== undefined) {
-      quote.group_account = await this.compteGroupeService.findOne(
-        updateQuoteDto.group_account_id,
-      );
-    }
-
+    // Gestion de la date de validation
     if (!updateQuoteDto.validation_deadline) {
       const currentDate = new Date();
       quote.validation_deadline = new Date(currentDate.getMonth() + 1);
     } else {
       quote.validation_deadline = updateQuoteDto.validation_deadline;
     }
-
-    const userConnected = await this.usersService.findOne(user_id);
-    quote.group_acceptance = 'pending';
-    quote.order_giver_acceptance = 'pending';
 
     // Gestion des attachements
     let attachments_mail: Buffer[] = [];
@@ -362,12 +350,20 @@ export class QuoteService {
         );
 
         for (const key of updateQuoteDto.attachment_keys) {
-          // Récupérer le fichier S3 pour l'email
-          const fileBuffer = await this.s3Service.getFile(key);
-          attachments_mail.push(fileBuffer);
+          try {
+            // Récupérer le fichier S3 pour l'email
+            const fileBuffer = await this.s3Service.getFile(key);
+            attachments_mail.push(fileBuffer);
 
-          // Ajouter l'URL au tableau
-          attachment_urls.push(this.s3Service.getFileUrl(key));
+            // Ajouter l'URL au tableau
+            attachment_urls.push(this.s3Service.getFileUrl(key));
+          } catch (error) {
+            Logger.error(
+              `Erreur lors de la récupération du fichier S3 ${key}:`,
+              error,
+            );
+            // Continue avec les autres fichiers même si un échoue
+          }
         }
       } catch (error) {
         Logger.error(
@@ -379,20 +375,28 @@ export class QuoteService {
     // Ensuite traiter les nouveaux fichiers
     if (files && files.length > 0) {
       try {
-        Logger.debug(`[QuotesService] Processing ${files.length} files`);
+        Logger.debug(`[QuotesService] Processing ${files.length} new files`);
 
         for (const file of files) {
-          // Upload du fichier sur S3
-          const attachment_key = await this.s3Service.uploadFile(
-            file,
-            `quote/${quote.quote_number}/${file.originalname}`,
-          );
+          try {
+            // Upload du fichier sur S3
+            const attachment_key = await this.s3Service.uploadFile(
+              file,
+              `quote/${quote.quote_number}/${file.originalname}`,
+            );
 
-          // Stocker l'URL dans le tableau
-          attachment_urls.push(this.s3Service.getFileUrl(attachment_key));
+            // Stocker l'URL dans le tableau
+            attachment_urls.push(this.s3Service.getFileUrl(attachment_key));
 
-          // Ajouter le buffer pour l'email
-          attachments_mail.push(file.buffer);
+            // Ajouter le buffer pour l'email
+            attachments_mail.push(file.buffer);
+          } catch (error) {
+            Logger.error(
+              `Erreur lors de l'upload du fichier ${file.originalname}:`,
+              error,
+            );
+            // Continue avec les autres fichiers même si un échoue
+          }
         }
       } catch (error) {
         Logger.error(
@@ -404,14 +408,26 @@ export class QuoteService {
     // Assigner toutes les URLs au devis
     quote.attachment_url = attachment_urls;
 
-    // Gestion du commentaire du devis
-    if (updateQuoteDto.comment) {
+    // Gestion du commentaire
+    if (updateQuoteDto.comment !== undefined) {
       quote.comment = updateQuoteDto.comment;
     }
 
-    quote = await this.quoteRepository.save(quote);
+    // Mise à jour des statuts
+    quote.group_acceptance = 'pending';
+    quote.order_giver_acceptance = 'pending';
+
+    // Sauvegarde du devis
+    try {
+      quote = await this.quoteRepository.save(quote);
+    } catch (error) {
+      Logger.error('Erreur lors de la sauvegarde du devis:', error);
+      throw new BadRequestException('Erreur lors de la sauvegarde du devis');
+    }
 
     // Envoi des emails avec les pièces jointes
+    const userConnected = await this.usersService.findOne(user_id);
+
     const sendEmail = async (
       email: string,
       name: string,
@@ -449,10 +465,15 @@ export class QuoteService {
     };
 
     // Envoyer les emails en parallèle
-    await Promise.all([
-      sendEmail(quote.client.email, quote.client.name, 'CLIENT'),
-      sendEmail(userConnected.email, userConnected.firstName, 'GROUP'),
-    ]);
+    try {
+      await Promise.all([
+        sendEmail(quote.client.email, quote.client.name, 'CLIENT'),
+        sendEmail(userConnected.email, userConnected.firstName, 'GROUP'),
+      ]);
+    } catch (error) {
+      Logger.error("Erreur lors de l'envoi des emails:", error);
+      // Ne pas bloquer la mise à jour si l'envoi des emails échoue
+    }
 
     return quote;
   }
