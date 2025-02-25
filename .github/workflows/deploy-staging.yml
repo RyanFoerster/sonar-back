@@ -1,8 +1,8 @@
-name: Deploy to Dev
+name: Deploy to Staging
 
 on:
   workflow_run:
-    workflows: ['Build and Publish Docker Dev Image']
+    workflows: ['Build and Publish Docker Staging Image']
     types:
       - completed
 
@@ -17,8 +17,8 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
-            cd sonar-back-dev
-            curl -o docker-compose.yaml https://raw.githubusercontent.com/${{ github.repository_owner }}/${{ github.event.repository.name }}/Ryan/docker-compose-dev.yaml
+            cd sonar-back-staging
+            curl -o docker-compose.yaml https://raw.githubusercontent.com/${{ github.repository_owner }}/${{ github.event.repository.name }}/Ryan/docker-compose-staging.yaml
 
       - name: Run the docker compose
         uses: appleboy/ssh-action@master
@@ -27,7 +27,7 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
-            cd sonar-back-dev
+            cd sonar-back-staging
             docker compose down
             docker compose pull
             docker compose up -d --force-recreate
