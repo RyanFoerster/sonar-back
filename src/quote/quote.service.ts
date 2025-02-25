@@ -349,20 +349,28 @@ export class QuoteService {
           `[QuotesService] Processing existing attachments: ${updateQuoteDto.attachment_keys}`,
         );
 
+        // Convertir les clés en URLs pour la comparaison
+        const keepUrls = updateQuoteDto.attachment_keys.map((key) =>
+          this.s3Service.getFileUrl(key),
+        );
+
+        // Filtrer les URLs existantes pour ne garder que celles qui sont dans attachment_keys
+        if (quote.attachment_url) {
+          attachment_urls = quote.attachment_url.filter((url) =>
+            keepUrls.includes(url),
+          );
+        }
+
+        // Récupérer les fichiers pour l'email
         for (const key of updateQuoteDto.attachment_keys) {
           try {
-            // Récupérer le fichier S3 pour l'email
             const fileBuffer = await this.s3Service.getFile(key);
             attachments_mail.push(fileBuffer);
-
-            // Ajouter l'URL au tableau
-            attachment_urls.push(this.s3Service.getFileUrl(key));
           } catch (error) {
             Logger.error(
               `Erreur lors de la récupération du fichier S3 ${key}:`,
               error,
             );
-            // Continue avec les autres fichiers même si un échoue
           }
         }
       } catch (error) {
@@ -370,6 +378,9 @@ export class QuoteService {
           `Erreur lors de la récupération des fichiers S3: ${error.message}`,
         );
       }
+    } else {
+      // Si aucune clé n'est fournie, cela signifie que toutes les pièces jointes ont été supprimées
+      attachment_urls = [];
     }
 
     // Ensuite traiter les nouveaux fichiers
@@ -386,7 +397,8 @@ export class QuoteService {
             );
 
             // Stocker l'URL dans le tableau
-            attachment_urls.push(this.s3Service.getFileUrl(attachment_key));
+            const fileUrl = this.s3Service.getFileUrl(attachment_key);
+            attachment_urls.push(fileUrl);
 
             // Ajouter le buffer pour l'email
             attachments_mail.push(file.buffer);
@@ -395,7 +407,6 @@ export class QuoteService {
               `Erreur lors de l'upload du fichier ${file.originalname}:`,
               error,
             );
-            // Continue avec les autres fichiers même si un échoue
           }
         }
       } catch (error) {
@@ -405,7 +416,7 @@ export class QuoteService {
       }
     }
 
-    // Assigner toutes les URLs au devis
+    // Assigner les URLs au devis
     quote.attachment_url = attachment_urls;
 
     // Gestion du commentaire
