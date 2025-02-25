@@ -1,29 +1,32 @@
 services:
-  sonar-back-dev:
-    image: dimagin/sonar-back:dev
-    container_name: sonar-back-dev
-    user: '${UID}:${GID}'
+  sonardevbackend:
+    image: dimagin/sonar-back:latest
+    container_name: sonar-dev-back
     restart: unless-stopped
-    ports:
-      - ${SONAR_PORT}:3000
     env_file:
       - .env
     depends_on:
-      sonar-db-dev:
+      sonardevdatabase:
         condition: service_healthy
     networks:
-      - sonar-network-dev
-
-  sonar-db-dev:
-    image: postgres:15.5
-    container_name: sonar-db-dev
+      - traefik-network
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.sonar-dev-back.rule=Host(`${SONAR_DEV_BACKEND_HOST}`)
+      - traefik.http.routers.sonar-dev-back.entrypoints=websecure
+      - traefik.http.routers.sonar-dev-back.tls=true
+      - traefik.http.routers.sonar-dev-back.tls.certresolver=cloudflare
+      - traefik.http.services.sonar-dev-back.loadbalancer.server.port=3000
+      - traefik.http.routers.sonar-dev-back.service=sonar-dev-back
+      - traefik.http.routers.sonar-dev-back.tls.options=default
+  sonardevdatabase:
+    image: postgres:latest
+    container_name: sonar-dev-db
     restart: unless-stopped
-    ports:
-      - ${POSTGRES_PORT}:5432
     volumes:
-      - sonar-db-data-dev:/var/lib/postgresql/data:rw
+      - sonar-dev-db-data:/var/lib/postgresql/data:rw
     networks:
-      - sonar-network-dev
+      - traefik-network
     env_file:
       - .env
     healthcheck:
@@ -40,10 +43,18 @@ services:
       retries: 5
       start_interval: 5s
       start_period: 30s
+    labels:
+      - traefik.enable=true
+      - traefik.tcp.routers.sonar-dev-db.rule=HostSNI(`${SONAR_DEV_DB_HOST}`)
+      - traefik.tcp.routers.sonar-dev-db.entrypoints=postgresql
+      - traefik.tcp.routers.sonar-dev-db.tls=true
+      - traefik.tcp.routers.sonar-dev-db.tls.certresolver=cloudflare
+      - traefik.tcp.services.sonar-dev-db.loadbalancer.server.port=5432
+      - traefik.tcp.routers.sonar-dev-db.service=sonar-dev-db
 
 networks:
-  sonar-network-dev:
-    driver: bridge
+  traefik-network:
+    external: true
 
 volumes:
-  sonar-db-data-dev:
+  sonar-dev-db-data:
