@@ -60,11 +60,9 @@ services:
       - traefik.enable=true
       - traefik.tcp.routers.sonar-db.rule=HostSNI(`${SONAR_DB_HOST}`)
       - traefik.tcp.routers.sonar-db.entrypoints=postgresql
-      # - traefik.tcp.routers.sonar-db.tls=true
-      # - traefik.tcp.routers.sonar-db.tls.certresolver=cloudflare
+      - traefik.tcp.routers.sonar-db.tls=true
+      - traefik.tcp.routers.sonar-db.tls.certresolver=cloudflare
       - traefik.tcp.services.sonar-db.loadbalancer.server.port=5432
-      - traefik.tcp.services.sonar-db.loadbalancer.server.address=${HOST_IP}
-      - traefik.tcp.routers.sonar-db.service=sonar-db
 
 networks:
   traefik-network:
