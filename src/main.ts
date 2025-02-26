@@ -5,8 +5,8 @@ import { INestApplication, Logger } from '@nestjs/common';
 import express from 'express';
 import { join } from 'path';
 
-import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
+import { AppModule } from './app.module';
 
 const server = express();
 const configService = new ConfigService();
@@ -31,6 +31,7 @@ export const createNestServer = async (expressInstance: express.Express) => {
       'https://sonarartists.fr',
       'http://localhost:4200',
       'https://sonarartists.be',
+      process.env.SONAR_FRONTEND_URL
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,

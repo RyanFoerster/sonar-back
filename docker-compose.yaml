@@ -1,6 +1,6 @@
 services:
   sonarbackend:
-    image: dimagin/sonar-back:latest
+    image: dimagin/sonar-back:test
     container_name: sonar-back
     restart: unless-stopped
     env_file:
