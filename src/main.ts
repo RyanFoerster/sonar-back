@@ -31,7 +31,7 @@ export const createNestServer = async (expressInstance: express.Express) => {
       'https://sonarartists.fr',
       'http://localhost:4200',
       'https://sonarartists.be',
-      process.env.SONAR_FRONTEND_URL
+      'https://uploadpulse.com',
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
