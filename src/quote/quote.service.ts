@@ -35,6 +35,24 @@ export class QuoteService {
     private readonly s3Service: S3Service,
   ) {}
 
+  // Fonction utilitaire pour formater les dates au format DD/MM/YYYY
+  private formatDate(dateValue: string | Date): string {
+    if (typeof dateValue === 'string') {
+      // Si c'est une chaîne au format YYYY-MM-DD
+      const match = dateValue.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (match) {
+        const [_, year, month, day] = match;
+        return `${day}/${month}/${year}`;
+      }
+      return dateValue; // Retourner la chaîne telle quelle si elle n'est pas au format YYYY-MM-DD
+    } else if (dateValue instanceof Date) {
+      return `${dateValue.getDate().toString().padStart(2, '0')}/${(dateValue.getMonth() + 1).toString().padStart(2, '0')}/${dateValue.getFullYear()}`;
+    }
+    // Valeur par défaut: date actuelle
+    const now = new Date();
+    return `${now.getDate().toString().padStart(2, '0')}/${(now.getMonth() + 1).toString().padStart(2, '0')}/${now.getFullYear()}`;
+  }
+
   private async updateAccountAndGetQuoteNumber(
     accountId: number | undefined,
     accountType: 'main' | 'group',
@@ -228,6 +246,11 @@ export class QuoteService {
           name,
           quote.id,
           role,
+          email,
+          this.formatDate(quote.quote_date),
+          quote.comment,
+          quote.price_htva,
+          quote.client.name,
           role === 'GROUP' ? userConnected.name : '',
           [],
           [],
@@ -246,6 +269,11 @@ export class QuoteService {
         name,
         quote.id,
         role,
+        email,
+        this.formatDate(quote.quote_date),
+        quote.comment,
+        quote.price_htva,
+        quote.client.name,
         role === 'GROUP' ? userConnected.name : '',
         attachments_mail,
         fileNames,
@@ -451,6 +479,11 @@ export class QuoteService {
           name,
           quote.id,
           role,
+          email,
+          this.formatDate(quote.quote_date),
+          quote.comment,
+          quote.price_htva,
+          quote.client.name,
           role === 'GROUP' ? userConnected.name : '',
           [],
           [],
@@ -469,6 +502,11 @@ export class QuoteService {
         name,
         quote.id,
         role,
+        email,
+        this.formatDate(quote.quote_date),
+        quote.comment,
+        quote.price_htva,
+        quote.client.name,
         role === 'GROUP' ? userConnected.name : '',
         attachments_mail,
         fileNames,
@@ -658,6 +696,11 @@ export class QuoteService {
           quote.client.name,
           quote.id,
           'GROUP',
+          quote.client.email,
+          this.formatDate(quote.quote_date),
+          quote.comment,
+          quote.price_htva,
+          quote.client.name,
         );
       }
 
@@ -667,6 +710,11 @@ export class QuoteService {
           quote.client.name,
           quote.id,
           'CLIENT',
+          quote.client.email,
+          this.formatDate(quote.quote_date),
+          quote.comment,
+          quote.price_htva,
+          quote.client.name,
         );
       }
     }
