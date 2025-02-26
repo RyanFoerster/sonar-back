@@ -13,9 +13,9 @@ jobs:
       - name: Copy the docker-compose file
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          password: ${{ secrets.SSH_PASSWORD }}
+          host: ${{ secrets.SSH_TEST_HOST }}
+          username: ${{ secrets.SSH_TEST_USERNAME }}
+          password: ${{ secrets.SSH_TEST_PASSWORD }}
           script: |
             cd sonar-back
             curl -o docker-compose.yaml https://raw.githubusercontent.com/${{ github.repository_owner }}/${{ github.event.repository.name }}/master/docker-compose.yaml
@@ -23,9 +23,9 @@ jobs:
       - name: Run the docker compose
         uses: appleboy/ssh-action@master
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          password: ${{ secrets.SSH_PASSWORD }}
+          host: ${{ secrets.SSH_TEST_HOST }}
+          username: ${{ secrets.SSH_TEST_USERNAME }}
+          password: ${{ secrets.SSH_TEST_PASSWORD }}
           script: |
             cd sonar-back
             docker compose down
