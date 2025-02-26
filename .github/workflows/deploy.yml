@@ -28,6 +28,6 @@ jobs:
           password: ${{ secrets.SSH_PASSWORD }}
           script: |
             cd sonar-back
-            docker compose down
             docker compose pull
+            docker compose down
             docker compose up -d
