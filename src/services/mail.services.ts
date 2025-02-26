@@ -51,9 +51,15 @@ export class MailService {
     firstName: string,
     quote_id: number,
     role: 'GROUP' | 'CLIENT',
+    email: string,
+    date: string,
+    comment: string,
+    amount: number,
+    client: string,
     name?: string,
     attachments?: Buffer[],
     attachmentNames?: string[],
+    project?: string,
   ) {
     const API_KEY = this.configService.get('mailhub.api_key_prod');
     const config = this.configService.get('isProd') ? 'PROD' : 'DEV';
@@ -63,10 +69,16 @@ export class MailService {
         layout_identifier: 'tp-3fab551a26be4e9a',
         variables: {
           firstName,
-          name,
-          quote_id,
           role,
+          quote_id,
+          name,
           config,
+          email,
+          project,
+          date,
+          comment,
+          amount,
+          client,
         },
         from: 'info@sonarartists.fr',
         to,
@@ -128,6 +140,8 @@ export class MailService {
         variables: {
           invoice_number: invoiceNumber,
           account_name: quote.main_account ? quote.main_account.username : '',
+          firstName: quote.client.firstname,
+          name: quote.client.name,
         },
         from: 'info@sonarartists.fr',
         to: quote.client.email, // Utiliser l'email du client au lieu d'une adresse en dur
