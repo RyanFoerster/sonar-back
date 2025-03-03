@@ -137,6 +137,9 @@ export class VirementSepaService {
         );
         virementSepa.invoice_key = key;
         virementSepa.invoice_url = this.s3Service.getFileUrl(key);
+        Logger.debug(`Invoice key: ${key}`);
+        Logger.debug(`Invoice url: ${virementSepa.invoice_url}`);
+        Logger.debug(`Invoice: ${invoice.originalname}`);
       } catch (error) {
         Logger.error(error);
         throw new BadRequestException("Erreur lors de l'upload du fichier");
@@ -241,6 +244,8 @@ export class VirementSepaService {
       const to = this.configService.get('isProd')
         ? 'achat-0700273583@soligere.clouddemat.be'
         : 'ryanfoerster@dimagin.be';
+
+      // const to = 'ryanfoerster@outlook.be';
 
       // const cc = this.configService.get('isProd')
       //   ? 'comptabilite@sonar.management'
