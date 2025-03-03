@@ -2,6 +2,7 @@ import {
   forwardRef,
   Inject,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { CreateCompteGroupeDto } from './dto/create-compte_groupe.dto';
@@ -67,15 +68,20 @@ export class CompteGroupeService {
     });
   }
 
-  findOne(id: number) {
-    return this.compteGroupeRepository.findOne({
-      where: { id },
-      relations: {
-        userSecondaryAccount: {
-          user: true,
-        },
-      },
-    });
+  async findOne(id: number) {
+    const compteGroupe = await this.compteGroupeRepository
+      .createQueryBuilder('compte_groupe')
+      .leftJoinAndSelect(
+        'compte_groupe.userSecondaryAccount',
+        'userSecondaryAccount',
+      )
+      .leftJoinAndSelect('userSecondaryAccount.user', 'user')
+      .leftJoinAndSelect('compte_groupe.virementSepa', 'virementSepa')
+      .where('compte_groupe.id = :id', { id })
+      .getOne();
+
+    Logger.debug(`Compte groupe: ${JSON.stringify(compteGroupe)}`);
+    return compteGroupe;
   }
 
   findOneByUsername(username: string) {

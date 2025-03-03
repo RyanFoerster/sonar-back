@@ -61,6 +61,7 @@ export class ComptePrincipalService {
         'user.iban',
         'user.telephone',
       ])
+      .leftJoinAndSelect('comptePrincipal.virementSepa', 'virementSepa')
       .where('comptePrincipal.id = :id', { id })
       .getOne();
   }
