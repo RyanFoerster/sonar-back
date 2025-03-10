@@ -1,4 +1,4 @@
-import { IsNumber, IsPositive, IsString } from "class-validator";
+import { IsNumber, IsPositive, IsString } from 'class-validator';
 
 export class CreateProductDto {
   @IsString()
@@ -14,7 +14,13 @@ export class CreateProductDto {
 
   @IsPositive()
   @IsNumber()
-  quantity: number
+  quantity: number;
+
+  @IsNumber()
+  price_htva?: number;
+
+  @IsNumber()
+  tva_amount?: number;
 
   @IsPositive()
   @IsNumber()

@@ -12,16 +12,36 @@ export class ProductService {
     private readonly productRepository: Repository<Product>,
   ) {}
   async create(createProductDto: CreateProductDto) {
-    createProductDto.total = await this.setTotal(createProductDto);
     Logger.debug(
       `Creating product with ${JSON.stringify(createProductDto, null, 2)}`,
     );
-    let product = this.productRepository.create(createProductDto);
 
-    product.price_htva = product.price * product.quantity;
-    product.tva_amount = product.price_htva * product.vat;
+    // Créer une nouvelle instance de produit
+    const product = new Product();
 
-    return await this.productRepository.save(product);
+    // Copier les propriétés de base
+    product.description = createProductDto.description;
+    product.price = createProductDto.price;
+    product.quantity = createProductDto.quantity;
+    product.vat = createProductDto.vat;
+
+    // Utiliser les valeurs calculées si elles sont fournies, sinon les calculer
+    if (
+      createProductDto.price_htva !== undefined &&
+      createProductDto.tva_amount !== undefined &&
+      createProductDto.total !== undefined
+    ) {
+      product.price_htva = createProductDto.price_htva;
+      product.tva_amount = createProductDto.tva_amount;
+      product.total = createProductDto.total;
+    } else {
+      // Calcul par défaut (TVA non incluse)
+      product.price_htva = product.price * product.quantity;
+      product.tva_amount = product.price_htva * product.vat;
+      product.total = product.price_htva + product.tva_amount;
+    }
+
+    return this.productRepository.save(product);
   }
 
   findAll() {
@@ -63,17 +83,38 @@ export class ProductService {
       `Product before calculations ${id} with ${JSON.stringify(updatedProduct, null, 2)}`,
     );
 
-    // Garder les valeurs originales
-    updatedProduct.price_htva = existingProduct.price_htva;
-    updatedProduct.tva_amount = existingProduct.tva_amount;
-    updatedProduct.total = existingProduct.total;
-    updatedProduct.vat = updateProductDto.vat;
+    // Calculer les montants en fonction de tvaIncluded
+    if (tvaIncluded) {
+      // Si TVA incluse, on recalcule les montants HTVA
+      const priceWithVAT = updatedProduct.price * updatedProduct.quantity;
+      const vatRate = updatedProduct.vat;
+      const priceHTVA = priceWithVAT / (1 + vatRate);
+      const tvaAmount = priceWithVAT - priceHTVA;
+
+      updatedProduct.price_htva = priceHTVA;
+      updatedProduct.tva_amount = tvaAmount;
+      updatedProduct.total = priceWithVAT;
+    } else {
+      // Si TVA non incluse, on recalcule les montants avec TVA
+      const priceHTVA = updatedProduct.price * updatedProduct.quantity;
+      const tvaAmount = priceHTVA * updatedProduct.vat;
+      const total = priceHTVA + tvaAmount;
+
+      updatedProduct.price_htva = priceHTVA;
+      updatedProduct.tva_amount = tvaAmount;
+      updatedProduct.total = total;
+    }
 
     Logger.debug(
       `Product after calculations ${id} with ${JSON.stringify(updatedProduct, null, 2)}`,
     );
 
-    // Retourner l'objet mis à jour sans le sauvegarder
+    // Sauvegarder les modifications dans la base de données
+    if (updateProductDto.shouldSave !== false) {
+      return this.productRepository.save(updatedProduct);
+    }
+
+    // Retourner l'objet mis à jour sans le sauvegarder si shouldSave est false
     return updatedProduct;
   }
 

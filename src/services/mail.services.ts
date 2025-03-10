@@ -64,9 +64,10 @@ export class MailService {
     attachments?: string[],
     attachmentNames?: string[],
     project?: string,
+    isUpdate?: boolean,
   ) {
     // Déterminer l'environnement pour les liens
-    const config = this.configService.get('stage') === 'prod' ? 'PROD' : 'DEV';
+    const config = this.configService.get('isProd') === true ? 'PROD' : 'DEV';
     const baseUrl =
       config === 'PROD' ? 'https://sonarartists.be' : 'http://localhost:4200';
 
@@ -112,7 +113,11 @@ export class MailService {
                 <p style="color: #1f2937; margin-bottom: 24px;">Chèr·e ${firstName} ${name || ''},</p>
 
                 <!-- Corps du message -->
-                <p style="color: #1f2937; margin-bottom: 24px;">Voici mon devis relatif à votre commande :</p>
+                ${
+                  isUpdate
+                    ? `<p style="color: #1f2937; margin-bottom: 24px;">Voici le devis modifié relatif à votre commande :</p>`
+                    : `<p style="color: #1f2937; margin-bottom: 24px;">Voici le devis relatif à votre commande :</p>`
+                }
 
                 <!-- Détails du devis -->
                 <div style="margin-bottom: 24px;">
@@ -127,9 +132,6 @@ export class MailService {
                   
                   <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Dates :</span></p>
                   <p style="color: #1f2937; margin-bottom: 16px;">${date || ''}</p>
-                  
-                  <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Info complémentaire :</span></p>
-                  <p style="color: #1f2937; margin-bottom: 24px;">${comment || ''}</p>
 
                   <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Montant HTVA :</span></p>
                   <p style="color: #1f2937; margin-bottom: 16px;">${amount || ''}€</p>
@@ -141,7 +143,7 @@ export class MailService {
                 <!-- Vérification de commande -->
                 <p style="text-align: center; color: #6b7280; margin-bottom: 16px;">Vérifiez votre commande*</p>
 
-                <p style="color: #1f2937; margin-bottom: 24px;">* Cliquez sur ce lien, vous aurez le choix de <span style="font-weight: 600;">confirmer</span> ou <span style="font-weight: 600;">refuser</span> le devis (en demandant une <span style="font-weight: 600;">éventuelle modification</span>).</p>
+                <p style="color: #1f2937; margin-bottom: 24px;">* Cliquez sur ce lien, vous aurez le choix de <span style="font-weight: 600;">confirmer</span> ou <span style="font-weight: 600;">refuser</span> le devis.</p>
 
                 <!-- Bouton d'action -->
                 <div style="display: flex; justify-content: center; margin-top: 24px; margin-bottom: 24px;">

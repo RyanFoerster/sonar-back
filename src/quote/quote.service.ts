@@ -151,7 +151,43 @@ export class QuoteService {
     const productPromises = createQuoteDto.products_id.map((id) =>
       this.productService.findOne(id),
     );
-    quote.products = await Promise.all(productPromises);
+    let products = await Promise.all(productPromises);
+
+    // Recalculer les montants des produits en fonction de isVatIncluded
+    if (createQuoteDto.isVatIncluded) {
+      products = await Promise.all(
+        products.map(async (product) => {
+          // Si TVA incluse, on recalcule les montants HTVA
+          const priceWithVAT = product.price * product.quantity;
+          const vatRate = product.vat;
+          const priceHTVA = priceWithVAT / (1 + vatRate);
+          const tvaAmount = priceWithVAT - priceHTVA;
+
+          // Mettre à jour le produit dans la base de données
+          product.price_htva = priceHTVA;
+          product.tva_amount = tvaAmount;
+          product.total = priceWithVAT;
+          return await this.productService.saveProduct(product);
+        }),
+      );
+    } else {
+      products = await Promise.all(
+        products.map(async (product) => {
+          // Si TVA non incluse, on recalcule les montants avec TVA
+          const priceHTVA = product.price * product.quantity;
+          const tvaAmount = priceHTVA * product.vat;
+          const total = priceHTVA + tvaAmount;
+
+          // Mettre à jour le produit dans la base de données
+          product.price_htva = priceHTVA;
+          product.tva_amount = tvaAmount;
+          product.total = total;
+          return await this.productService.saveProduct(product);
+        }),
+      );
+    }
+
+    quote.products = products;
 
     // Calcul des totaux
     const totals = this.calculateTotals(quote.products);
@@ -250,6 +286,7 @@ export class QuoteService {
           role === 'GROUP' ? userConnected.name : '',
           [],
           [],
+          quote.created_by_project_name,
         );
         return;
       }
@@ -273,6 +310,7 @@ export class QuoteService {
         role === 'GROUP' ? userConnected.name : '',
         attachment_urls,
         fileNames,
+        quote.created_by_project_name,
       );
     };
 
@@ -341,7 +379,43 @@ export class QuoteService {
     const productPromises = updateQuoteDto.products_id.map((id) =>
       this.productService.findOne(id),
     );
-    quote.products = await Promise.all(productPromises);
+    let products = await Promise.all(productPromises);
+
+    // Recalculer les montants des produits en fonction de isVatIncluded
+    if (updateQuoteDto.isVatIncluded) {
+      products = await Promise.all(
+        products.map(async (product) => {
+          // Si TVA incluse, on recalcule les montants HTVA
+          const priceWithVAT = product.price * product.quantity;
+          const vatRate = product.vat;
+          const priceHTVA = priceWithVAT / (1 + vatRate);
+          const tvaAmount = priceWithVAT - priceHTVA;
+
+          // Mettre à jour le produit dans la base de données
+          product.price_htva = priceHTVA;
+          product.tva_amount = tvaAmount;
+          product.total = priceWithVAT;
+          return await this.productService.saveProduct(product);
+        }),
+      );
+    } else {
+      products = await Promise.all(
+        products.map(async (product) => {
+          // Si TVA non incluse, on recalcule les montants avec TVA
+          const priceHTVA = product.price * product.quantity;
+          const tvaAmount = priceHTVA * product.vat;
+          const total = priceHTVA + tvaAmount;
+
+          // Mettre à jour le produit dans la base de données
+          product.price_htva = priceHTVA;
+          product.tva_amount = tvaAmount;
+          product.total = total;
+          return await this.productService.saveProduct(product);
+        }),
+      );
+    }
+
+    quote.products = products;
 
     // Calcul des totaux
     const totals = this.calculateTotals(quote.products);
@@ -483,6 +557,8 @@ export class QuoteService {
           role === 'GROUP' ? userConnected.name : '',
           [],
           [],
+          quote.created_by_project_name,
+          true,
         );
         return;
       }
@@ -506,6 +582,8 @@ export class QuoteService {
         role === 'GROUP' ? userConnected.name : '',
         attachment_urls,
         fileNames,
+        quote.created_by_project_name,
+        true,
       );
     };
 
