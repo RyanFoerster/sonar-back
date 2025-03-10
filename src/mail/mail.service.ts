@@ -111,7 +111,7 @@ export class MailService {
     location?: string,
   ) {
     // Déterminer l'environnement pour les liens
-    const config = this.configService.get('stage') === 'prod' ? 'PROD' : 'DEV';
+    const config = this.configService.get('isProd') === true ? 'PROD' : 'DEV';
     const baseUrl =
       config === 'PROD' ? 'https://sonarartists.be' : 'http://localhost:4200';
 
@@ -175,9 +175,6 @@ export class MailService {
                   `
                       : ''
                   }
-                  
-                  <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Info complémentaire :</span></p>
-                  <p style="color: #1f2937; margin-bottom: 24px;">${comment || ''}</p>
 
                   <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Montant HTVA :</span></p>
                   <p style="color: #1f2937; margin-bottom: 16px;">${amount || ''}€</p>
@@ -189,7 +186,7 @@ export class MailService {
                 <!-- Vérification de commande -->
                 <p style="text-align: center; color: #6b7280; margin-bottom: 16px;">Vérifiez votre commande*</p>
 
-                <p style="color: #1f2937; margin-bottom: 24px;">* Cliquez sur ce lien, vous aurez le choix de <span style="font-weight: 600;">confirmer</span> ou <span style="font-weight: 600;">refuser</span> le devis (en demandant une <span style="font-weight: 600;">éventuelle modification</span>).</p>
+                <p style="color: #1f2937; margin-bottom: 24px;">* Cliquez sur ce lien, vous aurez le choix de <span style="font-weight: 600;">confirmer</span> ou <span style="font-weight: 600;">refuser</span> le devis </p>
 
                 <!-- Bouton d'action -->
                 <div style="display: flex; justify-content: center; margin-top: 24px; margin-bottom: 24px;">
@@ -210,7 +207,7 @@ export class MailService {
                     <img src="https://sonarartists.be/sonar-texte.png" alt="Sonar" style="width: 80px; height: auto;" />
                   </div>
 
-                  <p style="color: #ef4444; margin-bottom: 4px;">+32 2 542 19 31</p>
+                  <p style="color: #ef4444; margin-bottom: 4px;">+32 498 62 45 65</p>
                   <p style="color: #ef4444; margin-bottom: 4px;">info@sonarartists.be</p>
                   <p style="color: #4b5563; margin-bottom: 4px;">Rue Francisco Ferrer 6</p>
                   <p style="color: #4b5563; margin-bottom: 0;">4460 GRÂCE-BERLEUR</p>
