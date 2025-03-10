@@ -9,7 +9,7 @@ import { ProductModule } from '../product/product.module';
 import { QuoteModule } from '../quote/quote.module';
 import { CompteGroupeModule } from '../compte_groupe/compte_groupe.module';
 import { ComptePrincipalModule } from '../compte_principal/compte_principal.module';
-import { MailService } from '../services/mail.services';
+import { MailService } from '../mail/mail.services';
 import { AssetsService } from '../services/assets.service';
 import { S3Module } from '@/services/s3/s3.module';
 

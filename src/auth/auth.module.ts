@@ -4,7 +4,7 @@ import { AuthController } from './auth.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { ResetToken } from './entities/reset-token.entity';
-import { MailService } from '../services/mail.services';
+import { MailService } from '../mail/mail.services';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from '../guards/auth.guard';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -17,7 +17,6 @@ import { MailModule } from '@/mail/mail.module';
   controllers: [AuthController],
   providers: [
     AuthService,
-    MailService,
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,

@@ -17,12 +17,12 @@ import { JwtService } from '@nestjs/jwt';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { v4 as uuidv4 } from 'uuid';
 import { ResetToken } from './entities/reset-token.entity';
-import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
 import { EmailException } from '../users/exceptions/email.exception';
 import { UsernameException } from '../users/exceptions/username.exception';
 import { ComptePrincipalService } from '../compte_principal/compte_principal.service';
 import { JwtAuthGuard } from '@/guards/auth.guard';
+import { MailService } from '@/mail/mail.services';
 
 @Injectable()
 export class AuthService {

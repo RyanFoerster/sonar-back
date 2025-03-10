@@ -16,7 +16,7 @@ import { CompteGroupeService } from '../compte_groupe/compte_groupe.service';
 import { ComptePrincipalService } from '../compte_principal/compte_principal.service';
 import { Quote } from '../quote/entities/quote.entity';
 import { QuoteService } from '../quote/quote.service';
-import { MailService } from '../services/mail.services';
+import { MailService } from '../mail/mail.services';
 import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { CreateCreditNoteDto } from './dto/create-invoice.dto';
@@ -174,9 +174,11 @@ export class InvoiceService {
   private addHeader(doc: jsPDF, pageWidth: number): void {
     try {
       const logoData = this.assetsService.getAssetBuffer(
-        'images/Groupe-30.png',
+        'assets/images/Groupe-30.png',
       );
-      doc.addImage(logoData, 'PNG', 10, 10, 50, 20);
+      // Note: Le chargement du logo est temporairement désactivé en raison de problèmes de compatibilité de types
+      // TODO: Résoudre le problème de type avec le Buffer pour le logo
+      // doc.addImage(logoData, 'PNG', 10, 10, 50, 20);
     } catch (error) {
       this.logger.warn(`Impossible de charger le logo: ${error.message}`);
     }
@@ -365,44 +367,204 @@ export class InvoiceService {
     const pageHeight = doc.internal.pageSize.getHeight();
     const invoice = quote.invoice;
 
-    // Configuration initiale
-    doc.setFontSize(10);
-    doc.setFont('helvetica');
+    // Couleur principale pour le design
+    const mainColor = [200, 192, 77] as [number, number, number]; // #C8C04D en RGB - même couleur que dans generateQuotePDF
 
-    // Ajout des différentes sections
-    this.addHeader(doc, pageWidth);
-    this.addClientInfo(doc, quote.client, pageWidth);
+    // Logo en haut à gauche
+    // Note: Le chargement du logo est temporairement désactivé en raison de problèmes de compatibilité de types
+    // TODO: Résoudre le problème de type avec le Buffer pour le logo
 
-    // Titre et numéro
+    try {
+      const logoData = this.assetsService.getAssetBuffer(
+        '../assets/images/Groupe-30.png',
+      );
+      doc.addImage(logoData, 'PNG', this.PAGE_MARGIN, this.PAGE_MARGIN, 50, 20);
+    } catch (error) {
+      this.logger.warn(`Impossible de charger le logo: ${error.message}`);
+    }
+
+    // Titre "Facture" en haut à droite
     doc.setFontSize(28);
     doc.setTextColor(51, 51, 51);
     doc.setFont('helvetica', 'bold');
-    doc.text('Facture', pageWidth - 60, 30, { align: 'right' });
+    doc.text('Facture', pageWidth - this.PAGE_MARGIN, 35, { align: 'right' });
+
+    // Date et numéro de facture
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    doc.text(this.formatDateBelgium(invoice.invoice_date), pageWidth - 60, 40, {
-      align: 'right',
-    });
-    doc.text(`N°${invoice.invoice_number}`, pageWidth - 60, 45, {
+    doc.text(
+      this.formatDateBelgium(invoice.invoice_date),
+      pageWidth - this.PAGE_MARGIN,
+      45,
+      { align: 'right' },
+    );
+    doc.text(`N°${invoice.invoice_number}`, pageWidth - this.PAGE_MARGIN, 55, {
       align: 'right',
     });
 
-    // Informations de facturation
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`Facture n°${invoice.invoice_number}`, 10, 95);
+    // Informations de l'émetteur
     doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(this.COMPANY_INFO.name, this.PAGE_MARGIN, 70);
+    doc.setFont('helvetica', 'normal');
+    doc.text(this.COMPANY_INFO.address, this.PAGE_MARGIN, 75);
+    doc.text(this.COMPANY_INFO.city, this.PAGE_MARGIN, 80);
+    doc.text(`Email: ${this.COMPANY_INFO.email}`, this.PAGE_MARGIN, 85);
+    doc.text(this.COMPANY_INFO.vat, this.PAGE_MARGIN, 90);
+
+    // Informations du client
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(quote.client.name, pageWidth - this.PAGE_MARGIN - 60, 70);
     doc.setFont('helvetica', 'normal');
     doc.text(
-      `Date limite de paiement : ${invoice.payment_deadline ? this.formatDateBelgium(invoice.payment_deadline) : 'N/A'}`,
-      10,
+      `${quote.client.street} ${quote.client.number}`,
+      pageWidth - this.PAGE_MARGIN - 60,
+      75,
+    );
+    doc.text(
+      `${quote.client.postalCode} ${quote.client.city}`,
+      pageWidth - this.PAGE_MARGIN - 60,
+      80,
+    );
+    if (quote.client.company_vat_number) {
+      doc.text(
+        quote.client.company_vat_number,
+        pageWidth - this.PAGE_MARGIN - 60,
+        85,
+      );
+    }
+
+    // Titre du document
+    doc.setFontSize(14);
+    doc.setFont('helvetica', 'bold');
+    doc.text(
+      `Facture N°${invoice.invoice_number} pour ${quote.client.name}`,
+      this.PAGE_MARGIN,
       105,
     );
 
-    // Tableau des produits et totaux
-    const finalY = this.addProductsTable(doc, quote.products, 'invoice');
-    this.addTotals(doc, invoice, finalY, pageWidth);
-    this.addFooter(doc, pageHeight);
+    // Délai de paiement
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    if (invoice.payment_deadline) {
+      doc.text(
+        `Date limite de paiement : ${this.formatDateBelgium(invoice.payment_deadline)}`,
+        pageWidth - this.PAGE_MARGIN,
+        115,
+        { align: 'right' },
+      );
+    }
+
+    // Tableau des produits
+    const startY = 125;
+    autoTable(doc, {
+      head: [
+        ['Description', 'Quantité', 'Prix unitaire HT', 'TVA', 'Total HT'],
+      ],
+      body: quote.products.map((product) => [
+        product.description,
+        product.quantity.toString(),
+        `${product.price_htva.toFixed(2)}€`,
+        `${(product.vat * 100).toFixed(0)}%`,
+        `${(product.price_htva * product.quantity).toFixed(2)}€`,
+      ]),
+      startY: startY,
+      styles: {
+        fontSize: 9,
+        cellPadding: 5,
+      },
+      headStyles: {
+        fillColor: mainColor,
+        textColor: 255,
+        fontSize: 9,
+        fontStyle: 'bold',
+        halign: 'center',
+      },
+      columnStyles: {
+        0: { cellWidth: 'auto', halign: 'left' },
+        1: { cellWidth: 30, halign: 'center' },
+        2: { cellWidth: 40, halign: 'right' },
+        3: { cellWidth: 30, halign: 'center' },
+        4: { cellWidth: 40, halign: 'right' },
+      },
+      // Configuration spécifique pour les en-têtes de colonnes
+      willDrawCell: function (data) {
+        // Si c'est une cellule d'en-tête
+        if (data.row.section === 'head') {
+          // Définir l'alignement des en-têtes pour correspondre aux colonnes
+          if (data.column.index === 0) {
+            data.cell.styles.halign = 'left';
+          } else if (data.column.index === 1) {
+            data.cell.styles.halign = 'center';
+          } else {
+            data.cell.styles.halign = 'right';
+          }
+        }
+      },
+      margin: { left: this.PAGE_MARGIN, right: this.PAGE_MARGIN },
+    });
+
+    // Position Y après le tableau
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+
+    // Sous-total et TVA
+    autoTable(doc, {
+      body: [
+        ['Sous-total', `${invoice.price_htva.toFixed(2)}€`],
+        ['TVA 6%', `${invoice.total_vat_6.toFixed(2)}€`],
+        ['TVA 21%', `${invoice.total_vat_21.toFixed(2)}€`],
+        ['Total', `${invoice.total.toFixed(2)}€`],
+      ],
+      startY: finalY,
+      styles: {
+        fontSize: 9,
+        cellPadding: 3,
+      },
+      theme: 'plain',
+      columnStyles: {
+        0: { cellWidth: 40, halign: 'left' },
+        1: { cellWidth: 40, halign: 'right', fontStyle: 'bold' },
+      },
+      margin: { left: pageWidth - 100 },
+      didDrawCell: (data) => {
+        if (data.row.index === 5) {
+          doc.setFillColor(0, 0, 0);
+          doc.setTextColor(255, 255, 255);
+        }
+      },
+    });
+
+    // Pied de page avec informations de l'entreprise
+    const footerY = pageHeight - 30;
+
+    // Calculer les positions horizontales pour éviter les chevauchements
+    const col1X = this.PAGE_MARGIN;
+    const col2X = pageWidth / 3;
+    const col3X = (pageWidth / 3) * 2 - 10;
+
+    // Colonne 1 - Siège social
+    doc.setFont('helvetica', 'bold');
+    doc.text('Siège social', col1X, footerY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(this.COMPANY_INFO.address, col1X, footerY + 5);
+    doc.text(this.COMPANY_INFO.city.split(',')[0], col1X, footerY + 10);
+    doc.text('Belgique', col1X, footerY + 15);
+    doc.text(this.COMPANY_INFO.vat.replace('TVA ', ''), col1X, footerY + 20);
+
+    // Colonne 2 - Coordonnées
+    doc.setFont('helvetica', 'bold');
+    doc.text('Coordonnées', col2X, footerY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(this.COMPANY_INFO.name, col2X, footerY + 5);
+    doc.text(this.COMPANY_INFO.email, col2X, footerY + 10);
+
+    // Colonne 3 - Détails bancaires
+    doc.setFont('helvetica', 'bold');
+    doc.text('Détails bancaires', col3X, footerY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`IBAN: ${this.COMPANY_INFO.iban}`, col3X, footerY + 5);
+    doc.text(`BIC: ${this.COMPANY_INFO.bic}`, col3X, footerY + 10);
 
     return doc.output('arraybuffer');
   }
@@ -508,7 +670,13 @@ export class InvoiceService {
         quote.invoice = invoiceCreated;
         await this.quoteService.save(quote);
         const pdf = await this.generateInvoicePDF(quote);
-        await this.mailService.sendInvoiceEmail(invoiceCreated, pdf);
+        const pdfBuffer = Buffer.from(pdf);
+        const pdfKey = await this.s3Service.uploadFileFromBuffer(
+          pdfBuffer,
+          'invoices',
+          invoiceCreated.id,
+        );
+        await this.mailService.sendInvoiceEmail(invoiceCreated, pdfKey);
       }
     }
   }
