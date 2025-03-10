@@ -11,6 +11,7 @@ import { CompteGroupeModule } from '../compte_groupe/compte_groupe.module';
 import { ComptePrincipalModule } from '../compte_principal/compte_principal.module';
 import { MailService } from '../services/mail.services';
 import { AssetsService } from '../services/assets.service';
+import { S3Module } from '@/services/s3/s3.module';
 
 @Module({
   controllers: [InvoiceController],
@@ -26,6 +27,7 @@ import { AssetsService } from '../services/assets.service';
     CompteGroupeModule,
     ComptePrincipalModule,
     UsersModule,
+    S3Module,
   ],
 })
 export class InvoiceModule {}

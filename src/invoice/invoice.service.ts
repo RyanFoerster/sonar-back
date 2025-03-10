@@ -25,6 +25,7 @@ import { Invoice } from './entities/invoice.entity';
 import { CompteGroupe } from '@/compte_groupe/entities/compte_groupe.entity';
 import { ComptePrincipal } from '@/compte_principal/entities/compte_principal.entity';
 import { AssetsService } from '../services/assets.service';
+import { S3Service } from '@/services/s3/s3.service';
 
 @Injectable()
 export class InvoiceService {
@@ -54,6 +55,7 @@ export class InvoiceService {
     private usersService: UsersService,
     private productService: ProductService,
     private assetsService: AssetsService,
+    private s3Service: S3Service,
   ) {}
 
   async create(
@@ -125,8 +127,17 @@ export class InvoiceService {
     quoteFromDB.status = 'invoiced';
     quoteFromDB.invoice = invoiceCreated;
     await this.quoteService.save(quoteFromDB);
-    const pdf = this.generateInvoicePDF(quoteFromDB);
-    this.mailService.sendInvoiceEmail(quoteFromDB, pdf);
+    const pdf = await this.generateInvoicePDF(quoteFromDB);
+    // const pdfBuffer = Buffer.from(pdf);
+    const pdfBuffer = Buffer.from(pdf);
+
+    const pdfKey = await this.s3Service.uploadFileFromBuffer(
+      pdfBuffer,
+      'invoices',
+      invoiceCreated.id,
+    );
+    this.mailService.sendInvoiceEmail(quoteFromDB, pdfKey);
+
     return await this._invoiceRepository.findOneBy({ id: invoiceCreated.id });
   }
 

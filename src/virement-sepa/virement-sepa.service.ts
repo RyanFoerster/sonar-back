@@ -150,7 +150,6 @@ export class VirementSepaService {
   }
 
   async findAll(userId: number) {
-    console.log(userId);
     const user = await this.usersService.findOne(userId);
 
     if (!user) {
