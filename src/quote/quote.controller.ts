@@ -107,8 +107,9 @@ export class QuoteController {
   @Public()
   async downloadAttachment(@Param('key') key: string, @Res() res: Response) {
     try {
-      const fileBuffer = await this.quoteService.getAttachment(key);
       Logger.debug('Downloading file with key:', key);
+
+      const fileBuffer = await this.quoteService.getAttachment(key);
 
       // Extraire le nom du fichier de la clé
       const fileName = key.split('/').pop() || 'attachment';
@@ -123,7 +124,7 @@ export class QuoteController {
       res.setHeader('Content-Type', mimeType);
       res.setHeader(
         'Content-Disposition',
-        `attachment; filename="${encodeURIComponent(fileName)}"`,
+        `attachment; filename="${fileName}"`,
       );
       res.setHeader('Content-Length', fileBuffer.length);
 

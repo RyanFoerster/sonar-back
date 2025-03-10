@@ -116,10 +116,6 @@ export class QuoteService {
     user_id: number,
     files: Express.Multer.File[],
   ) {
-    Logger.debug(
-      `[QuotesService] Create a quote for user ${user_id} with ${JSON.stringify(createQuoteDto, null, 2)}`,
-    );
-
     // Validation de base
     if (!createQuoteDto.client_id || !createQuoteDto.products_id?.length) {
       throw new BadRequestException('Client and products are required');
@@ -178,40 +174,38 @@ export class QuoteService {
     let attachment_urls: string[] = [];
 
     // D'abord traiter les pièces jointes existantes si présentes
-    if (
-      createQuoteDto.attachment_keys &&
-      createQuoteDto.attachment_keys.length > 0
-    ) {
-      try {
-        Logger.debug(
-          `[QuotesService] Processing existing attachments: ${createQuoteDto.attachment_keys}`,
-        );
+    // if (
+    //   createQuoteDto.attachment_keys &&
+    //   createQuoteDto.attachment_keys.length > 0
+    // ) {
+    //   try {
+    //     Logger.debug(
+    //       `[QuotesService] Processing existing attachments: ${createQuoteDto.attachment_keys}`,
+    //     );
 
-        for (const key of createQuoteDto.attachment_keys) {
-          // Récupérer le fichier S3 pour l'email
-          const fileBuffer = await this.s3Service.getFile(key);
-          attachments_mail.push(fileBuffer);
+    //     for (const key of createQuoteDto.attachment_keys) {
+    //       // Récupérer le fichier S3 pour l'email
+    //       const fileBuffer = await this.s3Service.getFile(key.split('/').pop());
+    //       attachments_mail.push(fileBuffer);
 
-          // Ajouter l'URL au tableau
-          attachment_urls.push(this.s3Service.getFileUrl(key));
-        }
-      } catch (error) {
-        Logger.error(
-          `Erreur lors de la récupération des fichiers S3: ${error.message}`,
-        );
-      }
-    }
+    //       // Ajouter l'URL au tableau
+    //       attachment_urls.push(this.s3Service.getFileUrl(key));
+    //     }
+    //   } catch (error) {
+    //     Logger.error(
+    //       `Erreur lors de la récupération des fichiers S3: ${error.message}`,
+    //     );
+    //   }
+    // }
 
-    // Ensuite traiter les nouveaux fichiers
+    //Ensuite traiter les nouveaux fichiers
     if (files && files.length > 0) {
       try {
-        Logger.debug(`[QuotesService] Processing ${files.length} files`);
-
         for (const file of files) {
           // Upload du fichier sur S3
           const attachment_key = await this.s3Service.uploadFile(
             file,
-            `quote/${quote.quote_number}/${file.originalname}`,
+            `quote/${quote.created_by_project_name}/${quote.quote_number}`,
           );
 
           // Stocker l'URL dans le tableau
@@ -232,6 +226,8 @@ export class QuoteService {
 
     const userConnected = await this.usersService.findOne(user_id);
     quote = await this.quoteRepository.save(quote);
+
+    Logger.debug('attachments_mail', attachments_mail.length);
 
     // Envoi des emails avec les pièces jointes
     const sendEmail = async (
@@ -275,7 +271,7 @@ export class QuoteService {
         quote.price_htva,
         quote.client.name,
         role === 'GROUP' ? userConnected.name : '',
-        attachments_mail,
+        attachment_urls,
         fileNames,
       );
     };
@@ -508,7 +504,7 @@ export class QuoteService {
         quote.price_htva,
         quote.client.name,
         role === 'GROUP' ? userConnected.name : '',
-        attachments_mail,
+        attachment_urls,
         fileNames,
       );
     };
@@ -742,10 +738,31 @@ export class QuoteService {
 
   async getAttachment(key: string) {
     try {
-      return await this.s3Service.getFile(key);
+      Logger.debug(
+        `[QuoteService] Récupération de la pièce jointe avec la clé: ${key}`,
+      );
+
+      // Vérifier si la clé est vide ou invalide
+      if (!key || typeof key !== 'string') {
+        Logger.error(`[QuoteService] Clé invalide: ${key}`);
+        throw new Error('Clé de pièce jointe invalide');
+      }
+
+      const fileBuffer = await this.s3Service.getFile(key);
+      Logger.debug(
+        `[QuoteService] Pièce jointe récupérée avec succès, taille: ${fileBuffer.length} octets`,
+      );
+      return fileBuffer;
     } catch (error) {
-      Logger.error('Error getting attachment from S3:', error);
-      throw new NotFoundException('Pièce jointe non trouvée');
+      Logger.error(
+        `[QuoteService] Erreur lors de la récupération de la pièce jointe: ${error.message}`,
+      );
+      if (error.name === 'NoSuchKey' || error.code === 'NoSuchKey') {
+        throw new NotFoundException(`Pièce jointe non trouvée: ${key}`);
+      }
+      throw new NotFoundException(
+        'Erreur lors de la récupération de la pièce jointe',
+      );
     }
   }
 }

@@ -25,5 +25,8 @@ export default () => ({
   bce: {
     API_KEY: process.env.BCE_API_KEY,
   },
+  resend: {
+    api_key: process.env.RESEND_API_KEY,
+  },
   isProd: process.env.STAGE === 'prod',
 });

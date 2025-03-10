@@ -5,46 +5,50 @@ import { Quote } from '../quote/entities/quote.entity';
 import { User } from '../users/entities/user.entity';
 import axios from 'axios';
 import { Invoice } from '@/invoice/entities/invoice.entity';
-
+import { Resend } from 'resend';
 @Injectable()
 export class MailService {
   constructor(private readonly configService: ConfigService) {}
 
-  async sendPasswordResetEmail(
-    to: string,
-    token: string,
-    firstName: string,
-    name: string,
-  ) {
-    const API_KEY =
-      this.configService.get('stage') === 'prod'
-        ? this.configService.get('mailhub.api_key_prod')
-        : this.configService.get('mailhub.api_key_dev');
-    try {
-      Logger.debug('API_KEY', API_KEY);
-      fetch(`https://api.mailhub.sh/v1/send`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${API_KEY}`,
-        },
-        body: JSON.stringify({
-          layout_identifier: 'tp-dc76ec2fba7f4b04',
-          variables: {
-            firstName,
-            name,
-            resetToken: token,
-          },
-          from: 'info@sonarartists.fr',
-          to,
-          subject: 'Réinitialisation du mot de passe',
-          language: null,
-        }),
-      }).then((data) => console.log(data));
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  }
+  private readonly resend = new Resend(
+    this.configService.get('resend.api_key'),
+  );
+
+  // async sendPasswordResetEmail(
+  //   to: string,
+  //   token: string,
+  //   firstName: string,
+  //   name: string,
+  // ) {
+  //   const API_KEY =
+  //     this.configService.get('stage') === 'prod'
+  //       ? this.configService.get('mailhub.api_key_prod')
+  //       : this.configService.get('mailhub.api_key_dev');
+  //   try {
+  //     Logger.debug('API_KEY', API_KEY);
+  //     fetch(`https://api.mailhub.sh/v1/send`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         Authorization: `Bearer ${API_KEY}`,
+  //       },
+  //       body: JSON.stringify({
+  //         layout_identifier: 'tp-dc76ec2fba7f4b04',
+  //         variables: {
+  //           firstName,
+  //           name,
+  //           resetToken: token,
+  //         },
+  //         from: 'info@sonarartists.fr',
+  //         to,
+  //         subject: 'Réinitialisation du mot de passe',
+  //         language: null,
+  //       }),
+  //     }).then((data) => console.log(data));
+  //   } catch (error) {
+  //     console.error('Error:', error);
+  //   }
+  // }
 
   async sendDevisAcceptationEmail(
     to: string,
@@ -57,210 +61,241 @@ export class MailService {
     amount: number,
     client: string,
     name?: string,
-    attachments?: Buffer[],
+    attachments?: string[],
     attachmentNames?: string[],
     project?: string,
   ) {
-    const API_KEY = this.configService.get('mailhub.api_key_prod');
-    const config = this.configService.get('isProd') ? 'PROD' : 'DEV';
+    // Déterminer l'environnement pour les liens
+    const config = this.configService.get('stage') === 'prod' ? 'PROD' : 'DEV';
+    const baseUrl =
+      config === 'PROD' ? 'https://sonarartists.be' : 'http://localhost:4200';
 
-    try {
-      // Créer le payload de base
-      const payload = {
-        layout_identifier: 'tp-3fab551a26be4e9a',
-        variables: {
-          firstName,
-          role,
-          quote_id,
-          name,
-          config,
-          email,
-          project,
-          date,
-          comment,
-          amount,
-          client,
-        },
-        from: 'info@sonarartists.fr',
-        to,
-        subject: "Demande d'acceptation de devis",
-        language: null,
-      };
+    const attachmentsToSend = attachments.map((attachment, index) => ({
+      path: attachment,
+      filename: attachmentNames[index],
+    }));
 
-      // Ajouter les pièces jointes si elles existent
-      if (attachments?.length && attachmentNames?.length) {
-        // Vérifier la taille totale des pièces jointes avant encodage
-        const totalSizeInMB =
-          attachments.reduce((acc, attachment) => acc + attachment.length, 0) /
-          (1024 * 1024);
-        Logger.debug(
-          `Total size of attachments before encoding: ${totalSizeInMB.toFixed(2)} MB`,
-        );
+    const { data, error } = await this.resend.emails.send({
+      from: 'info@sonarartists.be',
+      to,
+      subject: 'Acceptation de devis',
+      attachments: attachmentsToSend,
+      html: `
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Devis à confirmer</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Montserrat', Arial, sans-serif; background-color: #f4f4f4; color: #333333; min-height: 100vh;">
+          <div style="min-height: 100%; display: flex; justify-content: space-between; max-width: 600px; margin: 0 auto;">
+            <div style="width: 100%;">
+              <!-- En-tête avec logo Sonar -->
+              <div style="background-color: #ffffff; padding: 16px; display: flex; align-items: center; gap: 8px;">
+                <img src="https://sonarartists.be/logo-SONAR.png" alt="Sonar" style="width: 32px; height: auto;" />
+                <img src="https://sonarartists.be/sonar-texte.png" alt="Sonar" style="width: 80px; height: auto;" />
+              </div>
 
-        // Optimiser les pièces jointes pour réduire leur taille
-        const optimizedAttachments = attachments.map((attachment, index) => {
-          const originalSizeMB = attachment.length / (1024 * 1024);
-          const base64Content = attachment.toString('base64');
-          const encodedSizeMB = base64Content.length / (1024 * 1024);
+              <!-- Contenu principal avec bordure rouge -->
+              <div style="border: 4px solid #C8C04D; padding: 32px; background-color: #ffffff;">
+                <!-- Titre principal -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px;">
+                  <h1 style="font-size: 1.875rem; font-weight: 700; color: #C8C04D; margin: 0;">Devis à confirmer</h1>
+                  <div style="text-align: right;">
+                    ${firstName ? `<p style="color: #4b5563; margin: 0;">${firstName} ${name || ''} ${role ? `- ${role}` : ''}</p>` : ''}
+                    ${email ? `<p style="color: #4b5563; margin: 0;">${email}</p>` : ''}
+                  </div>
+                </div>
 
-          Logger.debug(
-            `Attachment ${attachmentNames[index]}: Original size: ${originalSizeMB.toFixed(2)} MB, Encoded: ${encodedSizeMB.toFixed(2)} MB`,
-          );
+                <!-- Salutation -->
+                <p style="color: #1f2937; margin-bottom: 24px;">Chèr·e ${firstName} ${name || ''},</p>
 
-          return {
-            filename: attachmentNames[index],
-            content: base64Content,
-            contentType: 'application/pdf',
-          };
-        });
+                <!-- Corps du message -->
+                <p style="color: #1f2937; margin-bottom: 24px;">Voici mon devis relatif à votre commande :</p>
 
-        payload['attachments'] = optimizedAttachments;
-      }
+                <!-- Détails du devis -->
+                <div style="margin-bottom: 24px;">
+                  ${
+                    project
+                      ? `
+                    <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Nom du projet :</span></p>
+                    <p style="color: #1f2937; margin-bottom: 16px;">${project}</p>
+                  `
+                      : ''
+                  }
+                  
+                  <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Dates :</span></p>
+                  <p style="color: #1f2937; margin-bottom: 16px;">${date || ''}</p>
+                  
+                  <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Info complémentaire :</span></p>
+                  <p style="color: #1f2937; margin-bottom: 24px;">${comment || ''}</p>
 
-      Logger.debug(
-        `Number of attachments: ${payload['attachments']?.length || 0}`,
-      );
+                  <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Montant HTVA :</span></p>
+                  <p style="color: #1f2937; margin-bottom: 16px;">${amount || ''}€</p>
 
-      // Calculer la taille approximative de la requête
-      const payloadSize = JSON.stringify(payload).length / (1024 * 1024);
-      Logger.debug(`Approximate request size: ${payloadSize.toFixed(2)} MB`);
+                  <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">À facturer à :</span></p>
+                  <p style="color: #1f2937; margin-bottom: 24px;">${client || ''}</p>
+                </div>
 
-      if (payloadSize > 9.5) {
-        Logger.warn(
-          `Request is close to or exceeds the 10MB limit (${payloadSize.toFixed(2)} MB)`,
-        );
-      }
+                <!-- Vérification de commande -->
+                <p style="text-align: center; color: #6b7280; margin-bottom: 16px;">Vérifiez votre commande*</p>
 
-      // Essayer d'envoyer avec des options optimisées
-      const response = await axios.post(
-        'https://api.mailhub.sh/v1/send',
-        payload,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${API_KEY}`,
-          },
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity,
-          timeout: 120000, // Augmenter le timeout à 120 secondes pour les requêtes volumineuses
-        },
-      );
+                <p style="color: #1f2937; margin-bottom: 24px;">* Cliquez sur ce lien, vous aurez le choix de <span style="font-weight: 600;">confirmer</span> ou <span style="font-weight: 600;">refuser</span> le devis (en demandant une <span style="font-weight: 600;">éventuelle modification</span>).</p>
 
-      Logger.debug(`Email sent successfully for quote ${quote_id}`);
-      return response.data;
-    } catch (error) {
-      // Si l'erreur est "request entity too large", donner des informations supplémentaires
-      if (error.response?.status === 413) {
-        Logger.error(
-          `Error 413 - Request Entity Too Large: The request size exceeds the mailhub.sh API limit for quote ${quote_id}.`,
-        );
-        Logger.error(
-          `To solve this issue, you can:
-          1. Reduce the size of attachments before sending
-          2. Contact mailhub.sh support to increase your limit
-          3. Install a library like 'compress-pdf' to compress PDFs before sending`,
-        );
-      }
+                <!-- Bouton d'action -->
+                <div style="display: flex; justify-content: center; margin-top: 24px; margin-bottom: 24px;">
+                  <a href="${baseUrl}/quote-decision?quote_id=${quote_id}&role=${role}" target="_blank" style="background-color: #ef4444; color: #ffffff; padding: 8px 24px; border-radius: 9999px; font-size: 1.125rem; font-weight: 600; text-decoration: none; display: inline-block;">
+                    Voir le devis
+                  </a>
+                </div>
 
-      Logger.error(
-        `Error sending email for quote ${quote_id}:`,
-        JSON.stringify(error.response?.data || error.message),
-      );
+                <!-- Signature -->
+                <p style="color: #1f2937; margin-bottom: 8px;">Je vous remercie pour votre confiance,</p>
+                <p style="color: #1f2937; margin-bottom: 32px;">L'équipe Sonar Artists</p>
+
+                <!-- Pied de page -->
+                <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #d1d5db;">
+                  <p style="color: #4b5563; margin-bottom: 4px;">powered by</p>
+                  <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0;">
+                    <img src="https://sonarartists.be/logo-SONAR.png" alt="Sonar" style="width: 32px; height: auto;" />
+                    <img src="https://sonarartists.be/sonar-texte.png" alt="Sonar" style="width: 80px; height: auto;" />
+                  </div>
+
+                  <p style="color: #C8C04D; margin-bottom: 4px;">+32 2 542 19 31</p>
+                  <p style="color: #C8C04D; margin-bottom: 4px;">info@sonarartists.be</p>
+                  <p style="color: #4b5563; margin-bottom: 4px;">Rue Francisco Ferrer 6</p>
+                  <p style="color: #4b5563; margin-bottom: 0;">4460 GRÂCE-BERLEUR</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      Logger.error('Error:', error.message);
       throw error;
     }
+
+    return data;
   }
 
   async sendInvoiceEmail(quote: Quote | Invoice, pdfContent: any) {
-    const API_KEY =
-      this.configService.get('isProd') === true
-        ? this.configService.get('mailhub.api_key_prod')
-        : this.configService.get('mailhub.api_key_dev');
-
-    try {
-      // Vérifier la taille du PDF avant encodage
-      const pdfSizeInMB = Buffer.from(pdfContent).length / (1024 * 1024);
-      Logger.debug(
-        `Taille du PDF avant encodage: ${pdfSizeInMB.toFixed(2)} MB`,
-      );
-
-      // Si la taille est supérieure à 7.5MB, on risque de dépasser la limite après encodage en base64
-      if (pdfSizeInMB > 7.5) {
-        Logger.debug(
-          `Attention: La taille du PDF est importante (${pdfSizeInMB.toFixed(2)} MB)`,
-        );
-      }
-
-      // Convertir l'arraybuffer en base64
-      const base64Content = Buffer.from(pdfContent).toString('base64');
-      const base64SizeInMB = base64Content.length / (1024 * 1024);
-      Logger.debug(
-        `Taille du PDF après encodage en base64: ${base64SizeInMB.toFixed(2)} MB`,
-      );
-
-      const invoiceNumber =
-        typeof quote === 'object' && 'invoice_number' in quote
-          ? quote.invoice_number
-          : quote.id;
-
-      const requestBody = {
-        layout_identifier: 'tp-5eded5ab563d474d',
-        variables: {
-          invoice_number: invoiceNumber,
-          account_name: quote.main_account ? quote.main_account.username : '',
-          firstName: quote.client.firstname,
-          name: quote.client.name,
-        },
-        from: 'info@sonarartists.fr',
-        to: quote.client.email, // Utiliser l'email du client au lieu d'une adresse en dur
-        subject: `Facture de ${quote.client.name}`,
-        language: null,
-        attachments: [
-          {
-            filename: `facture_${quote.id}_${quote.client.name}.pdf`,
-            content: base64Content,
-            contentType: 'application/pdf',
-          },
-        ],
-      };
-
-      // Calculer la taille approximative de la requête
-      const payloadSize = JSON.stringify(requestBody).length / (1024 * 1024);
-      Logger.debug(
-        `Taille approximative de la requête: ${payloadSize.toFixed(2)} MB`,
-      );
-
-      if (payloadSize > 9.5) {
-        Logger.warn(
-          `La requête est proche ou dépasse la limite de 10MB (${payloadSize.toFixed(2)} MB)`,
-        );
-      }
-
-      const response = await axios.post(
-        'https://api.mailhub.sh/v1/send',
-        requestBody,
+    const { data, error } = await this.resend.emails.send({
+      from: 'info@sonarartists.be',
+      to: quote.client.email,
+      subject: `Facture de ${quote.client.name}`,
+      html: `
+        <p>Facture de ${quote.client.name}</p>
+      `,
+      attachments: [
         {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${API_KEY}`,
-          },
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity,
-          timeout: 60000, // Augmenter le timeout à 60 secondes pour les requêtes volumineuses
+          filename: `facture_${quote.id}_${quote.client.name}.pdf`,
+          content: pdfContent,
         },
-      );
+      ],
+    });
 
-      Logger.debug(
-        `Email de facture envoyé avec succès pour le devis ${quote.id}`,
-      );
-      return response.data;
-    } catch (error) {
-      Logger.error(
-        `Erreur lors de l'envoi de l'email de facture pour le devis ${quote.id}:`,
-        error.response?.data || error.message,
-      );
+    if (error) {
+      Logger.error('Error:', error.message);
       throw error;
     }
   }
+
+  // async sendInvoiceEmail(quote: Quote | Invoice, pdfContent: any) {
+  //   const API_KEY =
+  //     this.configService.get('isProd') === true
+  //       ? this.configService.get('mailhub.api_key_prod')
+  //       : this.configService.get('mailhub.api_key_dev');
+
+  //   try {
+  //     // Vérifier la taille du PDF avant encodage
+  //     const pdfSizeInMB = Buffer.from(pdfContent).length / (1024 * 1024);
+  //     Logger.debug(
+  //       `Taille du PDF avant encodage: ${pdfSizeInMB.toFixed(2)} MB`,
+  //     );
+
+  //     // Si la taille est supérieure à 7.5MB, on risque de dépasser la limite après encodage en base64
+  //     if (pdfSizeInMB > 7.5) {
+  //       Logger.debug(
+  //         `Attention: La taille du PDF est importante (${pdfSizeInMB.toFixed(2)} MB)`,
+  //       );
+  //     }
+
+  //     // Convertir l'arraybuffer en base64
+  //     const base64Content = Buffer.from(pdfContent).toString('base64');
+  //     const base64SizeInMB = base64Content.length / (1024 * 1024);
+  //     Logger.debug(
+  //       `Taille du PDF après encodage en base64: ${base64SizeInMB.toFixed(2)} MB`,
+  //     );
+
+  //     const invoiceNumber =
+  //       typeof quote === 'object' && 'invoice_number' in quote
+  //         ? quote.invoice_number
+  //         : quote.id;
+
+  //     const requestBody = {
+  //       layout_identifier: 'tp-5eded5ab563d474d',
+  //       variables: {
+  //         invoice_number: invoiceNumber,
+  //         account_name: quote.main_account ? quote.main_account.username : '',
+  //         firstName: quote.client.firstname,
+  //         name: quote.client.name,
+  //       },
+  //       from: 'info@sonarartists.fr',
+  //       to: quote.client.email, // Utiliser l'email du client au lieu d'une adresse en dur
+  //       subject: `Facture de ${quote.client.name}`,
+  //       language: null,
+  //       attachments: [
+  //         {
+  //           filename: `facture_${quote.id}_${quote.client.name}.pdf`,
+  //           content: base64Content,
+  //           contentType: 'application/pdf',
+  //         },
+  //       ],
+  //     };
+
+  //     // Calculer la taille approximative de la requête
+  //     const payloadSize = JSON.stringify(requestBody).length / (1024 * 1024);
+  //     Logger.debug(
+  //       `Taille approximative de la requête: ${payloadSize.toFixed(2)} MB`,
+  //     );
+
+  //     if (payloadSize > 9.5) {
+  //       Logger.warn(
+  //         `La requête est proche ou dépasse la limite de 10MB (${payloadSize.toFixed(2)} MB)`,
+  //       );
+  //     }
+
+  //     const response = await axios.post(
+  //       'https://api.mailhub.sh/v1/send',
+  //       requestBody,
+  //       {
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //           Authorization: `Bearer ${API_KEY}`,
+  //         },
+  //         maxBodyLength: Infinity,
+  //         maxContentLength: Infinity,
+  //         timeout: 60000, // Augmenter le timeout à 60 secondes pour les requêtes volumineuses
+  //       },
+  //     );
+
+  //     Logger.debug(
+  //       `Email de facture envoyé avec succès pour le devis ${quote.id}`,
+  //     );
+  //     return response.data;
+  //   } catch (error) {
+  //     Logger.error(
+  //       `Erreur lors de l'envoi de l'email de facture pour le devis ${quote.id}:`,
+  //       error.response?.data || error.message,
+  //     );
+  //     throw error;
+  //   }
+  // }
 
   async sendCreditNoteEmail(creditNote: Invoice, pdfContent: any) {
     const API_KEY =

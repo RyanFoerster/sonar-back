@@ -38,8 +38,6 @@ export class AuthService {
   ) {}
 
   async signup(signupDto: SignupDto, id?: number) {
-    console.log('Je passe ici');
-
     const { email, username, password, confirmPassword } = signupDto;
     let admin = undefined;
     // Check if email already exists
@@ -52,8 +50,6 @@ export class AuthService {
     if ((await this.usersService.findOneByUsername(username)) !== null) {
       throw new UsernameException();
     }
-
-    console.log('Je passe ici 2');
 
     if (password === confirmPassword) {
       let user = await this.usersService.create(signupDto);
