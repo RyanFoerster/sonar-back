@@ -16,7 +16,7 @@ import { User } from '../users/entities/user.entity';
 import { UsersService } from '../users/users.service';
 import { CreateVirementSepaDto } from './dto/create-virement-sepa.dto';
 import { VirementSepa } from './entities/virement-sepa.entity';
-import { MailService } from '../mail/mail.service';
+import { MailService } from '@/mail/mail.services';
 import { PdfService } from '../services/pdf.service';
 import { ConfigService } from '@nestjs/config';
 import * as libre from 'libreoffice-convert';

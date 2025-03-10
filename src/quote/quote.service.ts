@@ -1,5 +1,7 @@
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -14,12 +16,13 @@ import { ProductService } from '../product/product.service';
 import { Product } from '../product/entities/product.entity';
 import { ComptePrincipalService } from '../compte_principal/compte_principal.service';
 import { CompteGroupeService } from '../compte_groupe/compte_groupe.service';
-import { MailService } from '../services/mail.services';
+import { MailService } from '../mail/mail.services';
 import { UsersService } from '../users/users.service';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ComptePrincipal } from '../compte_principal/entities/compte_principal.entity';
 import { CompteGroupe } from '../compte_groupe/entities/compte_groupe.entity';
 import { S3Service } from '@/services/s3/s3.service';
+import { InvoiceService } from '@/invoice/invoice.service';
 
 @Injectable()
 export class QuoteService {
@@ -33,6 +36,8 @@ export class QuoteService {
     private compteGroupeService: CompteGroupeService,
     private readonly mailService: MailService,
     private readonly s3Service: S3Service,
+    @Inject(forwardRef(() => InvoiceService))
+    private readonly invoiceService: InvoiceService,
   ) {}
 
   // Fonction utilitaire pour formater les dates au format DD/MM/YYYY
@@ -633,6 +638,15 @@ export class QuoteService {
       quote.validation_deadline = new Date(
         new Date().getTime() + 10 * 24 * 60 * 60 * 1000,
       );
+    }
+
+    if (
+      quote.group_acceptance === 'accepted' &&
+      quote.order_giver_acceptance === 'accepted' &&
+      quote.service_date < new Date()
+    ) {
+      quote.status = 'accepted';
+      await this.invoiceService.createInvoiceFromQuote(quote);
     }
 
     return await this.quoteRepository.save(quote);
