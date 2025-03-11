@@ -1,8 +1,6 @@
-import { forwardRef, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
 import { Quote } from '../quote/entities/quote.entity';
-import { User } from '../users/entities/user.entity';
 import axios from 'axios';
 import { Invoice } from '@/invoice/entities/invoice.entity';
 import { Resend } from 'resend';
@@ -202,6 +200,157 @@ export class MailService {
                 <!-- Bouton d'action -->
                 <div style="display: flex; justify-content: center; margin-top: 24px; margin-bottom: 24px;">
                   <a href="${baseUrl}/quote-decision?quote_id=${quote_id}&role=${role}" target="_blank" style="background-color: #ef4444; color: #ffffff; padding: 8px 24px; border-radius: 9999px; font-size: 1.125rem; font-weight: 600; text-decoration: none; display: inline-block;">
+                    Voir le devis
+                  </a>
+                </div>
+
+                <!-- Signature -->
+                <p style="color: #1f2937; margin-bottom: 8px;">Je vous remercie pour votre confiance,</p>
+                <p style="color: #1f2937; margin-bottom: 32px;">L'équipe Sonar Artists</p>
+
+                <!-- Pied de page -->
+                <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #d1d5db;">
+                  <p style="color: #4b5563; margin-bottom: 4px;">powered by</p>
+                  <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0;">
+                    <img src="https://sonarartists.be/logo-SONAR.png" alt="Sonar" style="width: 32px; height: auto;" />
+                    <img src="https://sonarartists.be/sonar-texte.png" alt="Sonar" style="width: 80px; height: auto;" />
+                  </div>
+
+                  <p style="color: #C8C04D; margin-bottom: 4px;">+32 498 62 45 65</p>
+                  <p style="color: #C8C04D; margin-bottom: 4px;">info@sonarartists.be</p>
+                  <p style="color: #4b5563; margin-bottom: 4px;">Rue Francisco Ferrer 6</p>
+                  <p style="color: #4b5563; margin-bottom: 0;">4460 GRÂCE-BERLEUR</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      Logger.error('Error:', error.message);
+      throw error;
+    }
+
+    return data;
+  }
+
+  async sendQuoteStatusUpdateEmail(
+    to: string,
+    firstName: string,
+    quote_id: number,
+    quote_number: string,
+    status: 'accepted' | 'refused',
+    role: 'GROUP' | 'CLIENT',
+    project?: string,
+    amount?: number,
+    date?: string,
+    client?: string,
+  ) {
+    // Déterminer l'environnement pour les liens
+    const config = this.configService.get('isProd') === true ? 'PROD' : 'DEV';
+    const baseUrl =
+      config === 'PROD' ? 'https://sonarartists.be' : 'http://localhost:4200';
+
+    const statusText = status === 'accepted' ? 'accepté' : 'refusé';
+    const statusColor = status === 'accepted' ? '#10b981' : '#ef4444';
+    const roleText = role === 'GROUP' ? 'Le groupe' : 'Le client';
+    const otherRoleParam = role === 'GROUP' ? 'CLIENT' : 'GROUP';
+
+    const { data, error } = await this.resend.emails.send({
+      from: 'info@sonarartists.be',
+      to,
+      subject: `Devis ${statusText} - D-${quote_number}`,
+      html: `
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Statut du devis mis à jour</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Montserrat', Arial, sans-serif; background-color: #f4f4f4; color: #333333; min-height: 100vh;">
+          <div style="min-height: 100%; display: flex; justify-content: space-between; max-width: 600px; margin: 0 auto;">
+            <div style="width: 100%;">
+              <!-- En-tête avec logo Sonar -->
+              <div style="background-color: #ffffff; padding: 16px; display: flex; align-items: center; gap: 8px;">
+                <img src="https://sonarartists.be/logo-SONAR.png" alt="Sonar" style="width: 32px; height: auto;" />
+                <img src="https://sonarartists.be/sonar-texte.png" alt="Sonar" style="width: 80px; height: auto;" />
+              </div>
+
+              <!-- Contenu principal avec bordure -->
+              <div style="border: 4px solid ${statusColor}; padding: 32px; background-color: #ffffff;">
+                <!-- Titre principal -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px;">
+                  <h1 style="font-size: 1.875rem; font-weight: 700; color: ${statusColor}; margin: 0;">Devis ${statusText}</h1>
+                  <div style="text-align: right;">
+                    <p style="color: #4b5563; margin: 0;">Devis N° D-${quote_number}</p>
+                  </div>
+                </div>
+
+                <!-- Salutation -->
+                <p style="color: #1f2937; margin-bottom: 24px;">Chèr·e ${firstName},</p>
+
+                <!-- Corps du message -->
+                <p style="color: #1f2937; margin-bottom: 24px;">
+                  ${roleText} a <strong>${statusText}</strong> le devis N° D-${quote_number}.
+                </p>
+
+                <!-- Détails du devis -->
+                <div style="margin-bottom: 24px;">
+                  ${
+                    project
+                      ? `
+                    <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Nom du projet :</span></p>
+                    <p style="color: #1f2937; margin-bottom: 16px;">${project}</p>
+                  `
+                      : ''
+                  }
+                  
+                  ${
+                    date
+                      ? `
+                    <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Dates :</span></p>
+                    <p style="color: #1f2937; margin-bottom: 16px;">${date}</p>
+                  `
+                      : ''
+                  }
+
+                  ${
+                    amount
+                      ? `
+                    <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Montant HTVA :</span></p>
+                    <p style="color: #1f2937; margin-bottom: 16px;">${amount.toFixed(2)}€</p>
+                  `
+                      : ''
+                  }
+
+                  ${
+                    client
+                      ? `
+                    <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">À facturer à :</span></p>
+                    <p style="color: #1f2937; margin-bottom: 24px;">${client}</p>
+                  `
+                      : ''
+                  }
+                </div>
+
+                <!-- Message de statut -->
+                <div style="background-color: ${status === 'accepted' ? '#f0fdf4' : '#fef2f2'}; border: 1px solid ${statusColor}; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+                  <p style="color: ${statusColor}; font-weight: 600; margin: 0;">
+                    ${
+                      status === 'accepted'
+                        ? 'Le devis a été accepté. Nous vous remercions pour votre confiance.'
+                        : "Le devis a été refusé. Si vous avez des questions, n'hésitez pas à nous contacter."
+                    }
+                  </p>
+                </div>
+
+                <!-- Bouton d'action -->
+                <div style="display: flex; justify-content: center; margin-top: 24px; margin-bottom: 24px;">
+                  <a href="${baseUrl}/quote-decision?quote_id=${quote_id}&role=${otherRoleParam}" target="_blank" style="background-color: #6b7280; color: #ffffff; padding: 8px 24px; border-radius: 9999px; font-size: 1.125rem; font-weight: 600; text-decoration: none; display: inline-block;">
                     Voir le devis
                   </a>
                 </div>

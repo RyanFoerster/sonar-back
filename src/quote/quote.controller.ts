@@ -92,6 +92,18 @@ export class QuoteController {
     return this.quoteService.updateOrderGiverRejection(+id);
   }
 
+  @Patch(':id/group_rejection_cancel')
+  @Public()
+  updateQuoteGroupRejectionCancel(@Param('id') id: string) {
+    return this.quoteService.updateQuoteGroupRejectionCancel(+id);
+  }
+
+  @Patch(':id/order_giver_rejection_cancel')
+  @Public()
+  updateOrderGiverRejectionCancel(@Param('id') id: string) {
+    return this.quoteService.updateOrderGiverRejectionCancel(+id);
+  }
+
   @Patch(':id/report_date')
   updateReportDate(
     @Param('id') id: string,

@@ -591,7 +591,7 @@ export class InvoiceService {
     return await this._invoiceRepository.delete(id);
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  @Cron(CronExpression.EVERY_DAY_AT_8AM)
   async createFacture() {
     const currentDate = new Date();
 

@@ -266,6 +266,7 @@ export class QuoteService {
     quote.attachment_url = attachment_urls;
 
     const userConnected = await this.usersService.findOne(user_id);
+    quote.created_by_mail = userConnected.email;
     quote = await this.quoteRepository.save(quote);
 
     Logger.debug('attachments_mail', attachments_mail.length);
@@ -609,7 +610,7 @@ export class QuoteService {
   private async updateQuoteStatus(
     id: number,
     type: 'group' | 'order_giver',
-    status: 'accepted' | 'refused',
+    status: 'accepted' | 'refused' | 'pending',
   ): Promise<Quote> {
     const quote = await this.findOne(id);
     const field = `${type}_acceptance` as
@@ -629,6 +630,8 @@ export class QuoteService {
       if (quote[otherField] === 'refused') {
         quote.status = 'refused';
       }
+    } else if (status === 'pending') {
+      quote.status = 'pending';
     }
 
     if (
@@ -653,19 +656,159 @@ export class QuoteService {
   }
 
   async updateQuoteGroupAcceptance(id: number) {
-    return this.updateQuoteStatus(id, 'group', 'accepted');
+    const quote = await this.updateQuoteStatus(id, 'group', 'accepted');
+
+    // Envoyer un email au client pour l'informer que le groupe a accepté le devis
+    if (quote.client && quote.client.email) {
+      try {
+        // Récupérer les informations nécessaires pour l'email
+        const clientName = quote.client.name.split(' ')[0] || 'Client'; // Prénom du client
+        const formattedDate = this.formatDate(quote.service_date);
+
+        await this.mailService.sendQuoteStatusUpdateEmail(
+          quote.client.email,
+          clientName,
+          quote.id,
+          quote.quote_number.toString(),
+          'accepted',
+          'GROUP',
+          quote.created_by_project_name,
+          quote.price_htva,
+          formattedDate,
+          quote.client.name,
+        );
+
+        Logger.log(
+          `Email de notification d'acceptation envoyé au client: ${quote.client.email}`,
+        );
+      } catch (error) {
+        Logger.error(
+          `Erreur lors de l'envoi de l'email de notification: ${error.message}`,
+        );
+      }
+    }
+
+    return quote;
   }
 
   async updateOrderGiverAcceptance(id: number) {
-    return this.updateQuoteStatus(id, 'order_giver', 'accepted');
+    const quote = await this.updateQuoteStatus(id, 'order_giver', 'accepted');
+
+    // Envoyer un email au groupe pour l'informer que le client a accepté le devis
+    try {
+      // Récupérer l'email du créateur du devis (groupe)
+      const creatorEmail = quote.created_by_mail;
+      if (creatorEmail) {
+        const creatorName =
+          quote.created_by_project_name.split(' ')[0] || 'Groupe'; // Prénom du créateur
+        const formattedDate = this.formatDate(quote.service_date);
+
+        await this.mailService.sendQuoteStatusUpdateEmail(
+          creatorEmail,
+          creatorName,
+          quote.id,
+          quote.quote_number.toString(),
+          'accepted',
+          'CLIENT',
+          quote.created_by_project_name,
+          quote.price_htva,
+          formattedDate,
+          quote.client.name,
+        );
+
+        Logger.log(
+          `Email de notification d'acceptation envoyé au groupe: ${creatorEmail}`,
+        );
+      }
+    } catch (error) {
+      Logger.error(
+        `Erreur lors de l'envoi de l'email de notification: ${error.message}`,
+      );
+    }
+
+    return quote;
   }
 
   async updateQuoteGroupRejection(id: number) {
-    return this.updateQuoteStatus(id, 'group', 'refused');
+    const quote = await this.updateQuoteStatus(id, 'group', 'refused');
+
+    // Envoyer un email au client pour l'informer que le groupe a refusé le devis
+    if (quote.client && quote.client.email) {
+      try {
+        // Récupérer les informations nécessaires pour l'email
+        const clientName = quote.client.name.split(' ')[0] || 'Client'; // Prénom du client
+        const formattedDate = this.formatDate(quote.service_date);
+
+        await this.mailService.sendQuoteStatusUpdateEmail(
+          quote.client.email,
+          clientName,
+          quote.id,
+          quote.quote_number.toString(),
+          'refused',
+          'GROUP',
+          quote.created_by_project_name,
+          quote.price_htva,
+          formattedDate,
+          quote.client.name,
+        );
+
+        Logger.log(
+          `Email de notification de refus envoyé au client: ${quote.client.email}`,
+        );
+      } catch (error) {
+        Logger.error(
+          `Erreur lors de l'envoi de l'email de notification: ${error.message}`,
+        );
+      }
+    }
+
+    return quote;
   }
 
   async updateOrderGiverRejection(id: number) {
-    return this.updateQuoteStatus(id, 'order_giver', 'refused');
+    const quote = await this.updateQuoteStatus(id, 'order_giver', 'refused');
+
+    // Envoyer un email au groupe pour l'informer que le client a refusé le devis
+    try {
+      // Récupérer l'email du créateur du devis (groupe)
+      const creatorEmail = quote.created_by_mail;
+      if (creatorEmail) {
+        const creatorName =
+          quote.created_by_project_name.split(' ')[0] || 'Groupe'; // Prénom du créateur
+        const formattedDate = this.formatDate(quote.service_date);
+
+        await this.mailService.sendQuoteStatusUpdateEmail(
+          creatorEmail,
+          creatorName,
+          quote.id,
+          quote.quote_number.toString(),
+          'refused',
+          'CLIENT',
+          quote.created_by_project_name,
+          quote.price_htva,
+          formattedDate,
+          quote.client.name,
+        );
+
+        Logger.log(
+          `Email de notification de refus envoyé au groupe: ${creatorEmail}`,
+        );
+      }
+    } catch (error) {
+      Logger.error(
+        `Erreur lors de l'envoi de l'email de notification: ${error.message}`,
+      );
+    }
+
+    return quote;
+  }
+
+  async updateQuoteGroupRejectionCancel(id: number) {
+    return this.updateQuoteStatus(id, 'group', 'pending');
+  }
+
+  async updateOrderGiverRejectionCancel(id: number) {
+    return this.updateQuoteStatus(id, 'order_giver', 'pending');
   }
 
   remove(id: number) {
