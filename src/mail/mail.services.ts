@@ -26,7 +26,7 @@ export class MailService {
     // URL du logo - assurez-vous que cette URL est accessible publiquement
     const logoUrl =
       this.configService.get('isProd') === true
-        ? 'https://sonarartists.fr/logo-SONAR.png'
+        ? 'https://sonarartists.be/logo-SONAR.png'
         : 'http://localhost:4200/logo-SONAR.png';
 
     const { data, error } = await this.resend.emails.send({
@@ -60,7 +60,7 @@ export class MailService {
                 </p>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                  <a href="${this.configService.get('isProd') === true ? 'https://sonarartists.fr' : 'http://localhost:4200'}/forgotten-password?token=${token}" 
+                  <a href="${this.configService.get('isProd') === true ? 'https://sonarartists.be' : 'http://localhost:4200'}/forgotten-password?token=${token}" 
                      style="display: inline-block; background-color: #C8C04D; color: #000000; font-weight: 600; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-size: 16px; transition: background-color 0.3s ease;">
                     Réinitialiser mon mot de passe
                   </a>
