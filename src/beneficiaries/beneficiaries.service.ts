@@ -73,7 +73,6 @@ export class BeneficiariesService {
       },
     });
 
-    this.logger.debug(`Found ${total} beneficiaries for user ${user_id}`);
     return {
       items,
       total,

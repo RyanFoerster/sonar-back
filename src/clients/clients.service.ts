@@ -50,7 +50,6 @@ export class ClientsService {
       client = await this.clientRepository.save(createClientDto);
     }
 
-    Logger.debug(JSON.stringify(client, null, 2));
     if (createClientDto.company_vat_number === '') {
       client.company_vat_number = null;
     }
@@ -77,7 +76,6 @@ export class ClientsService {
 
   async checkBCE(vat: number) {
     const response = await this.bceService.checkBCE(vat);
-    Logger.debug(`BCE response: ${JSON.stringify(response)}`);
     return response;
   }
 }

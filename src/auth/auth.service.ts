@@ -60,7 +60,6 @@ export class AuthService {
           user.isActive = true;
         }
       }
-      Logger.debug(JSON.stringify(user, null, 2));
 
       const salt = await bcrypt.genSalt();
       user.password = await bcrypt.hash(signupDto.password, salt);

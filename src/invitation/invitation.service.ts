@@ -98,7 +98,6 @@ export class InvitationsService {
   }
 
   async findByUserId(userId: number) {
-    Logger.debug(`Find invitations by userId ${userId}`);
     return await this.invitationsRepository
       .createQueryBuilder('invitation')
       .leftJoinAndSelect('invitation.user', 'user')

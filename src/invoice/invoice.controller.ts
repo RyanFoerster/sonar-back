@@ -55,7 +55,6 @@ export class InvoiceController {
     @Body() createCreditNoteDto: CreateCreditNoteDto,
     @Query() params: { account_id: number; type: 'PRINCIPAL' | 'GROUP' },
   ): Promise<Invoice> {
-    Logger.debug(params);
     return this.invoiceService.createCreditNote(createCreditNoteDto, params);
   }
 

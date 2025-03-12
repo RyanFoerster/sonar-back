@@ -370,15 +370,18 @@ export class InvoiceService {
     // Couleur principale pour le design
     const mainColor = [200, 192, 77] as [number, number, number]; // #C8C04D en RGB - même couleur que dans generateQuotePDF
 
-    // Logo en haut à gauche
-    // Note: Le chargement du logo est temporairement désactivé en raison de problèmes de compatibilité de types
-    // TODO: Résoudre le problème de type avec le Buffer pour le logo
-
     try {
       const logoData = this.assetsService.getAssetBuffer(
         '../assets/images/Groupe-30.png',
       );
-      doc.addImage(logoData, 'PNG', this.PAGE_MARGIN, this.PAGE_MARGIN, 50, 20);
+      doc.addImage(
+        logoData as any,
+        'PNG',
+        this.PAGE_MARGIN,
+        this.PAGE_MARGIN,
+        50,
+        20,
+      );
     } catch (error) {
       this.logger.warn(`Impossible de charger le logo: ${error.message}`);
     }

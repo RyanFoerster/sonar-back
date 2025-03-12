@@ -80,7 +80,6 @@ export class CompteGroupeService {
       .where('compte_groupe.id = :id', { id })
       .getOne();
 
-    Logger.debug(`Compte groupe: ${JSON.stringify(compteGroupe)}`);
     return compteGroupe;
   }
 
