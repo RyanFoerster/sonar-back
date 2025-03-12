@@ -153,7 +153,6 @@ export class UsersService {
 
   async toggleActiveUser(user: User) {
     user.isActive = true;
-    Logger.debug(JSON.stringify(user, null, 2));
     return await this.usersRepository.save(user);
   }
 

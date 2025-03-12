@@ -269,8 +269,6 @@ export class QuoteService {
     quote.created_by_mail = userConnected.email;
     quote = await this.quoteRepository.save(quote);
 
-    Logger.debug('attachments_mail', attachments_mail.length);
-
     // Envoi des emails avec les pièces jointes
     const sendEmail = async (
       email: string,
@@ -334,9 +332,7 @@ export class QuoteService {
   }
 
   findOne(id: number) {
-    Logger.debug('Id', id);
     const response = this.quoteRepository.findOneBy({ id });
-    Logger.debug('Response', JSON.stringify(response, null, 2));
     return response;
   }
 
@@ -361,10 +357,6 @@ export class QuoteService {
     user_id: number,
     files: Express.Multer.File[],
   ) {
-    Logger.debug(
-      `[QuotesService] Update quote ${id} with ${JSON.stringify(updateQuoteDto, null, 2)}`,
-    );
-
     let quote: Quote = await this.findOne(+id);
     if (!quote) {
       throw new NotFoundException('Quote not found');
@@ -449,10 +441,6 @@ export class QuoteService {
       updateQuoteDto.attachment_keys.length > 0
     ) {
       try {
-        Logger.debug(
-          `[QuotesService] Processing existing attachments: ${updateQuoteDto.attachment_keys}`,
-        );
-
         // Convertir les clés en URLs pour la comparaison
         const keepUrls = updateQuoteDto.attachment_keys.map((key) =>
           this.s3Service.getFileUrl(key),
@@ -490,8 +478,6 @@ export class QuoteService {
     // Ensuite traiter les nouveaux fichiers
     if (files && files.length > 0) {
       try {
-        Logger.debug(`[QuotesService] Processing ${files.length} new files`);
-
         for (const file of files) {
           try {
             // Upload du fichier sur S3
@@ -973,10 +959,6 @@ export class QuoteService {
 
   async getAttachment(key: string) {
     try {
-      Logger.debug(
-        `[QuoteService] Récupération de la pièce jointe avec la clé: ${key}`,
-      );
-
       // Vérifier si la clé est vide ou invalide
       if (!key || typeof key !== 'string') {
         Logger.error(`[QuoteService] Clé invalide: ${key}`);
@@ -984,9 +966,7 @@ export class QuoteService {
       }
 
       const fileBuffer = await this.s3Service.getFile(key);
-      Logger.debug(
-        `[QuoteService] Pièce jointe récupérée avec succès, taille: ${fileBuffer.length} octets`,
-      );
+
       return fileBuffer;
     } catch (error) {
       Logger.error(

@@ -25,7 +25,7 @@ export class MailService {
   ) {
     // URL du logo - assurez-vous que cette URL est accessible publiquement
     const logoUrl =
-      this.configService.get('stage') === 'prod'
+      this.configService.get('isProd') === true
         ? 'https://sonarartists.fr/logo-SONAR.png'
         : 'http://localhost:4200/logo-SONAR.png';
 
@@ -60,7 +60,7 @@ export class MailService {
                 </p>
                 
                 <div style="text-align: center; margin: 30px 0;">
-                  <a href="${this.configService.get('stage') === 'prod' ? 'https://sonarartists.fr' : 'http://localhost:4200'}/forgotten-password?token=${token}" 
+                  <a href="${this.configService.get('isProd') === true ? 'https://sonarartists.fr' : 'http://localhost:4200'}/forgotten-password?token=${token}" 
                      style="display: inline-block; background-color: #C8C04D; color: #000000; font-weight: 600; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-size: 16px; transition: background-color 0.3s ease;">
                     Réinitialiser mon mot de passe
                   </a>
@@ -98,7 +98,6 @@ export class MailService {
       throw error;
     }
 
-    Logger.debug('Stylized email sent:', data);
     return data;
   }
 
@@ -517,23 +516,14 @@ export class MailService {
     try {
       // Vérifier la taille du PDF avant encodage
       const pdfSizeInMB = Buffer.from(pdfContent).length / (1024 * 1024);
-      Logger.debug(
-        `Taille du PDF avant encodage: ${pdfSizeInMB.toFixed(2)} MB`,
-      );
 
       // Si la taille est supérieure à 7.5MB, on risque de dépasser la limite après encodage en base64
       if (pdfSizeInMB > 7.5) {
-        Logger.debug(
-          `Attention: La taille du PDF est importante (${pdfSizeInMB.toFixed(2)} MB)`,
-        );
       }
 
       // Convertir l'arraybuffer en base64
       const base64Content = Buffer.from(pdfContent).toString('base64');
       const base64SizeInMB = base64Content.length / (1024 * 1024);
-      Logger.debug(
-        `Taille du PDF après encodage en base64: ${base64SizeInMB.toFixed(2)} MB`,
-      );
 
       const requestBody = {
         layout_identifier: 'tp-5eded5ab563d474d',
@@ -558,9 +548,6 @@ export class MailService {
 
       // Calculer la taille approximative de la requête
       const payloadSize = JSON.stringify(requestBody).length / (1024 * 1024);
-      Logger.debug(
-        `Taille approximative de la requête: ${payloadSize.toFixed(2)} MB`,
-      );
 
       if (payloadSize > 9.5) {
         Logger.warn(
@@ -582,9 +569,6 @@ export class MailService {
         },
       );
 
-      Logger.debug(
-        `Email de facture envoyé avec succès pour le devis ${creditNote.id}`,
-      );
       return response.data;
     } catch (error) {
       Logger.error(
@@ -609,7 +593,6 @@ export class MailService {
     try {
       // Vérifier la taille du PDF (qui est déjà en base64)
       const pdfSizeInMB = pdfContent.length / (1024 * 1024);
-      Logger.debug(`Taille du PDF en base64: ${pdfSizeInMB.toFixed(2)} MB`);
 
       // Si la taille est supérieure à 9.5MB, on risque de dépasser la limite
       if (pdfSizeInMB > 9.5) {
@@ -641,9 +624,6 @@ export class MailService {
 
       // Calculer la taille approximative de la requête
       const payloadSize = JSON.stringify(requestBody).length / (1024 * 1024);
-      Logger.debug(
-        `Taille approximative de la requête: ${payloadSize.toFixed(2)} MB`,
-      );
 
       if (payloadSize > 9.5) {
         Logger.warn(
@@ -666,9 +646,6 @@ export class MailService {
         },
       );
 
-      Logger.debug(
-        `Email de virement SEPA envoyé avec succès pour ${accountOwner} (ID: ${virementId})`,
-      );
       return response.data;
     } catch (error) {
       Logger.error(

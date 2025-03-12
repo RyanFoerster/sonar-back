@@ -29,7 +29,6 @@ export class UserSecondaryAccountService {
     createUserSecondaryAccountDto: CreateUserSecondaryAccountDto,
     params?: any,
   ) {
-    Logger.debug(params);
     if (params !== undefined) {
       let user: User | undefined = await this.usersService.findOneByEmail(
         params.email,

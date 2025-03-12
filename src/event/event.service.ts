@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { CreateEventDto } from './dto/create-event.dto';
@@ -17,12 +22,16 @@ export class EventsService {
     private eventsRepository: Repository<Event>,
     private dataSource: DataSource,
     private invitationsService: InvitationsService,
-  ) {
-  }
+  ) {}
 
-  async create(createEventDto: CreateEventDto, params: any, user_id: number): Promise<Event> {
-    Logger.debug(JSON.stringify(createEventDto, null, 2));
-    const eventInDB: Event = await this.eventsRepository.findOneBy({ title: createEventDto.title });
+  async create(
+    createEventDto: CreateEventDto,
+    params: any,
+    user_id: number,
+  ): Promise<Event> {
+    const eventInDB: Event = await this.eventsRepository.findOneBy({
+      title: createEventDto.title,
+    });
     if (eventInDB) {
       throw new BadRequestException('Event already exists');
     }
@@ -35,7 +44,8 @@ export class EventsService {
       event.organisateurs = [];
     }
 
-    const groupAccount = await this.dataSource.createQueryBuilder(CompteGroupe, 'compteGroupe')
+    const groupAccount = await this.dataSource
+      .createQueryBuilder(CompteGroupe, 'compteGroupe')
       .select([
         'compteGroupe.id',
         'compteGroupe.username',
@@ -49,44 +59,45 @@ export class EventsService {
     }
     event.group = groupAccount;
 
-    const organisateurs = await this.dataSource.createQueryBuilder(User, 'user').select([
-      'user.id',
-      'user.name',
-      'user.email', // Ajoute ici les autres champs que tu veux inclure
-    ])
+    const organisateurs = await this.dataSource
+      .createQueryBuilder(User, 'user')
+      .select([
+        'user.id',
+        'user.name',
+        'user.email', // Ajoute ici les autres champs que tu veux inclure
+      ])
       .where('user.id IN (:...ids)', { ids: createEventDto.organisateurs_ids }) // Remplace `userId` par l'identifiant de l'utilisateur
       .getMany();
     if (!organisateurs) {
       throw new BadRequestException('Organisateurs not found');
     }
 
-    Logger.debug(JSON.stringify(organisateurs, null, 2));
-
     event.organisateurs = organisateurs;
 
-    for(const organisateur of organisateurs) {
-      const userStatut: {user_id: number, status: "accepted" | "refused"} = {user_id: organisateur.id, status: "refused"}
-      event.user_status.push(userStatut)
+    for (const organisateur of organisateurs) {
+      const userStatut: { user_id: number; status: 'accepted' | 'refused' } = {
+        user_id: organisateur.id,
+        status: 'refused',
+      };
+      event.user_status.push(userStatut);
     }
 
     let invitations: Invitation[] = [];
     for (const user_id of createEventDto.invitations_ids) {
       let createInvitationDto: CreateInvitationDto;
-      Logger.debug(event.id);
       createInvitationDto = {
         eventId: event.id,
         userId: user_id,
       };
 
-      let invitationCreated = await this.invitationsService.create(createInvitationDto);
+      let invitationCreated =
+        await this.invitationsService.create(createInvitationDto);
       invitations.push(invitationCreated);
     }
 
     event.invitation = invitations;
-    Logger.debug(JSON.stringify(event, null, 2));
 
     return await this.eventsRepository.save(event);
-
   }
 
   async findAll(): Promise<Event[]> {
@@ -94,7 +105,8 @@ export class EventsService {
   }
 
   async findAllByGroupId(group_id: number): Promise<Event[]> {
-    return await this.eventsRepository.createQueryBuilder('event')
+    return await this.eventsRepository
+      .createQueryBuilder('event')
       .leftJoinAndSelect('event.participants', 'participants')
       .leftJoinAndSelect('event.organisateurs', 'organisateurs')
       .leftJoinAndSelect('event.comments', 'comment')
@@ -144,7 +156,8 @@ export class EventsService {
   }
 
   async findOne(id: number): Promise<Event> {
-    const event = await this.eventsRepository.createQueryBuilder('event')
+    const event = await this.eventsRepository
+      .createQueryBuilder('event')
       .leftJoinAndSelect('event.participants', 'participants')
       .leftJoinAndSelect('event.organisateurs', 'organisateurs')
       .leftJoinAndSelect('event.comments', 'comment')
@@ -247,7 +260,11 @@ export class EventsService {
     return await this.eventsRepository.save(event);
   }
 
-  async userStatus(event_id: number, user_id: number, status: 'accepted' | 'refused') {
+  async userStatus(
+    event_id: number,
+    user_id: number,
+    status: 'accepted' | 'refused',
+  ) {
     const event = await this.findOne(event_id);
 
     if (!event) {
@@ -258,12 +275,12 @@ export class EventsService {
       event.user_status = [];
     }
 
-    Logger.debug(event.user_status);
-
-    if (event.user_status.find(user => user.user_id === user_id) === undefined) {
+    if (
+      event.user_status.find((user) => user.user_id === user_id) === undefined
+    ) {
       event.user_status.push({ user_id, status });
     } else {
-      event.user_status = event.user_status.map(user => {
+      event.user_status = event.user_status.map((user) => {
         if (user.user_id === user_id) {
           user.status = status;
         }

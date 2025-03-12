@@ -12,10 +12,6 @@ export class ProductService {
     private readonly productRepository: Repository<Product>,
   ) {}
   async create(createProductDto: CreateProductDto) {
-    Logger.debug(
-      `Creating product with ${JSON.stringify(createProductDto, null, 2)}`,
-    );
-
     // Créer une nouvelle instance de produit
     const product = new Product();
 
@@ -64,10 +60,6 @@ export class ProductService {
     updateProductDto: UpdateProductDto,
     tvaIncluded: boolean,
   ) {
-    Logger.debug(
-      `Updating product ${id} with ${JSON.stringify(updateProductDto, null, 2)}`,
-    );
-
     // Récupérer le produit existant
     const existingProduct = await this.productRepository.findOne({
       where: { id },
@@ -78,10 +70,6 @@ export class ProductService {
 
     // Mettre à jour uniquement les champs modifiés
     Object.assign(updatedProduct, updateProductDto);
-
-    Logger.debug(
-      `Product before calculations ${id} with ${JSON.stringify(updatedProduct, null, 2)}`,
-    );
 
     // Calculer les montants en fonction de tvaIncluded
     if (tvaIncluded) {
@@ -105,10 +93,6 @@ export class ProductService {
       updatedProduct.total = total;
     }
 
-    Logger.debug(
-      `Product after calculations ${id} with ${JSON.stringify(updatedProduct, null, 2)}`,
-    );
-
     // Sauvegarder les modifications dans la base de données
     if (updateProductDto.shouldSave !== false) {
       return this.productRepository.save(updatedProduct);
@@ -127,9 +111,6 @@ export class ProductService {
   }
 
   async setTotal(product: Product | UpdateProductDto) {
-    Logger.debug(
-      `Setting total for product with ${JSON.stringify(product, null, 2)}`,
-    );
     let productVat = product.price * product.vat;
     let productTotal = +product.price + +productVat;
     return productTotal * product.quantity;

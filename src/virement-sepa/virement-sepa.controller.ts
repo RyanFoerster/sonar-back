@@ -40,7 +40,6 @@ export class VirementSepaController {
     @Query() params: string,
     @UploadedFile() invoice: Express.Multer.File,
   ) {
-    Logger.debug(JSON.stringify(createVirementSepaDto, null, 2));
     return this.virementSepaService.create(
       createVirementSepaDto,
       req.user.id,
@@ -106,9 +105,6 @@ export class VirementSepaController {
 
   @Post('initiate-transfers')
   async initiateTransfers(@Request() req) {
-    Logger.debug('Début de initiateTransfers dans le contrôleur');
-    Logger.debug(`User role: ${req.user.role}`);
-
     if (req.user.role !== 'ADMIN') {
       Logger.error("Tentative d'accès non autorisé - rôle non admin");
       throw new BadRequestException(
@@ -119,7 +115,6 @@ export class VirementSepaController {
     try {
       const result =
         await this.virementSepaService.initiateValidatedTransfers();
-      Logger.debug('Virements initiés avec succès', result);
       return result;
     } catch (error) {
       Logger.error('Erreur dans le contrôleur:', error);

@@ -71,7 +71,7 @@ export class TransactionService {
 
       if (senderPrincipal.solde >= amount) {
         senderPrincipal.solde -= amount;
-        this.comptePrincipalService.create(senderPrincipal);
+        await this.comptePrincipalService.save(senderPrincipal);
         transaction.senderPrincipal = await this.comptePrincipalService.findOne(
           senderPrincipal.id,
         );
@@ -87,7 +87,7 @@ export class TransactionService {
           await this.compteGroupeService.findOne(compteGroupeId);
         compteGroupe.solde += createTransactionDto.amount;
         recipientGroups.push(compteGroupe);
-        this.compteGroupeService.save(compteGroupe);
+        await this.compteGroupeService.save(compteGroupe);
       }
       transaction.recipientGroup = recipientGroups;
     }
@@ -98,15 +98,54 @@ export class TransactionService {
         let comptePrincipal =
           await this.comptePrincipalService.findOne(comptePrincipalId);
         comptePrincipal.solde += createTransactionDto.amount;
-        recipientPrincipals.push(comptePrincipal);
-        this.comptePrincipalService.create(comptePrincipal);
+        await this.comptePrincipalService.save(comptePrincipal);
+
+        // Récupérer à nouveau le compte principal après la sauvegarde
+        const updatedComptePrincipal =
+          await this.comptePrincipalService.findOne(comptePrincipalId);
+        recipientPrincipals.push(updatedComptePrincipal);
       }
       transaction.recipientPrincipal = recipientPrincipals;
     }
 
     // Sauvegarde finale de la transaction avec toutes ses relations
-    await this.transactionRepository.save(transaction);
-    return true;
+    try {
+      // Étape 1: Sauvegarder la transaction de base sans les relations many-to-many
+      const transactionToSave = new Transaction();
+      transactionToSave.amount = transaction.amount;
+      transactionToSave.communication = transaction.communication;
+      transactionToSave.date = transaction.date;
+      transactionToSave.senderGroup = transaction.senderGroup;
+      transactionToSave.senderPrincipal = transaction.senderPrincipal;
+
+      const savedTransaction =
+        await this.transactionRepository.save(transactionToSave);
+
+      // Étape 2: Ajouter les relations many-to-many
+      if (transaction.recipientGroup && transaction.recipientGroup.length > 0) {
+        await this.transactionRepository
+          .createQueryBuilder()
+          .relation(Transaction, 'recipientGroup')
+          .of(savedTransaction.id)
+          .add(transaction.recipientGroup.map((group) => group.id));
+      }
+
+      if (
+        transaction.recipientPrincipal &&
+        transaction.recipientPrincipal.length > 0
+      ) {
+        await this.transactionRepository
+          .createQueryBuilder()
+          .relation(Transaction, 'recipientPrincipal')
+          .of(savedTransaction.id)
+          .add(transaction.recipientPrincipal.map((principal) => principal.id));
+      }
+
+      return true;
+    } catch (error) {
+      Logger.error('Erreur lors de la sauvegarde de la transaction', error);
+      throw error;
+    }
   }
 
   async findAll(paginationDto: PaginationDto) {

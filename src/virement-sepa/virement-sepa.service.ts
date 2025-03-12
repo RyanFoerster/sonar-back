@@ -65,15 +65,7 @@ export class VirementSepaService {
           (account) => account.group_account.id === +params.id,
         );
 
-        user.userSecondaryAccounts?.forEach((account) => {
-          Logger.debug(
-            `Account: ${JSON.stringify(account.id, null, 2)} - ${JSON.stringify(
-              account.secondary_account_id,
-              null,
-              2,
-            )}`,
-          );
-        });
+        user.userSecondaryAccounts?.forEach((account) => {});
 
         if (!accountFinded) {
           Logger.error(
@@ -137,9 +129,6 @@ export class VirementSepaService {
         );
         virementSepa.invoice_key = key;
         virementSepa.invoice_url = this.s3Service.getFileUrl(key);
-        Logger.debug(`Invoice key: ${key}`);
-        Logger.debug(`Invoice url: ${virementSepa.invoice_url}`);
-        Logger.debug(`Invoice: ${invoice.originalname}`);
       } catch (error) {
         Logger.error(error);
         throw new BadRequestException("Erreur lors de l'upload du fichier");
@@ -202,7 +191,6 @@ export class VirementSepaService {
           virement.compteGroupe.id,
         );
         account.solde += +virement.amount_htva;
-        Logger.debug(JSON.stringify(account, null, 2));
         await this.compteGroupService.save(account);
       }
 

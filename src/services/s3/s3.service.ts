@@ -96,10 +96,6 @@ export class S3Service {
 
   async getFile(key: string): Promise<Buffer> {
     try {
-      this.logger.debug(
-        `Tentative de récupération du fichier avec la clé: ${key}`,
-      );
-
       const response = await this.s3Client.send(
         new GetObjectCommand({
           Bucket: this.bucket,

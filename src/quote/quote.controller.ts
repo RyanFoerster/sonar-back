@@ -119,18 +119,14 @@ export class QuoteController {
   @Public()
   async downloadAttachment(@Param('key') key: string, @Res() res: Response) {
     try {
-      Logger.debug('Downloading file with key:', key);
-
       const fileBuffer = await this.quoteService.getAttachment(key);
 
       // Extraire le nom du fichier de la clé
       const fileName = key.split('/').pop() || 'attachment';
-      Logger.debug('Filename:', fileName);
 
       // Déterminer le type MIME en fonction de l'extension
       const extension = fileName.split('.').pop()?.toLowerCase() || '';
       const mimeType = this.getMimeType(extension);
-      Logger.debug('MIME Type:', mimeType);
 
       // Configurer les en-têtes de la réponse
       res.setHeader('Content-Type', mimeType);
