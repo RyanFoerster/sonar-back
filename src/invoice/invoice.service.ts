@@ -26,6 +26,7 @@ import { CompteGroupe } from '@/compte_groupe/entities/compte_groupe.entity';
 import { ComptePrincipal } from '@/compte_principal/entities/compte_principal.entity';
 import { AssetsService } from '../services/assets.service';
 import { S3Service } from '@/services/s3/s3.service';
+import * as QRCode from 'qrcode';
 
 @Injectable()
 export class InvoiceService {
@@ -147,8 +148,15 @@ export class InvoiceService {
 
   async createInvoiceFromQuote(quote: Quote) {
     const currentDate = new Date();
+    let group;
+    Logger.log(JSON.stringify(quote, null, 2));
+    if (quote.group_account) {
+      group = await this.compteGroupeService.findOne(quote.group_account.id);
+    } else {
+      group = await this.comptePrincipalService.findOne(quote.main_account.id);
+    }
 
-    const invoice = new Invoice();
+    let invoice = new Invoice();
     invoice.invoice_date = currentDate;
     invoice.service_date = quote.service_date;
 
@@ -163,7 +171,20 @@ export class InvoiceService {
     invoice.total_vat_21 = quote.total_vat_21;
     invoice.total_vat_6 = quote.total_vat_6;
     invoice.status = 'payment_pending';
+    invoice.type = 'invoice';
+    // invoice.invoice_number = group.next_invoice_number;
+    // group.next_invoice_number += 1;
+    // await this.compteGroupeService.save(group);
 
+    // invoice = await this.save(invoice);
+    // const pdf = await this.generateInvoicePDF(quote);
+    // const pdfBuffer = Buffer.from(pdf);
+    // const pdfKey = await this.s3Service.uploadFileFromBuffer(
+    //   pdfBuffer,
+    //   'invoices',
+    //   invoice.id,
+    // );
+    // this.mailService.sendInvoiceEmail(quote, pdfKey);
     return invoice;
   }
 
@@ -361,6 +382,150 @@ export class InvoiceService {
     doc.text(`BIC: ${this.COMPANY_INFO.bic}`, 150, pageHeight - 30);
   }
 
+  private async generatePaymentQRCode(
+    invoice: Invoice,
+    client: any,
+  ): Promise<string> {
+    // Format EPC069-12 pour les virements SEPA
+    const reference = `facture_${
+      invoice.invoice_number
+    }_${client.name.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    const qrData = [
+      'BCD', // Service Tag
+      '002', // Version
+      '1', // Character Set
+      'SCT', // Identification
+      this.COMPANY_INFO.bic, // BIC
+      this.COMPANY_INFO.name, // Nom du bénéficiaire
+      this.COMPANY_INFO.iban, // IBAN
+      `EUR${Math.abs(invoice.total).toFixed(2)}`, // Montant
+      '', // Purpose (peut être laissé vide)
+      reference, // Référence personnalisée
+      `FACTURE ${invoice.invoice_number} - ${this.formatDateBelgium(
+        invoice.invoice_date,
+      )}`, // Description détaillée
+    ].join('\n');
+
+    try {
+      // Optimisation de la génération du QR code
+      return await QRCode.toDataURL(qrData, {
+        width: 100,
+        margin: 0,
+        scale: 4,
+        errorCorrectionLevel: 'L',
+      });
+    } catch (err) {
+      this.logger.error('Erreur lors de la génération du QR code:', err);
+      return '';
+    }
+  }
+
+  private async addPaymentQRCode(
+    doc: jsPDF,
+    invoice: Invoice,
+    client: any,
+    yPosition: number,
+    pageWidth: number,
+  ): Promise<void> {
+    const qrCodeDataUrl = await this.generatePaymentQRCode(invoice, client);
+    if (qrCodeDataUrl) {
+      // Réduction de la taille du QR code
+      const qrCodeWidth = 30; // Réduit de 40 à 30
+      const qrCodeHeight = 30; // Réduit de 40 à 30
+      const qrCodeX = this.PAGE_MARGIN;
+      const qrCodeY = yPosition + 20; // Réduit encore plus l'espace vertical
+
+      // Optimisation de l'ajout du QR code
+      doc.addImage(
+        qrCodeDataUrl,
+        'PNG',
+        qrCodeX,
+        qrCodeY,
+        qrCodeWidth,
+        qrCodeHeight,
+        undefined,
+        'MEDIUM',
+      );
+
+      // Ajout des informations de paiement à côté du QR code
+      doc.setFontSize(8); // Réduit de 9 à 8
+      doc.setTextColor(0);
+      let textY = qrCodeY + 5;
+      doc.text('Informations de paiement:', qrCodeX + qrCodeWidth + 10, textY);
+      textY += 6; // Réduit l'espacement vertical de 8 à 6
+      doc.text(
+        `IBAN: ${this.COMPANY_INFO.iban}`,
+        qrCodeX + qrCodeWidth + 10,
+        textY,
+      );
+      textY += 6; // Réduit l'espacement vertical de 8 à 6
+      doc.text(
+        `BIC: ${this.COMPANY_INFO.bic}`,
+        qrCodeX + qrCodeWidth + 10,
+        textY,
+      );
+      textY += 6; // Réduit l'espacement vertical de 8 à 6
+      const reference = `facture_${
+        invoice.invoice_number
+      }_${client.name.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      doc.text(
+        `Communication: ${reference}`,
+        qrCodeX + qrCodeWidth + 10,
+        textY,
+      );
+
+      // Ajout des conditions de paiement en dessous du QR code
+      // Calcul de la position pour éviter le chevauchement avec le pied de page
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const footerStartY = pageHeight - 45; // Position de début du footer
+      const conditionsPaiement =
+        "Toute somme non payée à son échéance porte intérêt de retard de plein droit et sans mise en demeure préalable au taux de 12 % l'an. En cas de non-paiement à l'échéance, les factures sont majorées de plein droit d'une indemnité forfaitaire de 15 % à titre de dommages et intérêts conventionnels avec un minimum de 150 euros et indépendamment des intérêts de retard.";
+
+      // Positionnement des conditions de paiement
+      const conditionsY = qrCodeY + qrCodeHeight + 8; // Réduit l'espace après le QR code
+
+      // Toujours afficher les conditions, mais adapter la taille et la position
+      doc.setFontSize(7); // Taille de police réduite
+      doc.setFont('helvetica', 'bold');
+      doc.text('Conditions de paiement:', qrCodeX, conditionsY);
+
+      doc.setFont('helvetica', 'normal');
+      const maxWidth = pageWidth - 2 * this.PAGE_MARGIN;
+
+      // Calculer l'espace disponible entre les conditions et le footer
+      const availableHeight = footerStartY - conditionsY - 8;
+
+      // Adapter la taille de police en fonction de l'espace disponible
+      if (availableHeight < 30) {
+        // Très peu d'espace disponible, utiliser une police très petite
+        doc.setFontSize(6);
+      } else if (availableHeight < 40) {
+        // Espace limité, utiliser une petite police
+        doc.setFontSize(6.5);
+      }
+
+      // Diviser le texte pour qu'il s'adapte à la largeur disponible
+      const splitText = doc.splitTextToSize(conditionsPaiement, maxWidth);
+
+      // Estimer la hauteur du texte
+      const textHeight = splitText.length * 3; // Approximation de la hauteur (3 points par ligne)
+
+      // Si le texte risque de dépasser le footer, réduire encore la taille
+      if (conditionsY + 6 + textHeight > footerStartY) {
+        // Réduire davantage la taille de police
+        doc.setFontSize(5.5);
+        const splitTextSmaller = doc.splitTextToSize(
+          conditionsPaiement,
+          maxWidth,
+        );
+        doc.text(splitTextSmaller, qrCodeX, conditionsY + 6);
+      } else {
+        // Sinon, utiliser la taille déjà définie
+        doc.text(splitText, qrCodeX, conditionsY + 6);
+      }
+    }
+  }
+
   async generateInvoicePDF(quote: Quote): Promise<ArrayBuffer> {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -401,9 +566,14 @@ export class InvoiceService {
       45,
       { align: 'right' },
     );
-    doc.text(`N°${invoice.invoice_number}`, pageWidth - this.PAGE_MARGIN, 55, {
-      align: 'right',
-    });
+    doc.text(
+      `N°${new Date().getFullYear()}-${invoice.invoice_number}`,
+      pageWidth - this.PAGE_MARGIN,
+      55,
+      {
+        align: 'right',
+      },
+    );
 
     // Informations de l'émetteur
     doc.setFontSize(10);
@@ -537,6 +707,17 @@ export class InvoiceService {
         }
       },
     });
+
+    // Ajouter le QR code seulement pour les factures (pas pour les notes de crédit)
+    if (invoice.type !== 'credit_note') {
+      await this.addPaymentQRCode(
+        doc,
+        invoice,
+        quote.client,
+        finalY,
+        pageWidth,
+      );
+    }
 
     // Pied de page avec informations de l'entreprise
     const footerY = pageHeight - 30;

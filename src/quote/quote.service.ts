@@ -634,11 +634,14 @@ export class QuoteService {
       quote.order_giver_acceptance === 'accepted' &&
       quote.service_date < new Date()
     ) {
+      Logger.log('Création de la facture');
       quote.status = 'accepted';
-      await this.invoiceService.createInvoiceFromQuote(quote);
+      await this.invoiceService.createFacture();
     }
 
-    return await this.quoteRepository.save(quote);
+    const savedQuote = await this.quoteRepository.save(quote);
+    await this.invoiceService.createFacture();
+    return savedQuote;
   }
 
   async updateQuoteGroupAcceptance(id: number) {

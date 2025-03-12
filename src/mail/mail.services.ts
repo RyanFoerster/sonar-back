@@ -153,7 +153,7 @@ export class MailService {
               <div style="border: 4px solid #C8C04D; padding: 32px; background-color: #ffffff;">
                 <!-- Titre principal -->
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px;">
-                  <h1 style="font-size: 1.875rem; font-weight: 700; color: #C8C04D; margin: 0;">Devis à confirmer</h1>
+                  <h1 style="font-size: 1.875rem; font-weight: 700; color: #C8C04D; margin: 0;">${isUpdate ? `Devis modifié par le groupe ${project}` : 'Devis à confirmer'}</h1>
                   <div style="text-align: right;">
                     ${firstName ? `<p style="color: #4b5563; margin: 0;">${firstName} ${name || ''} ${role ? `- ${role}` : ''}</p>` : ''}
                     ${email ? `<p style="color: #4b5563; margin: 0;">${email}</p>` : ''}
@@ -283,7 +283,7 @@ export class MailService {
               <div style="border: 4px solid ${statusColor}; padding: 32px; background-color: #ffffff;">
                 <!-- Titre principal -->
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px;">
-                  <h1 style="font-size: 1.875rem; font-weight: 700; color: ${statusColor}; margin: 0;">Devis ${statusText}</h1>
+                  <h1 style="font-size: 1.875rem; font-weight: 700; color: ${statusColor}; margin: 0;">Devis ${statusText} par ${roleText}</h1>
                   <div style="text-align: right;">
                     <p style="color: #4b5563; margin: 0;">Devis N° D-${quote_number}</p>
                   </div>
