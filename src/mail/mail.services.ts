@@ -586,71 +586,107 @@ export class MailService {
     virementId: number,
     cc: string | null = null,
   ) {
-    const API_KEY = this.configService.get('isProd')
-      ? this.configService.get('mailhub.api_key_prod')
-      : this.configService.get('mailhub.api_key_dev');
+    // Déterminer l'environnement pour les liens
+    const config = this.configService.get('isProd') === true ? 'PROD' : 'DEV';
+    const baseUrl =
+      config === 'PROD' ? 'https://sonarartists.be' : 'http://localhost:4200';
 
     try {
-      // Vérifier la taille du PDF (qui est déjà en base64)
-      const pdfSizeInMB = pdfContent.length / (1024 * 1024);
-
-      // Si la taille est supérieure à 9.5MB, on risque de dépasser la limite
-      if (pdfSizeInMB > 9.5) {
-        Logger.warn(
-          `Attention: La taille du PDF est très importante (${pdfSizeInMB.toFixed(2)} MB) et pourrait dépasser la limite`,
-        );
-      }
-
-      const attachments = [
-        {
-          filename: `virement_sepa_${virementId}.pdf`,
-          content: pdfContent,
-          contentType: 'application/pdf',
-        },
-      ];
-
-      const requestBody = {
-        layout_identifier: 'tp-531d0f0745894797',
-        variables: {
-          transfer_id: virementId,
-        },
-        from: 'info@sonarartists.fr',
-        to: to,
-        cc: cc,
+      const { data, error } = await this.resend.emails.send({
+        from: 'info@sonarartists.be',
+        to,
+        cc: cc || undefined,
         subject: `Virement SEPA pour ${accountOwner}`,
-        language: null,
-        attachments,
-      };
+        html: `
+          <!DOCTYPE html>
+          <html lang="fr">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Virement SEPA</title>
+          </head>
+          <body style="margin: 0; padding: 0; font-family: 'Montserrat', Arial, sans-serif; background-color: #f4f4f4; color: #333333; min-height: 100vh;">
+            <div style="min-height: 100%; display: flex; justify-content: space-between; max-width: 600px; margin: 0 auto;">
+              <div style="width: 100%;">
+                <!-- En-tête avec logo Sonar -->
+                <div style="background-color: #ffffff; padding: 16px; display: flex; align-items: center; gap: 8px;">
+                  <img src="https://sonarartists.be/logo-SONAR.png" alt="Sonar" style="width: 32px; height: auto;" />
+                  <img src="https://sonarartists.be/sonar-texte.png" alt="Sonar" style="width: 80px; height: auto;" />
+                </div>
 
-      // Calculer la taille approximative de la requête
-      const payloadSize = JSON.stringify(requestBody).length / (1024 * 1024);
+                <!-- Contenu principal avec bordure jaune -->
+                <div style="border: 4px solid #C8C04D; padding: 32px; background-color: #ffffff;">
+                  <!-- Titre principal -->
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px;">
+                    <h1 style="font-size: 1.875rem; font-weight: 700; color: #C8C04D; margin: 0;">Virement SEPA</h1>
+                    <div style="text-align: right;">
+                      <p style="color: #4b5563; margin: 0;">Référence: #${virementId}</p>
+                    </div>
+                  </div>
 
-      if (payloadSize > 9.5) {
-        Logger.warn(
-          `La requête est proche ou dépasse la limite de 10MB (${payloadSize.toFixed(2)} MB)`,
-        );
+                  <!-- Salutation -->
+                  <p style="color: #1f2937; margin-bottom: 24px;">Chèr·e ${accountOwner},</p>
+
+                  <!-- Corps du message -->
+                  <p style="color: #1f2937; margin-bottom: 24px;">Veuillez trouver ci-joint votre ordre de virement SEPA :</p>
+
+                  <!-- Détails du virement -->
+                  <div style="margin-bottom: 24px;">
+                    <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Référence du virement :</span></p>
+                    <p style="color: #1f2937; margin-bottom: 16px;">#${virementId}</p>
+                    
+                    <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Bénéficiaire :</span></p>
+                    <p style="color: #1f2937; margin-bottom: 16px;">${accountOwner}</p>
+                  </div>
+
+                  <!-- Message d'information -->
+                  <div style="background-color: #f0fdf4; border: 1px solid #10b981; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+                    <p style="color: #10b981; font-weight: 600; margin: 0;">
+                      Le virement a été initié. Vous trouverez tous les détails dans le document PDF joint à cet email.
+                    </p>
+                  </div>
+
+                  <!-- Signature -->
+                  <p style="color: #1f2937; margin-bottom: 8px;">Je vous remercie pour votre confiance,</p>
+                  <p style="color: #1f2937; margin-bottom: 32px;">L'équipe Sonar Artists</p>
+
+                  <!-- Pied de page -->
+                  <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #d1d5db;">
+                    <p style="color: #4b5563; margin-bottom: 4px;">powered by</p>
+                    <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0;">
+                      <img src="https://sonarartists.be/logo-SONAR.png" alt="Sonar" style="width: 32px; height: auto;" />
+                      <img src="https://sonarartists.be/sonar-texte.png" alt="Sonar" style="width: 80px; height: auto;" />
+                    </div>
+
+                    <p style="color: #C8C04D; margin-bottom: 4px;">+32 498 62 45 65</p>
+                    <p style="color: #C8C04D; margin-bottom: 4px;">info@sonarartists.be</p>
+                    <p style="color: #4b5563; margin-bottom: 4px;">Rue Francisco Ferrer 6</p>
+                    <p style="color: #4b5563; margin-bottom: 0;">4460 GRÂCE-BERLEUR</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </body>
+          </html>
+        `,
+        attachments: [
+          {
+            filename: `virement_sepa_${virementId}.pdf`,
+            content: Buffer.from(pdfContent, 'base64'),
+          },
+        ],
+      });
+
+      if (error) {
+        Logger.error('Error:', error.message);
+        throw error;
       }
 
-      // Remplacer fetch par axios pour une meilleure gestion des erreurs et cohérence avec les autres méthodes
-      const response = await axios.post(
-        'https://api.mailhub.sh/v1/send',
-        requestBody,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${API_KEY}`,
-          },
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity,
-          timeout: 60000, // Augmenter le timeout à 60 secondes pour les requêtes volumineuses
-        },
-      );
-
-      return response.data;
+      return data;
     } catch (error) {
       Logger.error(
         `Erreur lors de l'envoi de l'email de virement SEPA pour ${accountOwner} (ID: ${virementId}):`,
-        error.response?.data || error.message,
+        error.message,
       );
       throw error;
     }
