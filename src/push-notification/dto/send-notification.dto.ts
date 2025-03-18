@@ -1,4 +1,10 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsObject,
+  IsBoolean,
+} from 'class-validator';
 
 export class SendNotificationDto {
   @IsNotEmpty()
@@ -15,8 +21,32 @@ export class SendNotificationDto {
 
   @IsOptional()
   @IsString()
+  badge?: string;
+
+  @IsOptional()
+  @IsString()
   url?: string;
 
   @IsOptional()
+  @IsString()
+  tag?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  requireInteraction?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  renotify?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  silent?: boolean;
+
+  @IsOptional()
+  @IsObject()
   data?: Record<string, any>;
+
+  @IsOptional()
+  actions?: { action: string; title: string }[];
 }
