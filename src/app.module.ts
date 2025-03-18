@@ -31,6 +31,7 @@ import { NotificationModule } from './notification/notification.module';
 import { BeneficiariesModule } from './beneficiaries/beneficiaries.module';
 import { AssetsService } from './services/assets.service';
 import { ProjectAttachmentModule } from './user-attachment/user-attachment.module';
+import { PushNotificationModule } from './push-notification/push-notification.module';
 
 @Module({
   imports: [
@@ -103,6 +104,7 @@ import { ProjectAttachmentModule } from './user-attachment/user-attachment.modul
     NotificationModule,
     BeneficiariesModule,
     ProjectAttachmentModule,
+    PushNotificationModule,
   ],
   controllers: [AppController],
   providers: [AppService, BceService, AssetsService],
