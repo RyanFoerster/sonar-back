@@ -14,6 +14,7 @@ import { Meet } from '../../meet/entities/meet.entity';
 import { UserSecondaryAccount } from '../../user-secondary-account/entities/user-secondary-account.entity';
 import { Comment } from '../../comment/entities/comment.entity';
 import { Beneficiary } from '@/beneficiaries/entities/beneficiary.entity';
+import { PushSubscription } from '../../push-notification/entities/push-subscription.entity';
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
