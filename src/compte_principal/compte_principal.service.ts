@@ -38,6 +38,7 @@ export class ComptePrincipalService {
       .leftJoinAndSelect('comptePrincipal.user', 'user')
       .select([
         'comptePrincipal',
+        'user.id',
         'user.email',
         'user.name',
         'user.firstName',
@@ -54,6 +55,7 @@ export class ComptePrincipalService {
       .leftJoinAndSelect('comptePrincipal.user', 'user')
       .select([
         'comptePrincipal',
+        'user.id',
         'user.email',
         'user.name',
         'user.firstName',
@@ -96,6 +98,7 @@ export class ComptePrincipalService {
       .leftJoinAndSelect('comptePrincipal.user', 'user')
       .select([
         'comptePrincipal',
+        'user.id',
         'user.email',
         'user.name',
         'user.firstName',

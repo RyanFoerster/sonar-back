@@ -9,14 +9,18 @@ import { ComptePrincipalService } from '../compte_principal/compte_principal.ser
 import { CompteGroupeService } from '../compte_groupe/compte_groupe.service';
 import { ComptePrincipal } from '../compte_principal/entities/compte_principal.entity';
 import { PaginationDto } from './dto/pagination.dto';
+import { PushNotificationService } from '../push-notification/push-notification.service';
 
 @Injectable()
 export class TransactionService {
+  private readonly logger = new Logger(TransactionService.name);
+
   constructor(
     @InjectRepository(Transaction)
     private readonly transactionRepository: Repository<Transaction>,
     private readonly compteGroupeService: CompteGroupeService,
     private readonly comptePrincipalService: ComptePrincipalService,
+    private readonly pushNotificationService: PushNotificationService,
   ) {}
 
   async create(createTransactionDto: CreateTransactionDto) {
@@ -140,6 +144,15 @@ export class TransactionService {
           .of(savedTransaction.id)
           .add(transaction.recipientPrincipal.map((principal) => principal.id));
       }
+
+      // Envoi des notifications après transaction réussie
+      this.sendTransactionNotifications(
+        savedTransaction,
+        transaction.senderPrincipal,
+        transaction.senderGroup,
+        transaction.recipientPrincipal,
+        transaction.recipientGroup,
+      );
 
       return true;
     } catch (error) {
@@ -330,5 +343,156 @@ export class TransactionService {
 
   remove(id: number) {
     return `This action removes a #${id} transaction`;
+  }
+
+  /**
+   * Envoie des notifications pour une transaction réussie
+   */
+  private async sendTransactionNotifications(
+    transaction: Transaction,
+    senderPrincipal?: ComptePrincipal,
+    senderGroup?: CompteGroupe,
+    recipientsPrincipal?: ComptePrincipal[],
+    recipientsGroup?: CompteGroupe[],
+  ) {
+    try {
+      // Ajouter des logs détaillés pour le débogage
+      this.logger.log('=== DÉBUT ENVOI NOTIFICATIONS TRANSACTION ===');
+      this.logger.log(`Transaction ID: ${transaction.id}`);
+      this.logger.log(`Montant: ${transaction.amount.toFixed(2)} €`);
+
+      if (senderPrincipal) {
+        this.logger.log(`Expéditeur principal: ${senderPrincipal.username}`);
+        this.logger.log(
+          `ID utilisateur expéditeur: ${senderPrincipal.user?.id || 'NON DÉFINI'}`,
+        );
+      }
+
+      if (senderGroup) {
+        this.logger.log(`Expéditeur groupe: ${senderGroup.username}`);
+      }
+
+      if (recipientsPrincipal && recipientsPrincipal.length > 0) {
+        this.logger.log(
+          `Nombre de destinataires principaux: ${recipientsPrincipal.length}`,
+        );
+        for (const recipient of recipientsPrincipal) {
+          this.logger.log('recipient', JSON.stringify(recipient, null, 2));
+          this.logger.log(
+            `  - Destinataire: ${recipient.username}, User ID: ${recipient.user?.id || 'NON DÉFINI'}`,
+          );
+        }
+      }
+
+      // Formater le montant pour l'affichage
+      const formattedAmount = transaction.amount.toFixed(2) + ' €';
+
+      // Notification à l'expéditeur (compte principal)
+      if (senderPrincipal && senderPrincipal.user?.id) {
+        const senderUserId = senderPrincipal.user.id;
+        this.logger.log(
+          `Envoi notification à l'expéditeur ID: ${senderUserId}`,
+        );
+
+        const recipientsText = this.formatRecipientsList(
+          recipientsPrincipal,
+          recipientsGroup,
+        );
+
+        const notificationResult =
+          await this.pushNotificationService.sendToUser(senderUserId, {
+            title: 'Transaction effectuée',
+            body: `Vous avez envoyé ${formattedAmount} à ${recipientsText}`,
+            data: {
+              type: 'transaction',
+              id: transaction.id.toString(),
+              action: 'sent',
+            },
+            url: '/transactions',
+          });
+
+        this.logger.log(
+          `Résultat notification expéditeur: ${JSON.stringify(notificationResult)}`,
+        );
+      } else {
+        this.logger.warn(
+          "Pas d'ID utilisateur trouvé pour l'expéditeur, notification impossible",
+        );
+      }
+
+      // Notification aux destinataires (comptes principaux)
+      if (recipientsPrincipal && recipientsPrincipal.length > 0) {
+        for (const recipient of recipientsPrincipal) {
+          if (recipient.user?.id) {
+            const recipientUserId = recipient.user.id;
+            this.logger.log(
+              `Envoi notification au destinataire ID: ${recipientUserId}`,
+            );
+
+            const senderText = senderPrincipal
+              ? senderPrincipal.username
+              : senderGroup
+                ? senderGroup.username
+                : 'Un utilisateur';
+
+            const notificationResult =
+              await this.pushNotificationService.sendToUser(recipientUserId, {
+                title: 'Paiement reçu',
+                body: `${senderText} vous a envoyé ${formattedAmount}`,
+                data: {
+                  type: 'transaction',
+                  id: transaction.id.toString(),
+                  action: 'received',
+                },
+                url: '/transactions',
+              });
+
+            this.logger.log(
+              `Résultat notification destinataire ${recipient.username}: ${JSON.stringify(notificationResult)}`,
+            );
+          } else {
+            this.logger.warn(
+              `Pas d'ID utilisateur trouvé pour le destinataire ${recipient.username}, notification impossible`,
+            );
+          }
+        }
+      }
+
+      this.logger.log('=== FIN ENVOI NOTIFICATIONS TRANSACTION ===');
+    } catch (error) {
+      // En cas d'erreur, on log mais on ne fait pas échouer la transaction
+      this.logger.error(
+        "Erreur lors de l'envoi des notifications de transaction",
+        error,
+      );
+    }
+  }
+
+  /**
+   * Formate la liste des destinataires pour l'affichage dans les notifications
+   */
+  private formatRecipientsList(
+    recipientsPrincipal?: ComptePrincipal[],
+    recipientsGroup?: CompteGroupe[],
+  ): string {
+    const recipients = [];
+
+    if (recipientsPrincipal && recipientsPrincipal.length > 0) {
+      recipientsPrincipal.forEach((r) => recipients.push(r.username));
+    }
+
+    if (recipientsGroup && recipientsGroup.length > 0) {
+      recipientsGroup.forEach((r) => recipients.push(r.username));
+    }
+
+    if (recipients.length === 0) {
+      return 'des destinataires';
+    } else if (recipients.length === 1) {
+      return recipients[0];
+    } else if (recipients.length === 2) {
+      return `${recipients[0]} et ${recipients[1]}`;
+    } else {
+      return `${recipients[0]}, ${recipients[1]} et ${recipients.length - 2} autre(s)`;
+    }
   }
 }

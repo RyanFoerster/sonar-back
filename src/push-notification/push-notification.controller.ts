@@ -1,7 +1,6 @@
 import {
   Body,
   Controller,
-  Delete,
   Get,
   Param,
   Post,
@@ -9,32 +8,32 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { PushNotificationService } from './push-notification.service';
-import { SubscribeDto } from './dto/subscribe.dto';
 import { SendNotificationDto } from './dto/send-notification.dto';
+import { RegisterFcmDeviceDto } from './dto/register-fcm-device.dto';
 import { JwtAuthGuard } from '../guards/auth.guard';
 
-@Controller('push-notifications')
+@Controller('notifications')
 export class PushNotificationController {
   constructor(
     private readonly pushNotificationService: PushNotificationService,
   ) {}
 
-  @Get('vapid-public-key')
-  async getVapidPublicKey() {
-    const key = await this.pushNotificationService.getVapidPublicKey();
-    return { publicKey: key };
+  @UseGuards(JwtAuthGuard)
+  @Post('register-device')
+  registerDevice(
+    @Body() registerFcmDeviceDto: RegisterFcmDeviceDto,
+    @Request() req,
+  ) {
+    return this.pushNotificationService.registerFcmDevice(
+      registerFcmDeviceDto,
+      req.user,
+    );
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('subscribe')
-  subscribe(@Body() subscribeDto: SubscribeDto, @Request() req) {
-    return this.pushNotificationService.subscribe(subscribeDto, req.user);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Delete('unsubscribe/:endpoint')
-  unsubscribe(@Param('endpoint') endpoint: string) {
-    return this.pushNotificationService.unsubscribe(endpoint);
+  @Post('unregister-device')
+  unregisterDevice(@Body() { token }: RegisterFcmDeviceDto) {
+    return this.pushNotificationService.unregisterFcmDevice(token);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -47,24 +46,35 @@ export class PushNotificationController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('test-notification')
+  testNotification(
+    @Request() req,
+    @Body() notificationDto: SendNotificationDto,
+  ) {
+    return this.pushNotificationService.sendToUser(
+      req.user.id,
+      notificationDto,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('send-to-all')
   sendToAll(@Body() notificationDto: SendNotificationDto) {
     return this.pushNotificationService.sendToAll(notificationDto);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('subscription-status')
-  async getSubscriptionStatus(@Request() req) {
-    const isSubscribed = await this.pushNotificationService.isUserSubscribed(
-      req.user.id,
-    );
+  @Get('subscription-status/:userId')
+  async getSubscriptionStatus(@Param('userId') userId: string) {
+    const isSubscribed =
+      await this.pushNotificationService.isUserSubscribed(+userId);
     return { isSubscribed };
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('force-unsubscribe')
-  async forceUnsubscribe(@Request() req) {
-    await this.pushNotificationService.forceUnsubscribeUser(req.user.id);
+  @Post('force-unsubscribe/:userId')
+  async forceUnsubscribe(@Param('userId') userId: string) {
+    await this.pushNotificationService.forceUnsubscribeUser(+userId);
     return { success: true };
   }
 }
