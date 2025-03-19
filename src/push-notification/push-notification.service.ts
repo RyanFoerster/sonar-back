@@ -1,296 +1,439 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import * as webpush from 'web-push';
-import { PushSubscription } from './entities/push-subscription.entity';
-import { SubscribeDto } from './dto/subscribe.dto';
+import * as admin from 'firebase-admin';
+import { FcmDevice } from './entities/fcm-device.entity';
 import { SendNotificationDto } from './dto/send-notification.dto';
+import { RegisterFcmDeviceDto } from './dto/register-fcm-device.dto';
 import { User } from '../users/entities/user.entity';
 import { ConfigService } from '@nestjs/config';
-
-interface WebPushSubscription {
-  endpoint: string;
-  expirationTime?: number | null;
-  keys: {
-    p256dh: string;
-    auth: string;
-  };
-}
 
 @Injectable()
 export class PushNotificationService {
   private readonly logger = new Logger(PushNotificationService.name);
-  private readonly vapidPublicKey: string;
-  private readonly vapidPrivateKey: string;
-  private readonly vapidSubject: string;
+  private firebaseApp: admin.app.App;
 
   constructor(
-    @InjectRepository(PushSubscription)
-    private readonly pushSubscriptionRepository: Repository<PushSubscription>,
+    @InjectRepository(FcmDevice)
+    private readonly fcmDeviceRepository: Repository<FcmDevice>,
     private readonly configService: ConfigService,
   ) {
-    // Configuration des clés VAPID
-    this.vapidPublicKey = this.configService.get<string>('VAPID_PUBLIC_KEY');
-    this.vapidPrivateKey = this.configService.get<string>('VAPID_PRIVATE_KEY');
-    this.vapidSubject =
-      this.configService.get<string>('VAPID_SUBJECT') ||
-      'mailto:contact@sonar-artists.com';
+    // Initialisation de Firebase Admin
+    this.initializeFirebaseAdmin();
 
-    if (!this.vapidPublicKey || !this.vapidPrivateKey) {
-      this.logger.error('Les clés VAPID ne sont pas configurées');
-      return;
-    }
+    // Nettoyer les tokens inactifs périodiquement (une fois par jour)
+    this.scheduleTokenCleanup();
+  }
 
-    this.logger.log(`VAPID Public Key configurée: ${this.vapidPublicKey}`);
-
+  /**
+   * Initialise Firebase Admin SDK
+   */
+  private initializeFirebaseAdmin(): void {
     try {
-      webpush.setVapidDetails(
-        this.vapidSubject,
-        this.vapidPublicKey,
-        this.vapidPrivateKey,
+      // Étape 1: Essayer de récupérer depuis la variable d'environnement
+      let serviceAccount = this.configService.get('FIREBASE_SERVICE_ACCOUNT');
+      let parsedServiceAccount;
+
+      console.log(
+        'Firebase Admin SDK init - vérification du compte de service',
       );
-      this.logger.log('Configuration VAPID réussie');
-    } catch (error) {
-      this.logger.error(
-        `Erreur lors de la configuration VAPID: ${error.message}`,
-      );
-    }
-  }
 
-  async subscribe(
-    subscribeDto: SubscribeDto,
-    user: User,
-  ): Promise<PushSubscription> {
-    // Vérifier si l'utilisateur existe
-    if (!user || !user.id) {
-      this.logger.error("Tentative d'abonnement avec un utilisateur invalide");
-      throw new Error('Utilisateur invalide');
-    }
-
-    // Validation de base des données d'abonnement
-    if (!subscribeDto.subscription || !subscribeDto.subscription.endpoint) {
-      this.logger.error("Données d'abonnement invalides");
-      throw new Error("Données d'abonnement invalides");
-    }
-
-    // Recherche d'un abonnement existant avec le même endpoint
-    const existingSubscription = await this.pushSubscriptionRepository
-      .createQueryBuilder('push_subscription')
-      .where('push_subscription.userId = :userId', { userId: user.id })
-      .andWhere("push_subscription.subscription->>'endpoint' = :endpoint", {
-        endpoint: subscribeDto.subscription.endpoint,
-      })
-      .leftJoinAndSelect('push_subscription.user', 'user')
-      .getOne();
-
-    if (existingSubscription) {
-      // Si un abonnement existe déjà, on le met à jour
-      existingSubscription.subscription = subscribeDto.subscription;
-      existingSubscription.active = true;
-      return this.pushSubscriptionRepository.save(existingSubscription);
-    }
-
-    // Sinon, on crée un nouvel abonnement
-    const newSubscription = this.pushSubscriptionRepository.create({
-      subscription: subscribeDto.subscription,
-      user,
-    });
-
-    return this.pushSubscriptionRepository.save(newSubscription);
-  }
-
-  async unsubscribe(endpoint: string): Promise<void> {
-    if (!endpoint) {
-      this.logger.error('Tentative de désabonnement sans endpoint');
-      throw new Error('Endpoint invalide');
-    }
-
-    const subscription = await this.pushSubscriptionRepository
-      .createQueryBuilder('push_subscription')
-      .where("push_subscription.subscription->>'endpoint' = :endpoint", {
-        endpoint,
-      })
-      .getOne();
-
-    if (subscription) {
-      subscription.active = false;
-      await this.pushSubscriptionRepository.save(subscription);
-      this.logger.log(
-        `Désabonnement réussi pour l'endpoint: ${endpoint.substring(0, 20)}...`,
-      );
-    } else {
-      this.logger.warn(
-        `Aucun abonnement trouvé pour l'endpoint: ${endpoint.substring(0, 20)}...`,
-      );
-    }
-  }
-
-  async sendToUser(
-    userId: number,
-    notificationDto: SendNotificationDto,
-  ): Promise<void> {
-    if (!userId) {
-      this.logger.error(
-        "Tentative d'envoi de notification sans ID utilisateur",
-      );
-      throw new Error('ID utilisateur invalide');
-    }
-
-    const subscriptions = await this.pushSubscriptionRepository.find({
-      where: { user: { id: userId }, active: true },
-      relations: ['user'],
-    });
-
-    if (!subscriptions.length) {
-      this.logger.warn(
-        `Aucun abonnement actif trouvé pour l'utilisateur ${userId}`,
-      );
-      return;
-    }
-
-    const payload = this.createNotificationPayload(notificationDto);
-
-    await this.sendNotifications(subscriptions, payload);
-  }
-
-  async sendToAll(notificationDto: SendNotificationDto): Promise<void> {
-    const subscriptions = await this.pushSubscriptionRepository.find({
-      where: { active: true },
-    });
-
-    if (!subscriptions.length) {
-      this.logger.warn('Aucun abonnement actif trouvé');
-      return;
-    }
-
-    const payload = this.createNotificationPayload(notificationDto);
-
-    this.logger.log(
-      `Envoi de notification à ${subscriptions.length} utilisateurs: "${notificationDto.title}"`,
-    );
-    await this.sendNotifications(subscriptions, payload);
-  }
-
-  private createNotificationPayload(
-    notificationDto: SendNotificationDto,
-  ): string {
-    // Construction du payload de notification avec tous les champs optionnels
-    const notificationPayload = {
-      title: notificationDto.title,
-      body: notificationDto.body,
-      icon: notificationDto.icon || '/assets/icons/SONAR-FAVICON.webp',
-      badge: notificationDto.badge,
-      tag: notificationDto.tag,
-      requireInteraction: notificationDto.requireInteraction,
-      renotify: notificationDto.renotify,
-      silent: notificationDto.silent,
-      actions: notificationDto.actions,
-      data: {
-        url: notificationDto.url,
-        ...notificationDto.data,
-      },
-    };
-
-    // Supprimer les propriétés undefined pour un payload plus propre
-    Object.keys(notificationPayload).forEach((key) => {
-      if (notificationPayload[key] === undefined) {
-        delete notificationPayload[key];
-      }
-    });
-
-    return JSON.stringify(notificationPayload);
-  }
-
-  private async sendNotifications(
-    subscriptions: PushSubscription[],
-    payload: string,
-  ): Promise<void> {
-    this.logger.log(
-      `Tentative d'envoi de notifications à ${subscriptions.length} abonnés`,
-    );
-
-    let successCount = 0;
-    let errorCount = 0;
-
-    const sendPromises = subscriptions.map(async (sub) => {
-      try {
-        // Validation de l'abonnement
-        if (
-          !sub.subscription ||
-          !sub.subscription.endpoint ||
-          !sub.subscription.keys
-        ) {
-          this.logger.warn(`Abonnement invalide détecté, ID: ${sub.id}`);
-          errorCount++;
-          return false;
-        }
-
-        // Convertir le type d'abonnement pour qu'il soit compatible avec web-push
-        const webPushSubscription: WebPushSubscription = {
-          endpoint: sub.subscription.endpoint,
-          // Convertir expirationTime si nécessaire
-          expirationTime: sub.subscription.expirationTime
-            ? typeof sub.subscription.expirationTime === 'string'
-              ? null
-              : sub.subscription.expirationTime
-            : null,
-          keys: {
-            p256dh: sub.subscription.keys.p256dh,
-            auth: sub.subscription.keys.auth,
-          },
-        };
-
-        // Options pour l'envoi de notification
-        const options = {
-          TTL: 60 * 60, // Durée de vie de la notification (1 heure)
-          urgency: 'normal' as 'normal', // Options: very-low, low, normal, high
-          topic: 'sonar-notification', // Regrouper les notifications similaires
-        };
-
-        await webpush.sendNotification(webPushSubscription, payload, options);
-        successCount++;
-        return true;
-      } catch (error) {
-        errorCount++;
-        this.logger.error(
-          `Erreur lors de l'envoi de la notification: ${error.message}`,
+      // Étape 2: Si la variable n'est pas définie, essayer de charger depuis un fichier
+      if (!serviceAccount) {
+        console.log(
+          "Compte de service non trouvé dans les variables d'environnement, recherche d'un fichier...",
         );
 
-        // Gestion des erreurs d'expiration, de désabonnement...
-        if (error.statusCode === 404 || error.statusCode === 410) {
-          sub.active = false;
-          await this.pushSubscriptionRepository.save(sub);
-          this.logger.log(
-            `Abonnement désactivé car expiré ou supprimé, endpoint: ${sub.subscription.endpoint.substring(0, 20)}...`,
+        try {
+          const fs = require('fs');
+          const path = require('path');
+
+          // Chemin où vous placerez le fichier JSON téléchargé de Firebase
+          const serviceAccountPath = path.join(
+            process.cwd(),
+            'firebase-service-account.json',
+          );
+
+          if (fs.existsSync(serviceAccountPath)) {
+            console.log(
+              `Fichier de compte de service trouvé à ${serviceAccountPath}`,
+            );
+            // Charger directement comme objet
+            parsedServiceAccount = require(serviceAccountPath);
+            console.log(
+              'Compte de service chargé depuis le fichier avec succès',
+            );
+          } else {
+            console.error(
+              `Fichier de compte de service non trouvé à ${serviceAccountPath}`,
+            );
+          }
+        } catch (error) {
+          console.error(
+            'Erreur lors de la lecture du fichier de compte de service:',
+            error,
+          );
+        }
+      } else {
+        // Étape 3: Parser la variable d'environnement si elle existe
+        try {
+          console.log(
+            "Tentative de parsing du JSON du compte de service depuis la variable d'environnement...",
+          );
+          parsedServiceAccount = JSON.parse(serviceAccount);
+          console.log('Compte de service parsé avec succès');
+        } catch (e) {
+          console.error(
+            'Impossible de parser le compte de service Firebase',
+            e,
+          );
+          return;
+        }
+      }
+
+      // Étape 4: Vérifier que nous avons un compte de service valide
+      if (!parsedServiceAccount) {
+        console.error('Compte de service Firebase non trouvé ou invalide');
+        console.error('Veuillez soit:');
+        console.error(
+          '1. Définir la variable FIREBASE_SERVICE_ACCOUNT dans .env',
+        );
+        console.error(
+          '2. Placer votre fichier firebase-service-account.json à la racine du projet',
+        );
+        return;
+      }
+
+      // Étape 5: Valider le compte de service
+      console.log('Validation des propriétés du compte de service:');
+      const hasProjectId = !!parsedServiceAccount.project_id;
+      const hasClientEmail = !!parsedServiceAccount.client_email;
+      const hasPrivateKey = !!parsedServiceAccount.private_key;
+
+      console.log('- project_id présent:', hasProjectId);
+      console.log('- client_email présent:', hasClientEmail);
+      console.log('- private_key présent:', hasPrivateKey);
+
+      if (!hasProjectId || !hasClientEmail || !hasPrivateKey) {
+        console.error(
+          'Compte de service Firebase invalide: il manque des propriétés requises',
+        );
+        return;
+      }
+
+      // Étape 6: Initialiser Firebase Admin
+      try {
+        console.log("Initialisation de l'application Firebase Admin...");
+        this.firebaseApp = admin.initializeApp({
+          credential: admin.credential.cert(parsedServiceAccount),
+        });
+
+        console.log('Firebase Admin SDK initialisé avec succès');
+      } catch (error) {
+        console.error(
+          "Erreur lors de l'initialisation de l'app Firebase:",
+          error,
+        );
+        console.error(error.stack);
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'initialisation de Firebase Admin", error);
+      console.error(error.stack);
+    }
+  }
+
+  /**
+   * Enregistre un appareil Firebase Cloud Messaging
+   * @param registerFcmDeviceDto Les données du token FCM
+   * @param user L'utilisateur propriétaire de l'appareil
+   * @returns L'appareil enregistré
+   */
+  async registerFcmDevice(
+    registerFcmDeviceDto: RegisterFcmDeviceDto,
+    user: User,
+  ) {
+    try {
+      const { token } = registerFcmDeviceDto;
+
+      // Vérifier si le token existe déjà
+      let device = await this.fcmDeviceRepository.findOne({
+        where: { token },
+        relations: ['user'],
+      });
+
+      if (device) {
+        // Mettre à jour l'appareil existant
+        device.user = user;
+        device.active = true;
+        await this.fcmDeviceRepository.save(device);
+        this.logger.log(
+          `Appareil FCM mis à jour pour l'utilisateur ${user.id}`,
+        );
+        return device;
+      }
+
+      // Créer un nouvel appareil
+      device = this.fcmDeviceRepository.create({
+        token,
+        user,
+        active: true,
+      });
+
+      await this.fcmDeviceRepository.save(device);
+      this.logger.log(
+        `Nouvel appareil FCM enregistré pour l'utilisateur ${user.id}`,
+      );
+      return device;
+    } catch (error) {
+      this.logger.error(
+        "Erreur lors de l'enregistrement de l'appareil FCM",
+        error,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Désactive un appareil FCM
+   * @param token Le token FCM à désactiver
+   * @returns Le résultat de l'opération
+   */
+  async unregisterFcmDevice(token: string) {
+    try {
+      const device = await this.fcmDeviceRepository.findOne({
+        where: { token },
+      });
+
+      if (!device) {
+        this.logger.warn(`Appareil FCM avec token ${token} non trouvé`);
+        return { success: false, message: 'Appareil non trouvé' };
+      }
+
+      // Marquer comme inactif plutôt que de supprimer
+      device.active = false;
+      await this.fcmDeviceRepository.save(device);
+      this.logger.log(`Appareil FCM désactivé: ${token}`);
+
+      return { success: true };
+    } catch (error) {
+      this.logger.error(
+        "Erreur lors de la désactivation de l'appareil FCM",
+        error,
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Envoie une notification via Firebase Cloud Messaging à un utilisateur spécifique
+   * @param userId L'ID de l'utilisateur destinataire
+   * @param notificationDto Les données de la notification
+   * @returns Le résultat de l'envoi
+   */
+  async sendToUser(userId: number, notificationDto: SendNotificationDto) {
+    if (!this.firebaseApp) {
+      this.logger.error('Firebase Admin SDK non initialisé');
+      return { success: false, message: 'Firebase non configuré' };
+    }
+
+    try {
+      const devices = await this.fcmDeviceRepository.find({
+        where: { user: { id: userId }, active: true },
+      });
+
+      if (!devices.length) {
+        this.logger.warn(
+          `Aucun appareil FCM trouvé pour l'utilisateur ${userId}`,
+        );
+        return { success: false, message: 'Aucun appareil enregistré' };
+      }
+
+      const messaging = this.firebaseApp.messaging();
+      const results = [];
+
+      for (const device of devices) {
+        try {
+          const message = {
+            token: device.token,
+            notification: {
+              title: notificationDto.title,
+              body: notificationDto.body,
+            },
+            data: notificationDto.data || {},
+            webpush: {
+              fcmOptions: {
+                link: notificationDto.url || '',
+              },
+            },
+          };
+
+          const result = await messaging.send(message);
+          results.push({ success: true, messageId: result });
+        } catch (error) {
+          // Vérifier d'abord si le token est invalide
+          const isInvalidToken =
+            error.code === 'messaging/invalid-registration-token' ||
+            error.code === 'messaging/registration-token-not-registered';
+
+          if (isInvalidToken) {
+            // On ne log pas d'erreur pour les tokens invalides, juste un avertissement
+            this.logger.warn(
+              `Token FCM invalide détecté: ${device.token} - Erreur: ${error.code}`,
+            );
+          } else {
+            // Pour les autres types d'erreurs, on garde le log d'erreur complet
+            this.logger.error(
+              `Erreur lors de l'envoi de la notification FCM à ${device.token}`,
+              error,
+            );
+          }
+
+          // Si le token est invalide ou non enregistré, marquer comme inactif
+          if (isInvalidToken) {
+            device.active = false;
+            await this.fcmDeviceRepository.save(device);
+            this.logger.log(
+              `Token FCM invalide marqué comme inactif: ${device.token}`,
+            );
+          }
+
+          results.push({ success: false, error: error.message });
+        }
+      }
+
+      return {
+        success: results.some((r) => r.success),
+        results,
+      };
+    } catch (error) {
+      this.logger.error("Erreur lors de l'envoi de notification FCM", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Envoie une notification à tous les appareils FCM enregistrés
+   * @param notificationDto Les données de la notification
+   * @returns Le résultat de l'envoi
+   */
+  async sendToAll(notificationDto: SendNotificationDto) {
+    if (!this.firebaseApp) {
+      this.logger.error('Firebase Admin SDK non initialisé');
+      return { success: false, message: 'Firebase non configuré' };
+    }
+
+    try {
+      const devices = await this.fcmDeviceRepository.find({
+        where: { active: true },
+      });
+
+      if (!devices.length) {
+        this.logger.warn('Aucun appareil FCM actif trouvé');
+        return { success: false, message: 'Aucun appareil enregistré' };
+      }
+
+      const messaging = this.firebaseApp.messaging();
+      const tokens = devices.map((device) => device.token);
+
+      try {
+        const message = {
+          notification: {
+            title: notificationDto.title,
+            body: notificationDto.body,
+          },
+          data: notificationDto.data || {},
+          webpush: {
+            fcmOptions: {
+              link: notificationDto.url || '',
+            },
+          },
+          tokens: tokens.slice(0, 500), // Firebase limite à 500 tokens par requête
+        };
+
+        // Utilisation de l'API de multicast de Firebase
+        const batchResponse = await messaging.sendEachForMulticast(message);
+
+        this.logger.log(
+          `Notification FCM envoyée à ${batchResponse.successCount}/${tokens.length} appareils`,
+        );
+
+        // Gérer les tokens qui ont échoué
+        if (batchResponse.failureCount > 0) {
+          const failedTokens = [];
+          batchResponse.responses.forEach((resp, idx) => {
+            if (!resp.success) {
+              failedTokens.push({
+                token: tokens[idx],
+                error: resp.error.message,
+              });
+
+              // Vérifier si le token est invalide
+              const isInvalidToken =
+                resp.error.code === 'messaging/invalid-registration-token' ||
+                resp.error.code ===
+                  'messaging/registration-token-not-registered';
+
+              if (isInvalidToken) {
+                // Pour les tokens invalides, on log juste un avertissement
+                this.logger.warn(
+                  `Token FCM invalide détecté (multicast): ${tokens[idx]} - Erreur: ${resp.error.code}`,
+                );
+
+                this.fcmDeviceRepository.update(
+                  { token: tokens[idx] },
+                  { active: false },
+                );
+              }
+            }
+          });
+
+          this.logger.warn(
+            `Échecs d'envoi FCM: ${JSON.stringify(failedTokens)}`,
           );
         }
 
-        return false;
+        return {
+          success: batchResponse.successCount > 0,
+          successCount: batchResponse.successCount,
+          failureCount: batchResponse.failureCount,
+        };
+      } catch (error) {
+        this.logger.error(
+          "Erreur lors de l'envoi de notifications FCM multiples",
+          error,
+        );
+        return { success: false, error: error.message };
       }
-    });
-
-    await Promise.all(sendPromises);
-    this.logger.log(
-      `Envoi terminé: ${successCount} succès, ${errorCount} échecs`,
-    );
+    } catch (error) {
+      this.logger.error(
+        'Erreur lors de la récupération des appareils FCM',
+        error,
+      );
+      throw error;
+    }
   }
 
-  async getVapidPublicKey(): Promise<string> {
-    // Assurez-vous que la clé est bien formatée
-    return this.vapidPublicKey?.trim();
-  }
-
+  /**
+   * Vérifie si un utilisateur a des appareils enregistrés
+   * @param userId ID de l'utilisateur
+   * @returns true si l'utilisateur a au moins un appareil FCM actif
+   */
   async isUserSubscribed(userId: number): Promise<boolean> {
     if (!userId) {
       return false;
     }
 
-    const subscriptions = await this.pushSubscriptionRepository.find({
+    const devices = await this.fcmDeviceRepository.find({
       where: { user: { id: userId }, active: true },
     });
-    return subscriptions.length > 0;
+
+    return devices.length > 0;
   }
 
+  /**
+   * Désactive tous les appareils d'un utilisateur
+   * @param userId ID de l'utilisateur
+   */
   async forceUnsubscribeUser(userId: number): Promise<void> {
     if (!userId) {
       this.logger.error('Tentative de désabonnement forcé sans ID utilisateur');
@@ -298,29 +441,73 @@ export class PushNotificationService {
     }
 
     this.logger.log(
-      `Désactivation forcée de tous les abonnements pour l'utilisateur ${userId}`,
+      `Désactivation forcée de tous les appareils pour l'utilisateur ${userId}`,
     );
 
-    // Récupérer tous les abonnements actifs de l'utilisateur
-    const subscriptions = await this.pushSubscriptionRepository.find({
+    // Récupérer tous les appareils actifs de l'utilisateur
+    const devices = await this.fcmDeviceRepository.find({
       where: { user: { id: userId }, active: true },
     });
 
-    if (subscriptions.length === 0) {
+    if (devices.length === 0) {
       this.logger.log(
-        `Aucun abonnement actif trouvé pour l'utilisateur ${userId}`,
+        `Aucun appareil actif trouvé pour l'utilisateur ${userId}`,
       );
       return;
     }
 
-    // Désactiver tous les abonnements
-    for (const subscription of subscriptions) {
-      subscription.active = false;
-      await this.pushSubscriptionRepository.save(subscription);
+    // Désactiver tous les appareils
+    for (const device of devices) {
+      device.active = false;
+      await this.fcmDeviceRepository.save(device);
     }
 
     this.logger.log(
-      `${subscriptions.length} abonnements désactivés pour l'utilisateur ${userId}`,
+      `${devices.length} appareils désactivés pour l'utilisateur ${userId}`,
     );
+  }
+
+  /**
+   * Planifie un nettoyage quotidien des tokens FCM inactifs
+   */
+  private scheduleTokenCleanup(): void {
+    // Exécuter la première fois après 1 heure
+    setTimeout(
+      () => {
+        this.cleanupInactiveTokens();
+
+        // Puis planifier toutes les 24 heures
+        setInterval(() => this.cleanupInactiveTokens(), 24 * 60 * 60 * 1000);
+      },
+      60 * 60 * 1000,
+    );
+  }
+
+  /**
+   * Supprime les tokens FCM inactifs plus vieux que 30 jours
+   */
+  private async cleanupInactiveTokens(): Promise<void> {
+    try {
+      this.logger.log('Nettoyage des tokens FCM inactifs...');
+
+      // Calculer la date d'il y a 30 jours
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      // Trouver et supprimer les tokens inactifs plus vieux que 30 jours
+      const result = await this.fcmDeviceRepository
+        .createQueryBuilder()
+        .delete()
+        .where('active = :active', { active: false })
+        .andWhere('updated_at < :date', { date: thirtyDaysAgo })
+        .execute();
+
+      this.logger.log(`${result.affected || 0} tokens FCM inactifs supprimés`);
+    } catch (error) {
+      this.logger.error(
+        'Erreur lors du nettoyage des tokens FCM inactifs',
+        error,
+      );
+    }
   }
 }
