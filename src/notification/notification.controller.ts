@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
 
-@Controller('notifications')
+@Controller('alert-notifications')
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 

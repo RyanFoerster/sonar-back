@@ -7,6 +7,7 @@ import { SendNotificationDto } from './dto/send-notification.dto';
 import { RegisterFcmDeviceDto } from './dto/register-fcm-device.dto';
 import { User } from '../users/entities/user.entity';
 import { ConfigService } from '@nestjs/config';
+import { DataSource } from 'typeorm';
 
 @Injectable()
 export class PushNotificationService {
@@ -17,6 +18,7 @@ export class PushNotificationService {
     @InjectRepository(FcmDevice)
     private readonly fcmDeviceRepository: Repository<FcmDevice>,
     private readonly configService: ConfigService,
+    private readonly dataSource: DataSource,
   ) {
     // Initialisation de Firebase Admin
     this.initializeFirebaseAdmin();
@@ -225,6 +227,42 @@ export class PushNotificationService {
   }
 
   /**
+   * Vérifie si l'utilisateur a activé les notifications
+   * Cette méthode vérifie les préférences stockées dans la base de données
+   * @param userId L'ID de l'utilisateur
+   * @returns true si l'utilisateur a activé les notifications, false sinon
+   */
+  async checkUserNotificationPreferences(userId: number): Promise<boolean> {
+    try {
+      // Vérifier d'abord si l'utilisateur a des appareils actifs
+      const devices = await this.fcmDeviceRepository.find({
+        where: { user: { id: userId }, active: true },
+      });
+
+      // Si l'utilisateur n'a pas d'appareils actifs, on considère qu'il a désactivé les notifications
+      if (!devices || devices.length === 0) {
+        this.logger.log(
+          `L'utilisateur ${userId} n'a pas d'appareils actifs, notifications désactivées`,
+        );
+        return false;
+      }
+
+      // Si l'utilisateur a au moins un appareil actif, on considère qu'il a activé les notifications
+      this.logger.log(
+        `L'utilisateur ${userId} a ${devices.length} appareil(s) actif(s), notifications activées`,
+      );
+      return true;
+    } catch (error) {
+      this.logger.error(
+        `Erreur lors de la vérification des préférences de notification pour l'utilisateur ${userId}`,
+        error,
+      );
+      // En cas d'erreur, par défaut on n'envoie pas de notification
+      return false;
+    }
+  }
+
+  /**
    * Envoie une notification via Firebase Cloud Messaging à un utilisateur spécifique
    * @param userId L'ID de l'utilisateur destinataire
    * @param notificationDto Les données de la notification
@@ -237,6 +275,20 @@ export class PushNotificationService {
     }
 
     try {
+      // Vérifier d'abord si l'utilisateur accepte les notifications
+      const userAcceptsNotifications =
+        await this.checkUserNotificationPreferences(userId);
+
+      if (!userAcceptsNotifications) {
+        this.logger.warn(
+          `L'utilisateur ${userId} a désactivé les notifications, notification non envoyée`,
+        );
+        return {
+          success: false,
+          message: "Notifications désactivées par l'utilisateur",
+        };
+      }
+
       const devices = await this.fcmDeviceRepository.find({
         where: { user: { id: userId }, active: true },
       });
@@ -250,9 +302,25 @@ export class PushNotificationService {
 
       const messaging = this.firebaseApp.messaging();
       const results = [];
+      let atLeastOneSuccess = false;
 
       for (const device of devices) {
         try {
+          // Vérifier si c'est un token préférence spécial et non un vrai token FCM
+          if (device.token.startsWith('web_pref_active_')) {
+            // C'est juste un marqueur de préférence, pas un vrai token FCM
+            // On l'ignore pour l'envoi mais on le compte comme un "succès" pour ne pas désactiver les notifications
+            this.logger.log(
+              `Token de préférence détecté: ${device.token}, ignoré pour l'envoi mais maintenu actif`,
+            );
+            results.push({
+              success: true,
+              info: 'Token de préférence, notification ignorée mais préférence maintenue',
+            });
+            atLeastOneSuccess = true;
+            continue;
+          }
+
           const message = {
             token: device.token,
             notification: {
@@ -269,7 +337,17 @@ export class PushNotificationService {
 
           const result = await messaging.send(message);
           results.push({ success: true, messageId: result });
+          atLeastOneSuccess = true;
         } catch (error) {
+          // Vérifier si c'est un token de préférence spécial (pas un vrai token FCM)
+          if (device.token.startsWith('web_pref_active_')) {
+            // Ne pas compter comme une erreur
+            this.logger.log(
+              `Erreur ignorée pour le token de préférence: ${device.token}`,
+            );
+            continue;
+          }
+
           // Vérifier d'abord si le token est invalide
           const isInvalidToken =
             error.code === 'messaging/invalid-registration-token' ||
@@ -302,7 +380,7 @@ export class PushNotificationService {
       }
 
       return {
-        success: results.some((r) => r.success),
+        success: atLeastOneSuccess,
         results,
       };
     } catch (error) {
@@ -508,6 +586,78 @@ export class PushNotificationService {
         'Erreur lors du nettoyage des tokens FCM inactifs',
         error,
       );
+    }
+  }
+
+  /**
+   * Force l'activation des notifications pour un utilisateur spécifique
+   * @param userId ID de l'utilisateur
+   * @param deviceDto Données de l'appareil à enregistrer
+   */
+  async forceSubscribeUser(
+    userId: number,
+    deviceDto: RegisterFcmDeviceDto,
+  ): Promise<void> {
+    if (!userId) {
+      this.logger.error("Tentative d'activation forcée sans ID utilisateur");
+      throw new Error('ID utilisateur invalide');
+    }
+
+    this.logger.log(
+      `Activation forcée des notifications pour l'utilisateur ${userId}`,
+    );
+
+    // Récupérer l'utilisateur
+    const user = await this.checkUserExists(userId);
+    if (!user) {
+      throw new Error(`Utilisateur avec ID ${userId} non trouvé`);
+    }
+
+    // Vérifier si l'appareil existe déjà
+    let existingDevice = await this.fcmDeviceRepository.findOne({
+      where: { token: deviceDto.token },
+    });
+
+    if (existingDevice) {
+      // Mettre à jour l'appareil existant
+      existingDevice.active = true;
+      existingDevice.user = user;
+      await this.fcmDeviceRepository.save(existingDevice);
+      this.logger.log(
+        `Appareil existant réactivé pour l'utilisateur ${userId}`,
+      );
+    } else {
+      // Créer un nouvel appareil
+      const newDevice = this.fcmDeviceRepository.create({
+        token: deviceDto.token,
+        user: user,
+        active: true,
+      });
+      await this.fcmDeviceRepository.save(newDevice);
+      this.logger.log(
+        `Nouvel appareil enregistré pour l'utilisateur ${userId}`,
+      );
+    }
+  }
+
+  /**
+   * Vérifie si un utilisateur existe dans la base de données
+   * @param userId ID de l'utilisateur
+   * @returns L'utilisateur trouvé ou null
+   */
+  private async checkUserExists(userId: number): Promise<User | null> {
+    if (!userId) return null;
+
+    try {
+      // Utiliser l'instance du référentiel d'utilisateurs depuis le module d'utilisateur
+      const userRepository = this.dataSource.getRepository(User);
+      return await userRepository.findOne({ where: { id: userId } });
+    } catch (error) {
+      this.logger.error(
+        `Erreur lors de la vérification de l'existence de l'utilisateur ${userId}`,
+        error,
+      );
+      return null;
     }
   }
 }

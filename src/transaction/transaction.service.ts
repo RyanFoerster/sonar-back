@@ -394,26 +394,38 @@ export class TransactionService {
           `Envoi notification à l'expéditeur ID: ${senderUserId}`,
         );
 
-        const recipientsText = this.formatRecipientsList(
-          recipientsPrincipal,
-          recipientsGroup,
-        );
+        // Vérifier si l'expéditeur accepte les notifications
+        const senderAcceptsNotifications =
+          await this.pushNotificationService.checkUserNotificationPreferences(
+            senderUserId,
+          );
 
-        const notificationResult =
-          await this.pushNotificationService.sendToUser(senderUserId, {
-            title: 'Transaction effectuée',
-            body: `Vous avez envoyé ${formattedAmount} à ${recipientsText}`,
-            data: {
-              type: 'transaction',
-              id: transaction.id.toString(),
-              action: 'sent',
-            },
-            url: '/transactions',
-          });
+        if (senderAcceptsNotifications) {
+          const recipientsText = this.formatRecipientsList(
+            recipientsPrincipal,
+            recipientsGroup,
+          );
 
-        this.logger.log(
-          `Résultat notification expéditeur: ${JSON.stringify(notificationResult)}`,
-        );
+          const notificationResult =
+            await this.pushNotificationService.sendToUser(senderUserId, {
+              title: 'Transaction effectuée',
+              body: `Vous avez envoyé ${formattedAmount} à ${recipientsText}`,
+              data: {
+                type: 'transaction',
+                id: transaction.id.toString(),
+                action: 'sent',
+              },
+              url: '/transactions',
+            });
+
+          this.logger.log(
+            `Résultat notification expéditeur: ${JSON.stringify(notificationResult)}`,
+          );
+        } else {
+          this.logger.log(
+            `L'expéditeur ID: ${senderUserId} a désactivé les notifications, aucune notification envoyée`,
+          );
+        }
       } else {
         this.logger.warn(
           "Pas d'ID utilisateur trouvé pour l'expéditeur, notification impossible",
@@ -429,27 +441,39 @@ export class TransactionService {
               `Envoi notification au destinataire ID: ${recipientUserId}`,
             );
 
-            const senderText = senderPrincipal
-              ? senderPrincipal.username
-              : senderGroup
-                ? senderGroup.username
-                : 'Un utilisateur';
+            // Vérifier si le destinataire accepte les notifications
+            const recipientAcceptsNotifications =
+              await this.pushNotificationService.checkUserNotificationPreferences(
+                recipientUserId,
+              );
 
-            const notificationResult =
-              await this.pushNotificationService.sendToUser(recipientUserId, {
-                title: 'Paiement reçu',
-                body: `${senderText} vous a envoyé ${formattedAmount}`,
-                data: {
-                  type: 'transaction',
-                  id: transaction.id.toString(),
-                  action: 'received',
-                },
-                url: '/transactions',
-              });
+            if (recipientAcceptsNotifications) {
+              const senderText = senderPrincipal
+                ? senderPrincipal.username
+                : senderGroup
+                  ? senderGroup.username
+                  : 'Un utilisateur';
 
-            this.logger.log(
-              `Résultat notification destinataire ${recipient.username}: ${JSON.stringify(notificationResult)}`,
-            );
+              const notificationResult =
+                await this.pushNotificationService.sendToUser(recipientUserId, {
+                  title: 'Paiement reçu',
+                  body: `${senderText} vous a envoyé ${formattedAmount}`,
+                  data: {
+                    type: 'transaction',
+                    id: transaction.id.toString(),
+                    action: 'received',
+                  },
+                  url: '/transactions',
+                });
+
+              this.logger.log(
+                `Résultat notification destinataire ${recipient.username}: ${JSON.stringify(notificationResult)}`,
+              );
+            } else {
+              this.logger.log(
+                `Le destinataire ID: ${recipientUserId} a désactivé les notifications, aucune notification envoyée`,
+              );
+            }
           } else {
             this.logger.warn(
               `Pas d'ID utilisateur trouvé pour le destinataire ${recipient.username}, notification impossible`,
