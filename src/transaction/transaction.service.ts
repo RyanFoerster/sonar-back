@@ -388,49 +388,49 @@ export class TransactionService {
       const formattedAmount = transaction.amount.toFixed(2) + ' €';
 
       // Notification à l'expéditeur (compte principal)
-      if (senderPrincipal && senderPrincipal.user?.id) {
-        const senderUserId = senderPrincipal.user.id;
-        this.logger.log(
-          `Envoi notification à l'expéditeur ID: ${senderUserId}`,
-        );
+      // if (senderPrincipal && senderPrincipal.user?.id) {
+      //   const senderUserId = senderPrincipal.user.id;
+      //   this.logger.log(
+      //     `Envoi notification à l'expéditeur ID: ${senderUserId}`,
+      //   );
 
-        // Vérifier si l'expéditeur accepte les notifications
-        const senderAcceptsNotifications =
-          await this.pushNotificationService.checkUserNotificationPreferences(
-            senderUserId,
-          );
+      //   // Vérifier si l'expéditeur accepte les notifications
+      //   const senderAcceptsNotifications =
+      //     await this.pushNotificationService.checkUserNotificationPreferences(
+      //       senderUserId,
+      //     );
 
-        if (senderAcceptsNotifications) {
-          const recipientsText = this.formatRecipientsList(
-            recipientsPrincipal,
-            recipientsGroup,
-          );
+      //   if (senderAcceptsNotifications) {
+      //     const recipientsText = this.formatRecipientsList(
+      //       recipientsPrincipal,
+      //       recipientsGroup,
+      //     );
 
-          const notificationResult =
-            await this.pushNotificationService.sendToUser(senderUserId, {
-              title: 'Transaction effectuée',
-              body: `Vous avez envoyé ${formattedAmount} à ${recipientsText}`,
-              data: {
-                type: 'transaction',
-                id: transaction.id.toString(),
-                action: 'sent',
-              },
-              url: '/transactions',
-            });
+      //     const notificationResult =
+      //       await this.pushNotificationService.sendToUser(senderUserId, {
+      //         title: 'Transaction effectuée',
+      //         body: `Vous avez envoyé ${formattedAmount} à ${recipientsText}`,
+      //         data: {
+      //           type: 'transaction',
+      //           id: transaction.id.toString(),
+      //           action: 'sent',
+      //         },
+      //         url: '/transactions',
+      //       });
 
-          this.logger.log(
-            `Résultat notification expéditeur: ${JSON.stringify(notificationResult)}`,
-          );
-        } else {
-          this.logger.log(
-            `L'expéditeur ID: ${senderUserId} a désactivé les notifications, aucune notification envoyée`,
-          );
-        }
-      } else {
-        this.logger.warn(
-          "Pas d'ID utilisateur trouvé pour l'expéditeur, notification impossible",
-        );
-      }
+      //     this.logger.log(
+      //       `Résultat notification expéditeur: ${JSON.stringify(notificationResult)}`,
+      //     );
+      //   } else {
+      //     this.logger.log(
+      //       `L'expéditeur ID: ${senderUserId} a désactivé les notifications, aucune notification envoyée`,
+      //     );
+      //   }
+      // } else {
+      //   this.logger.warn(
+      //     "Pas d'ID utilisateur trouvé pour l'expéditeur, notification impossible",
+      //   );
+      // }
 
       // Notification aux destinataires (comptes principaux)
       if (recipientsPrincipal && recipientsPrincipal.length > 0) {
