@@ -77,4 +77,22 @@ export class PushNotificationController {
     await this.pushNotificationService.forceUnsubscribeUser(+userId);
     return { success: true };
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('force-subscribe/:userId')
+  async forceSubscribe(
+    @Param('userId') userId: string,
+    @Body() registerFcmDeviceDto: RegisterFcmDeviceDto,
+    @Request() req,
+  ) {
+    if (req.user.id === +userId || req.user.role === 'admin') {
+      await this.pushNotificationService.forceSubscribeUser(
+        +userId,
+        registerFcmDeviceDto,
+      );
+      return { success: true };
+    } else {
+      return { success: false, message: 'Opération non autorisée' };
+    }
+  }
 }
