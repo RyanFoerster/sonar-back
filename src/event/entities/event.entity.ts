@@ -1,23 +1,38 @@
-import { CompteGroupe } from '../../compte_groupe/entities/compte_groupe.entity';
-import { Invitation } from '../../invitation/entities/invitation.entity';
-import { User } from '../../users/entities/user.entity';
-import { Comment } from '../../comment/entities/comment.entity';
 import {
   Column,
-  CreateDateColumn,
   Entity,
-  JoinTable,
-  ManyToMany,
   ManyToOne,
-  OneToMany,
   PrimaryGeneratedColumn,
+  CreateDateColumn,
   UpdateDateColumn,
+  JoinColumn,
 } from 'typeorm';
+import { CompteGroupe } from '../../compte_groupe/entities/compte_groupe.entity';
+
+export enum EventStatus {
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  CANCELLED = 'CANCELLED',
+}
+
+export enum InvitationStatus {
+  PENDING = 'PENDING',
+  ACCEPTED = 'ACCEPTED',
+  DECLINED = 'DECLINED',
+}
+
+export interface InvitedPerson {
+  personId: number | string; // peut être un ID utilisateur ou un email
+  status: InvitationStatus;
+  isExternal?: boolean; // si la personne est externe à la plateforme
+  email?: string; // email pour les personnes externes
+  name?: string; // nom pour les personnes externes
+}
 
 @Entity()
 export class Event {
-  @PrimaryGeneratedColumn()
-  id: number;
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
 
   @Column()
   title: string;
@@ -28,46 +43,44 @@ export class Event {
   @Column({ nullable: true })
   location: string;
 
-  @Column()
-  start_time: Date;
+  @Column({ type: 'timestamp' })
+  startDateTime: Date;
+
+  @Column({ type: 'timestamp' })
+  endDateTime: Date;
+
+  @Column({ type: 'timestamp' })
+  meetupDateTime: Date;
+
+  @Column({
+    type: 'enum',
+    enum: EventStatus,
+    default: EventStatus.PENDING,
+  })
+  status: EventStatus;
 
   @Column({ nullable: true })
-  end_time: Date;
+  cancellationReason: string;
+
+  @Column('jsonb', { default: [] })
+  invitedPeople: InvitedPerson[];
 
   @Column()
-  rendez_vous_date: Date;
+  groupId: number;
 
-  @Column({ nullable: true, default: 'pending' })
-  status: 'pending' | 'confirmed' | 'canceled' | 'hidden';
-
-  @Column({ nullable: true })
-  reason: string;
-
-  @Column({ nullable: true, type: 'json', default: [] })
-  user_status: { user_id: number; status: 'accepted' | 'refused' }[];
-
-  @ManyToOne(() => CompteGroupe, (compteGroupe) => compteGroupe.event)
+  @ManyToOne(() => CompteGroupe, (compteGroupe) => compteGroupe.events)
+  @JoinColumn({ name: 'groupId' })
   group: CompteGroupe;
 
-  @ManyToMany(() => User)
-  @JoinTable()
-  organisateurs: User[];
+  @Column('jsonb')
+  organizers: number[];
 
-  @ManyToMany(() => User, { nullable: true })
-  @JoinTable()
-  participants: User[];
-
-  @OneToMany(() => Invitation, (invitation) => invitation.event, {
-    nullable: true,
-  })
-  invitation: Invitation[];
-
-  @OneToMany(() => Comment, (comment) => comment.event, { nullable: true })
-  comments: Comment[];
+  @Column('jsonb', { default: [] })
+  participants: number[];
 
   @CreateDateColumn()
-  created_at: Date;
+  createdAt: Date;
 
   @UpdateDateColumn()
-  updated_at: Date;
+  updatedAt: Date;
 }

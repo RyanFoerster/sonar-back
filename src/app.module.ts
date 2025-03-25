@@ -4,19 +4,16 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { MulterModule } from '@nestjs/platform-express';
 import { ServeStaticModule } from '@nestjs/serve-static';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { ClientsModule } from './clients/clients.module';
-import { CommentsModule } from './comment/comment.module';
 import { CompteGroupeModule } from './compte_groupe/compte_groupe.module';
 import { ComptePrincipalModule } from './compte_principal/compte_principal.module';
 import config from './config/config';
-import { EventsModule } from './event/event.module';
-import { InvitationsModule } from './invitation/invitation.module';
 import { InvoiceModule } from './invoice/invoice.module';
 import { MeetModule } from './meet/meet.module';
 import { ProductModule } from './product/product.module';
@@ -32,6 +29,8 @@ import { BeneficiariesModule } from './beneficiaries/beneficiaries.module';
 import { AssetsService } from './services/assets.service';
 import { ProjectAttachmentModule } from './user-attachment/user-attachment.module';
 import { PushNotificationModule } from './push-notification/push-notification.module';
+import { EventModule } from './event/event.module';
+import { GroupeInvitationModule } from './groupe-invitation/groupe-invitation.module';
 
 @Module({
   imports: [
@@ -64,7 +63,7 @@ import { PushNotificationModule } from './push-notification/push-notification.mo
             ? configService.get('DATABASE_URL')
             : '',
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true,
+        synchronize: configService.get('isProd') ? false : true,
       }),
       inject: [ConfigService],
     }),
@@ -94,9 +93,6 @@ import { PushNotificationModule } from './push-notification/push-notification.mo
     ClientsModule,
     QuoteModule,
     TransactionModule,
-    EventsModule,
-    InvitationsModule,
-    CommentsModule,
     VirementSepaModule,
     MeetModule,
     HttpModule,
@@ -105,6 +101,8 @@ import { PushNotificationModule } from './push-notification/push-notification.mo
     BeneficiariesModule,
     ProjectAttachmentModule,
     PushNotificationModule,
+    EventModule,
+    GroupeInvitationModule,
   ],
   controllers: [AppController],
   providers: [AppService, BceService, AssetsService],

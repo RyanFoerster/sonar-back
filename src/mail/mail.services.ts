@@ -5,6 +5,8 @@ import axios from 'axios';
 import { Invoice } from '@/invoice/entities/invoice.entity';
 import { Resend } from 'resend';
 import { S3Service } from '@/services/s3/s3.service';
+import { Event } from '@/event/entities/event.entity';
+
 @Injectable()
 export class MailService {
   constructor(
@@ -690,5 +692,239 @@ export class MailService {
       );
       throw error;
     }
+  }
+
+  async sendEventInvitationEmail(
+    to: string,
+    name: string,
+    event: Event,
+    token: string,
+  ) {
+    const baseUrl =
+      this.configService.get('isProd') === true
+        ? 'https://sonarartists.be'
+        : 'http://localhost:4200';
+
+    const invitationLink = `${baseUrl}/event-invitation?token=${token}`;
+
+    const { data, error } = await this.resend.emails.send({
+      from: 'info@sonarartists.be',
+      to,
+      subject: `Invitation à l'événement : ${event.title}`,
+      html: `
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Invitation à un événement</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Montserrat', Arial, sans-serif; background-color: #f4f4f4; color: #333333;">
+          <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-top: 20px; margin-bottom: 20px;">
+            <!-- En-tête avec logo -->
+            <tr>
+              <td align="center" style="padding: 30px 20px; background-color: #000000;">
+                <img src="https://sonarartists.be/logo-SONAR.png" alt="Sonar Artists" style="max-width: 180px; height: auto;">
+              </td>
+            </tr>
+            
+            <!-- Contenu principal -->
+            <tr>
+              <td style="padding: 40px 30px;">
+                <h1 style="color: #333333; font-size: 24px; margin-top: 0; margin-bottom: 20px; font-weight: 600;">Invitation à un événement</h1>
+                
+                <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                  Bonjour ${name},
+                </p>
+                
+                <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                  Vous avez été invité(e) à l'événement suivant :
+                </p>
+                
+                <div style="background-color: #f8f8f8; border-radius: 6px; padding: 20px; margin-bottom: 25px;">
+                  <h2 style="color: #C8C04D; font-size: 20px; margin-top: 0; margin-bottom: 15px;">${event.title}</h2>
+                  
+                  <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 10px;">
+                    <strong>Date de début :</strong> ${new Date(event.startDateTime).toLocaleString('fr-FR')}
+                  </p>
+                  
+                  <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 10px;">
+                    <strong>Date de fin :</strong> ${new Date(event.endDateTime).toLocaleString('fr-FR')}
+                  </p>
+                  
+                  <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 10px;">
+                    <strong>Rendez-vous à :</strong> ${new Date(event.meetupDateTime).toLocaleString('fr-FR')}
+                  </p>
+                  
+                  ${
+                    event.location
+                      ? `<p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 10px;">
+                    <strong>Lieu :</strong> ${event.location}
+                  </p>`
+                      : ''
+                  }
+                  
+                  ${
+                    event.description
+                      ? `<p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 0;">
+                    <strong>Description :</strong> ${event.description}
+                  </p>`
+                      : ''
+                  }
+                </div>
+                
+                <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                  Merci de nous indiquer si vous pourrez y participer en cliquant sur le bouton ci-dessous :
+                </p>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${invitationLink}" 
+                     style="display: inline-block; background-color: #C8C04D; color: #000000; font-weight: 600; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-size: 16px; transition: background-color 0.3s ease;">
+                    Répondre à l'invitation
+                  </a>
+                </div>
+                
+                <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                  Si vous avez des questions concernant cet événement, n'hésitez pas à contacter les organisateurs.
+                </p>
+              </td>
+            </tr>
+            
+            <!-- Pied de page -->
+            <tr>
+              <td style="padding: 20px; background-color: #f8f8f8; border-top: 1px solid #eeeeee; text-align: center;">
+                <p style="color: #888888; font-size: 14px; margin: 0;">
+                  © ${new Date().getFullYear()} Sonar Artists. Tous droits réservés.
+                </p>
+                <p style="color: #888888; font-size: 12px; margin-top: 10px;">
+                  Ce message a été envoyé via la plateforme Sonar Artists.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      Logger.error('Error:', error.message);
+      throw error;
+    }
+
+    return data;
+  }
+
+  async sendEventReminderEmail(
+    to: string,
+    name: string,
+    event: Event,
+    token: string,
+  ) {
+    const baseUrl =
+      this.configService.get('isProd') === true
+        ? 'https://sonarartists.be'
+        : 'http://localhost:4200';
+
+    const invitationLink = `${baseUrl}/event-invitation?token=${token}`;
+
+    const { data, error } = await this.resend.emails.send({
+      from: 'info@sonarartists.be',
+      to,
+      subject: `Rappel : Invitation à l'événement ${event.title}`,
+      html: `
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Rappel d'invitation à un événement</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Montserrat', Arial, sans-serif; background-color: #f4f4f4; color: #333333;">
+          <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-top: 20px; margin-bottom: 20px;">
+            <!-- En-tête avec logo -->
+            <tr>
+              <td align="center" style="padding: 30px 20px; background-color: #000000;">
+                <img src="https://sonarartists.be/logo-SONAR.png" alt="Sonar Artists" style="max-width: 180px; height: auto;">
+              </td>
+            </tr>
+            
+            <!-- Contenu principal -->
+            <tr>
+              <td style="padding: 40px 30px;">
+                <h1 style="color: #333333; font-size: 24px; margin-top: 0; margin-bottom: 20px; font-weight: 600;">Rappel : Invitation à un événement</h1>
+                
+                <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                  Bonjour ${name},
+                </p>
+                
+                <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                  Nous n'avons pas encore reçu votre réponse concernant l'événement suivant :
+                </p>
+                
+                <div style="background-color: #f8f8f8; border-radius: 6px; padding: 20px; margin-bottom: 25px;">
+                  <h2 style="color: #C8C04D; font-size: 20px; margin-top: 0; margin-bottom: 15px;">${event.title}</h2>
+                  
+                  <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 10px;">
+                    <strong>Date de début :</strong> ${new Date(event.startDateTime).toLocaleString('fr-FR')}
+                  </p>
+                  
+                  <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 10px;">
+                    <strong>Date de fin :</strong> ${new Date(event.endDateTime).toLocaleString('fr-FR')}
+                  </p>
+                  
+                  <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 10px;">
+                    <strong>Rendez-vous à :</strong> ${new Date(event.meetupDateTime).toLocaleString('fr-FR')}
+                  </p>
+                  
+                  ${
+                    event.location
+                      ? `<p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 10px;">
+                    <strong>Lieu :</strong> ${event.location}
+                  </p>`
+                      : ''
+                  }
+                </div>
+                
+                <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                  Merci de nous indiquer si vous pourrez y participer en cliquant sur le bouton ci-dessous :
+                </p>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${invitationLink}" 
+                     style="display: inline-block; background-color: #C8C04D; color: #000000; font-weight: 600; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-size: 16px; transition: background-color 0.3s ease;">
+                    Répondre à l'invitation
+                  </a>
+                </div>
+                
+                <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                  Si vous avez des questions concernant cet événement, n'hésitez pas à contacter les organisateurs.
+                </p>
+              </td>
+            </tr>
+            
+            <!-- Pied de page -->
+            <tr>
+              <td style="padding: 20px; background-color: #f8f8f8; border-top: 1px solid #eeeeee; text-align: center;">
+                <p style="color: #888888; font-size: 14px; margin: 0;">
+                  © ${new Date().getFullYear()} Sonar Artists. Tous droits réservés.
+                </p>
+                <p style="color: #888888; font-size: 12px; margin-top: 10px;">
+                  Ce message a été envoyé via la plateforme Sonar Artists.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      Logger.error('Error:', error.message);
+      throw error;
+    }
+
+    return data;
   }
 }

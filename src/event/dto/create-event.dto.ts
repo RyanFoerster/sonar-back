@@ -1,8 +1,45 @@
-import { IsArray, IsDate, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsDateString,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MinLength,
+  ValidateIf,
+  ValidateNested,
+  ArrayMinSize,
+  IsObject,
+} from 'class-validator';
+import { EventStatus, InvitationStatus } from '../entities/event.entity';
+
+export class InvitedPersonDto {
+  @IsNotEmpty()
+  personId: number | string;
+
+  @IsEnum(InvitationStatus)
+  status: InvitationStatus = InvitationStatus.PENDING;
+
+  @IsOptional()
+  isExternal?: boolean;
+
+  @ValidateIf((o) => o.isExternal === true)
+  @IsString()
+  @IsNotEmpty()
+  email?: string;
+
+  @ValidateIf((o) => o.isExternal === true)
+  @IsString()
+  @IsOptional()
+  name?: string;
+}
 
 export class CreateEventDto {
   @IsString()
   @IsNotEmpty()
+  @MinLength(3)
   title: string;
 
   @IsString()
@@ -13,23 +50,39 @@ export class CreateEventDto {
   @IsOptional()
   location?: string;
 
-  @IsDate()
+  @IsDateString()
   @IsNotEmpty()
-  start_time: Date;
+  startDateTime: string;
 
-  @IsDate()
+  @IsDateString()
+  @IsNotEmpty()
+  endDateTime: string;
+
+  @IsDateString()
+  @IsNotEmpty()
+  meetupDateTime: string;
+
+  @IsEnum(EventStatus)
   @IsOptional()
-  end_time?: Date;
+  status?: EventStatus = EventStatus.PENDING;
 
-  @IsDate()
-  rendez_vous_date: Date;
-
-  @IsArray()
-  organisateurs_ids?: number[];
-
-  @IsArray()
-  participants_ids?: number[];
+  @ValidateIf((o) => o.status === EventStatus.CANCELLED)
+  @IsString()
+  @IsNotEmpty()
+  cancellationReason?: string;
 
   @IsArray()
-  invitations_ids?: number[];
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => InvitedPersonDto)
+  invitedPeople?: InvitedPersonDto[];
+
+  @IsNumber()
+  @IsNotEmpty()
+  groupId: number;
+
+  @IsArray()
+  @IsNotEmpty()
+  @ArrayMinSize(1)
+  organizers: number[];
 }

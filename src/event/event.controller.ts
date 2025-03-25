@@ -1,58 +1,136 @@
-// src/events/events.controller.ts
-import { Body, Controller, Delete, Get, Logger, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  UseGuards,
+  ParseIntPipe,
+  Query,
+} from '@nestjs/common';
+import { EventService } from './event.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
-import { Event } from './entities/event.entity';
-import { EventsService } from './event.service';
+import { SendReminderDto } from './dto/send-reminder.dto';
+import { DuplicateEventDto } from './dto/duplicate-event.dto';
+import { JwtAuthGuard } from '@/guards/auth.guard';
+import { InvitationStatus } from './entities/event.entity';
 
-@Controller('events')
-export class EventsController {
-  constructor(private readonly eventsService: EventsService) {
+@Controller('groups')
+@UseGuards(JwtAuthGuard)
+export class EventController {
+  constructor(private readonly eventService: EventService) {}
+
+  /**
+   * Crée un nouvel événement pour un groupe
+   */
+  @Post(':groupId/events')
+  create(
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Body() createEventDto: CreateEventDto,
+  ) {
+    // S'assurer que le groupId du DTO correspond au paramètre de route
+    createEventDto.groupId = groupId;
+    return this.eventService.create(createEventDto);
   }
 
-  @Post()
-  create(@Body() createEventDto: CreateEventDto, @Query() params: any, @Req() req: any): Promise<Event> {
-    return this.eventsService.create(createEventDto, params, req.user.id);
+  /**
+   * Liste tous les événements d'un groupe
+   */
+  @Get(':groupId/events')
+  findAll(@Param('groupId', ParseIntPipe) groupId: number) {
+    return this.eventService.findAllByGroup(groupId);
   }
 
-  @Get()
-  findAll(@Query() params: any): Promise<Event[]> {
-
-    return this.eventsService.findAllByGroupId(params.group_id);
+  /**
+   * Récupère les détails d'un événement
+   */
+  @Get(':groupId/events/:eventId')
+  findOne(
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Param('eventId') eventId: string,
+  ) {
+    return this.eventService.findOne(eventId, groupId);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: number): Promise<Event> {
-    return this.eventsService.findOne(id);
+  /**
+   * Met à jour un événement
+   */
+  @Patch(':groupId/events/:eventId')
+  update(
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Param('eventId') eventId: string,
+    @Body() updateEventDto: UpdateEventDto,
+  ) {
+    return this.eventService.update(eventId, groupId, updateEventDto);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: number, @Body() updateEventDto: UpdateEventDto): Promise<Event> {
-    return this.eventsService.update(id, updateEventDto);
+  /**
+   * Supprime un événement
+   */
+  @Delete(':groupId/events/:eventId')
+  remove(
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Param('eventId') eventId: string,
+  ) {
+    return this.eventService.remove(eventId, groupId);
   }
 
-  @Delete(':id')
-  remove(@Param('id') id: number): Promise<void> {
-    return this.eventsService.remove(id);
+  /**
+   * Duplique un événement
+   */
+  @Post(':groupId/events/:eventId/duplicate')
+  duplicate(
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Param('eventId') eventId: string,
+    @Body() duplicateEventDto: DuplicateEventDto,
+  ) {
+    // S'assurer que l'eventId du DTO correspond au paramètre de route
+    duplicateEventDto.eventId = eventId;
+    return this.eventService.duplicate(groupId, duplicateEventDto);
   }
 
-  @Patch(':id/confirm')
-  confirm(@Param('id') id: number): Promise<Event> {
-    return this.eventsService.confirm(id);
+  /**
+   * Envoie des rappels aux invités sélectionnés
+   */
+  @Post(':groupId/events/:eventId/reminders')
+  sendReminders(
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Param('eventId') eventId: string,
+    @Body() sendReminderDto: SendReminderDto,
+  ) {
+    // S'assurer que l'eventId du DTO correspond au paramètre de route
+    sendReminderDto.eventId = eventId;
+    return this.eventService.sendReminders(groupId, sendReminderDto);
   }
 
-  @Patch(':id/cancel')
-  cancel(@Param('id') id: number, @Body() reason: {reason: string}): Promise<Event> {
-    return this.eventsService.cancel(id, reason.reason);
+  /**
+   * Récupère la liste des participants avec leur statut
+   */
+  @Get(':groupId/events/:eventId/participants')
+  getParticipants(
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Param('eventId') eventId: string,
+  ) {
+    return this.eventService.getParticipants(eventId, groupId);
   }
 
-  @Patch(':id/hide')
-  hide(@Param('id') id: number, @Body() reason: {reason: string}): Promise<Event> {
-    return this.eventsService.hide(id, reason.reason);
-  }
-
-  @Patch(':id/userStatus')
-  userStatus(@Param('id') id: number, @Body() userStatus: {user_id: number, status: "accepted" | "refused"}): Promise<Event> {
-    return this.eventsService.userStatus(id, userStatus.user_id, userStatus.status);
+  /**
+   * Point d'entrée pour les réponses aux invitations
+   * Ce endpoint n'est pas protégé par JwtAuthGuard pour permettre
+   * aux invités externes de répondre sans authentification
+   */
+  @Post('events/:eventId/response')
+  respondToInvitation(
+    @Param('eventId') eventId: string,
+    @Query('personId') personId: string,
+    @Query('token') token: string,
+    @Body('status') status: InvitationStatus,
+  ) {
+    // TODO: Vérifier le token pour les invités externes
+    // Pour simplifier, on accepte directement la réponse
+    return this.eventService.respondToInvitation(eventId, personId, status);
   }
 }

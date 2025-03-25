@@ -6,31 +6,33 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
-import { CompteGroupe } from '../../compte_groupe/entities/compte_groupe.entity';
 
 @Entity()
 export class Notification {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @ManyToOne(() => User, { onDelete: 'CASCADE' })
+  user: User;
+
   @Column()
-  type: 'GROUP_INVITATION' | 'ROLE_CHANGE' | 'OTHER';
+  userId: number;
+
+  @Column()
+  type: string;
+
+  @Column()
+  title: string;
 
   @Column()
   message: string;
 
-  @Column()
-  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  @Column({ default: false })
+  isRead: boolean;
 
   @CreateDateColumn()
   createdAt: Date;
 
-  @ManyToOne(() => User)
-  fromUser: User;
-
-  @ManyToOne(() => User)
-  toUser: User;
-
-  @ManyToOne(() => CompteGroupe, { nullable: true })
-  group: CompteGroupe;
+  @Column({ type: 'jsonb', nullable: true })
+  data: Record<string, any>;
 }
