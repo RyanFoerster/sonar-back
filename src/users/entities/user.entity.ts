@@ -9,12 +9,9 @@ import {
 } from 'typeorm';
 import { Client } from '../../clients/entities/client.entity';
 import { ComptePrincipal } from '../../compte_principal/entities/compte_principal.entity';
-import { Invitation } from '../../invitation/entities/invitation.entity';
 import { Meet } from '../../meet/entities/meet.entity';
 import { UserSecondaryAccount } from '../../user-secondary-account/entities/user-secondary-account.entity';
-import { Comment } from '../../comment/entities/comment.entity';
 import { Beneficiary } from '@/beneficiaries/entities/beneficiary.entity';
-import { PushSubscription } from '../../push-notification/entities/push-subscription.entity';
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
@@ -79,12 +76,6 @@ export class User {
     cascade: true,
   })
   clients: Client[];
-
-  @OneToMany(() => Invitation, (invitation) => invitation.user)
-  invitation: Invitation;
-
-  @OneToMany(() => Comment, (comment) => comment.user)
-  comment: Comment;
 
   @ManyToMany((type) => Meet, (meet) => meet.user)
   meet: Meet;

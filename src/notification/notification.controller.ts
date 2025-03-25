@@ -1,45 +1,67 @@
 import {
-  Body,
   Controller,
   Get,
-  Param,
-  Patch,
   Post,
-  Request,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+  ParseIntPipe,
+  UseGuards,
 } from '@nestjs/common';
 import { NotificationService } from './notification.service';
+import { CreateNotificationDto } from './dto/create-notification.dto';
+import { UpdateNotificationDto } from './dto/update-notification.dto';
+import { JwtAuthGuard } from '../guards/auth.guard';
 
-@Controller('alert-notifications')
+@Controller('notifications')
+@UseGuards(JwtAuthGuard)
 export class NotificationController {
   constructor(private readonly notificationService: NotificationService) {}
 
-  @Get()
-  getUserNotifications(@Request() req) {
-    return this.notificationService.getUserNotifications(req.user.id);
+  @Post()
+  create(@Body() createNotificationDto: CreateNotificationDto) {
+    return this.notificationService.create(createNotificationDto);
   }
 
-  @Post('group-invitation')
-  createGroupInvitation(
-    @Request() req,
-    @Body() body: { toUserId: number; groupId: number },
+  @Get(':userId')
+  findAll(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
   ) {
-    return this.notificationService.createGroupInvitation(
-      req.user.id,
-      body.toUserId,
-      body.groupId,
-    );
+    return this.notificationService.findAllForUser(userId, page, limit);
   }
 
-  @Patch(':id/respond')
-  respondToInvitation(
-    @Param('id') id: string,
-    @Body() body: { accept: boolean },
+  @Get(':userId/unread-count')
+  countUnread(@Param('userId', ParseIntPipe) userId: number) {
+    return this.notificationService.countUnread(userId);
+  }
+
+  @Get('detail/:id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.notificationService.findOne(id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateNotificationDto: UpdateNotificationDto,
   ) {
-    return this.notificationService.respondToInvitation(+id, body.accept);
+    return this.notificationService.update(id, updateNotificationDto);
   }
 
   @Patch(':id/read')
-  markAsRead(@Param('id') id: string) {
-    return this.notificationService.markAsRead(+id);
+  markAsRead(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('isRead') isRead: boolean = true,
+  ) {
+    return this.notificationService.markAsRead(id, isRead);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.notificationService.remove(id);
   }
 }

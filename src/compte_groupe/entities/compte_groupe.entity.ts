@@ -1,11 +1,11 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
-import { Event } from '../../event/entities/event.entity';
 import { Invoice } from '../../invoice/entities/invoice.entity';
 import { Quote } from '../../quote/entities/quote.entity';
 import { Transaction } from '../../transaction/entities/transaction.entity';
 import { UserSecondaryAccount } from '../../user-secondary-account/entities/user-secondary-account.entity';
 import { VirementSepa } from '../../virement-sepa/entities/virement-sepa.entity';
 import { ProjectAttachmentEntity } from '@/user-attachment/entities/user-attachment.entity';
+import { Event } from '../../event/entities/event.entity';
 
 @Entity()
 export class CompteGroupe {
@@ -45,9 +45,6 @@ export class CompteGroupe {
   )
   userSecondaryAccount: UserSecondaryAccount[];
 
-  @OneToMany(() => Event, (event) => event.group)
-  event: Event[];
-
   @OneToMany(() => VirementSepa, (virementSepa) => virementSepa.compteGroupe, {
     nullable: true,
     eager: true,
@@ -63,4 +60,9 @@ export class CompteGroupe {
     },
   )
   attachments: ProjectAttachmentEntity[];
+
+  @OneToMany(() => Event, (event) => event.group, {
+    nullable: true,
+  })
+  events: Event[];
 }

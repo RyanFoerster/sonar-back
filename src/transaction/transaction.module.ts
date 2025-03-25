@@ -6,6 +6,8 @@ import { Transaction } from './entities/transaction.entity';
 import { ComptePrincipalModule } from '../compte_principal/compte_principal.module';
 import { CompteGroupeModule } from '../compte_groupe/compte_groupe.module';
 import { PushNotificationModule } from '../push-notification/push-notification.module';
+import { NotificationModule } from '../notification/notification.module';
+import { UserSecondaryAccountModule } from '../user-secondary-account/user-secondary-account.module';
 
 @Module({
   controllers: [TransactionController],
@@ -15,6 +17,8 @@ import { PushNotificationModule } from '../push-notification/push-notification.m
     ComptePrincipalModule,
     CompteGroupeModule,
     PushNotificationModule,
+    NotificationModule,
+    UserSecondaryAccountModule,
   ],
   exports: [TransactionService],
 })

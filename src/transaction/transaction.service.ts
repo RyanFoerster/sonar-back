@@ -10,6 +10,8 @@ import { CompteGroupeService } from '../compte_groupe/compte_groupe.service';
 import { ComptePrincipal } from '../compte_principal/entities/compte_principal.entity';
 import { PaginationDto } from './dto/pagination.dto';
 import { PushNotificationService } from '../push-notification/push-notification.service';
+import { NotificationService } from '../notification/notification.service';
+import { UserSecondaryAccountService } from '../user-secondary-account/user-secondary-account.service';
 
 @Injectable()
 export class TransactionService {
@@ -21,6 +23,8 @@ export class TransactionService {
     private readonly compteGroupeService: CompteGroupeService,
     private readonly comptePrincipalService: ComptePrincipalService,
     private readonly pushNotificationService: PushNotificationService,
+    private readonly notificationService: NotificationService,
+    private readonly userSecondaryAccountService: UserSecondaryAccountService,
   ) {}
 
   async create(createTransactionDto: CreateTransactionDto) {
@@ -360,6 +364,7 @@ export class TransactionService {
       this.logger.log('=== DÉBUT ENVOI NOTIFICATIONS TRANSACTION ===');
       this.logger.log(`Transaction ID: ${transaction.id}`);
       this.logger.log(`Montant: ${transaction.amount.toFixed(2)} €`);
+      this.logger.log(`Communication: "${transaction.communication}"`);
 
       if (senderPrincipal) {
         this.logger.log(`Expéditeur principal: ${senderPrincipal.username}`);
@@ -369,7 +374,9 @@ export class TransactionService {
       }
 
       if (senderGroup) {
-        this.logger.log(`Expéditeur groupe: ${senderGroup.username}`);
+        this.logger.log(
+          `Expéditeur groupe: ${senderGroup.username} (ID: ${senderGroup.id})`,
+        );
       }
 
       if (recipientsPrincipal && recipientsPrincipal.length > 0) {
@@ -377,9 +384,19 @@ export class TransactionService {
           `Nombre de destinataires principaux: ${recipientsPrincipal.length}`,
         );
         for (const recipient of recipientsPrincipal) {
-          this.logger.log('recipient', JSON.stringify(recipient, null, 2));
           this.logger.log(
-            `  - Destinataire: ${recipient.username}, User ID: ${recipient.user?.id || 'NON DÉFINI'}`,
+            `  - Destinataire principal: ${recipient.username}, User ID: ${recipient.user?.id || 'NON DÉFINI'}`,
+          );
+        }
+      }
+
+      if (recipientsGroup && recipientsGroup.length > 0) {
+        this.logger.log(
+          `Nombre de groupes destinataires: ${recipientsGroup.length}`,
+        );
+        for (const group of recipientsGroup) {
+          this.logger.log(
+            `  - Groupe destinataire: ${group.username} (ID: ${group.id})`,
           );
         }
       }
@@ -387,96 +404,380 @@ export class TransactionService {
       // Formater le montant pour l'affichage
       const formattedAmount = transaction.amount.toFixed(2) + ' €';
 
-      // Notification à l'expéditeur (compte principal)
-      // if (senderPrincipal && senderPrincipal.user?.id) {
-      //   const senderUserId = senderPrincipal.user.id;
-      //   this.logger.log(
-      //     `Envoi notification à l'expéditeur ID: ${senderUserId}`,
-      //   );
+      // Notification à l'expéditeur (compte principal) via le système FCM existant
+      // Cette partie existe déjà et est commentée dans le code original
 
-      //   // Vérifier si l'expéditeur accepte les notifications
-      //   const senderAcceptsNotifications =
-      //     await this.pushNotificationService.checkUserNotificationPreferences(
-      //       senderUserId,
-      //     );
+      // Ajout des notifications pour le composant de notification
+      // 1. Pour l'expéditeur si c'est un compte principal
+      if (senderPrincipal && senderPrincipal.user?.id) {
+        const senderUserId = senderPrincipal.user.id;
+        const recipientsText = this.formatRecipientsList(
+          recipientsPrincipal,
+          recipientsGroup,
+        );
 
-      //   if (senderAcceptsNotifications) {
-      //     const recipientsText = this.formatRecipientsList(
-      //       recipientsPrincipal,
-      //       recipientsGroup,
-      //     );
+        try {
+          this.logger.log(
+            `[1/3] Préparation notification pour l'expéditeur (userId: ${senderUserId})`,
+          );
 
-      //     const notificationResult =
-      //       await this.pushNotificationService.sendToUser(senderUserId, {
-      //         title: 'Transaction effectuée',
-      //         body: `Vous avez envoyé ${formattedAmount} à ${recipientsText}`,
-      //         data: {
-      //           type: 'transaction',
-      //           id: transaction.id.toString(),
-      //           action: 'sent',
-      //         },
-      //         url: '/transactions',
-      //       });
+          // Créer une notification qui sera stockée en base de données
+          const notificationData = {
+            userId: senderUserId,
+            type: 'transaction',
+            title: 'Transaction effectuée',
+            message: `Vous avez envoyé ${formattedAmount} à ${recipientsText}`,
+            isRead: false,
+            data: {
+              transactionId: transaction.id,
+              action: 'sent',
+              amount: transaction.amount,
+              date: transaction.date,
+              communication: transaction.communication,
+            },
+          };
 
-      //     this.logger.log(
-      //       `Résultat notification expéditeur: ${JSON.stringify(notificationResult)}`,
-      //     );
-      //   } else {
-      //     this.logger.log(
-      //       `L'expéditeur ID: ${senderUserId} a désactivé les notifications, aucune notification envoyée`,
-      //     );
-      //   }
-      // } else {
-      //   this.logger.warn(
-      //     "Pas d'ID utilisateur trouvé pour l'expéditeur, notification impossible",
-      //   );
-      // }
+          // Cette notification sera stockée et également affichée dans le composant de notification
+          this.logger.log(
+            `Envoi de la notification à l'expéditeur via NotificationService.create()`,
+          );
+          const createdNotif =
+            await this.notificationService.create(notificationData);
+          this.logger.log(
+            `Notification créée avec succès pour l'expéditeur, ID: ${createdNotif?.id || 'non retourné'}`,
+          );
 
-      // Notification aux destinataires (comptes principaux)
+          this.logger.log(
+            `Notification composant envoyée à l'expéditeur ID: ${senderUserId}`,
+          );
+        } catch (error) {
+          this.logger.error(
+            `Erreur lors de l'envoi de la notification au composant pour l'expéditeur: ${error.message}`,
+            error.stack,
+          );
+          if (error.status === 401) {
+            this.logger.error(
+              `ERREUR 401 détectée lors de la notification à l'expéditeur: ${senderUserId}`,
+            );
+            this.logger.error(
+              `Détails de l'erreur 401: ${JSON.stringify(error.response || {})}`,
+            );
+          }
+        }
+      }
+
+      // 2. Pour chaque destinataire qui a un compte principal
       if (recipientsPrincipal && recipientsPrincipal.length > 0) {
+        this.logger.log(
+          `[2/3] Traitement des notifications pour ${recipientsPrincipal.length} destinataires principaux`,
+        );
+        for (const recipient of recipientsPrincipal) {
+          if (recipient.user?.id) {
+            const recipientUserId = recipient.user.id;
+            const senderText = senderPrincipal
+              ? senderPrincipal.username
+              : senderGroup
+                ? senderGroup.username
+                : 'Un utilisateur';
+
+            try {
+              this.logger.log(
+                `Préparation notification pour le destinataire ${recipient.username} (userId: ${recipientUserId})`,
+              );
+
+              // Créer une notification qui sera stockée en base de données
+              const notificationData = {
+                userId: recipientUserId,
+                type: 'transaction',
+                title: 'Paiement reçu',
+                message: `${senderText} vous a envoyé ${formattedAmount}`,
+                isRead: false,
+                data: {
+                  transactionId: transaction.id,
+                  action: 'received',
+                  amount: transaction.amount,
+                  date: transaction.date,
+                  communication: transaction.communication,
+                },
+              };
+
+              // Cette notification sera stockée et également affichée dans le composant de notification
+              this.logger.log(
+                `Envoi de la notification au destinataire via NotificationService.create()`,
+              );
+              const createdNotif =
+                await this.notificationService.create(notificationData);
+              this.logger.log(
+                `Notification créée avec succès pour le destinataire, ID: ${createdNotif?.id || 'non retourné'}`,
+              );
+
+              this.logger.log(
+                `Notification composant envoyée au destinataire ID: ${recipientUserId}`,
+              );
+            } catch (error) {
+              this.logger.error(
+                `Erreur lors de l'envoi de la notification au composant pour le destinataire: ${error.message}`,
+                error.stack,
+              );
+              if (error.status === 401) {
+                this.logger.error(
+                  `ERREUR 401 détectée lors de la notification au destinataire: ${recipientUserId}`,
+                );
+                this.logger.error(
+                  `Détails de l'erreur 401: ${JSON.stringify(error.response || {})}`,
+                );
+              }
+            }
+          }
+        }
+      }
+
+      // 3. Pour chaque groupe destinataire, notifier les utilisateurs avec droits treasury
+      if (recipientsGroup && recipientsGroup.length > 0) {
+        this.logger.log(
+          `[3/3] Traitement des notifications pour ${recipientsGroup.length} groupes destinataires`,
+        );
+        for (const group of recipientsGroup) {
+          try {
+            this.logger.log(
+              `Recherche des utilisateurs avec droits treasury pour le groupe ${group.username} (ID: ${group.id})`,
+            );
+
+            // Récupérer les utilisateurs avec droits de trésorerie pour ce groupe
+            const treasuryUsers =
+              await this.userSecondaryAccountService.findUsersWithTreasuryRights(
+                group.id,
+              );
+            this.logger.log(
+              `Trouvé ${treasuryUsers.length} utilisateurs avec droits treasury pour le groupe ${group.username}`,
+            );
+
+            if (treasuryUsers.length === 0) {
+              this.logger.warn(
+                `Aucun utilisateur avec droits treasury trouvé pour le groupe ${group.username}`,
+              );
+            }
+
+            for (const userAccount of treasuryUsers) {
+              if (userAccount.user?.id) {
+                const userId = userAccount.user.id;
+                this.logger.log(
+                  `Traitement utilisateur ${userAccount.user.firstName} ${userAccount.user.name} (ID: ${userId}) avec rôle treasury: ${userAccount.role_treasury}`,
+                );
+
+                const senderText = senderPrincipal
+                  ? senderPrincipal.username
+                  : senderGroup
+                    ? senderGroup.username
+                    : 'Un utilisateur';
+
+                // Créer notification pour l'utilisateur avec droits treasury
+                const notificationData = {
+                  userId: userId,
+                  type: 'transaction',
+                  title: 'Transaction de groupe',
+                  message: `${senderText} a envoyé ${formattedAmount} au groupe ${group.username}`,
+                  isRead: false,
+                  data: {
+                    transactionId: transaction.id,
+                    action: 'group_received',
+                    amount: transaction.amount,
+                    date: transaction.date,
+                    communication: transaction.communication,
+                    groupId: group.id,
+                    groupName: group.username,
+                    role: userAccount.role_treasury,
+                  },
+                };
+
+                // Envoyer la notification et la stocker en base de données
+                this.logger.log(
+                  `Création de la notification en base de données pour l'utilisateur ${userId} (role: ${userAccount.role_treasury})`,
+                );
+                try {
+                  const createdNotif =
+                    await this.notificationService.create(notificationData);
+                  this.logger.log(
+                    `Notification créée avec succès, ID: ${createdNotif?.id || 'non retourné'}`,
+                  );
+                } catch (notifError) {
+                  this.logger.error(
+                    `Échec de création de notification: ${notifError.message}`,
+                  );
+                  if (notifError.status === 401) {
+                    this.logger.error(
+                      `ERREUR 401 détectée lors de la création de notification pour l'utilisateur: ${userId}`,
+                    );
+                    this.logger.error(
+                      `Détails de l'erreur 401: ${JSON.stringify(notifError.response || {})}`,
+                    );
+                  }
+                }
+
+                // Tenter également d'envoyer une notification push si l'utilisateur les accepte
+                this.logger.log(
+                  `Vérification des préférences de notification de l'utilisateur ${userId}`,
+                );
+                try {
+                  const userAcceptsNotifications =
+                    await this.pushNotificationService.checkUserNotificationPreferences(
+                      userId,
+                    );
+
+                  this.logger.log(
+                    `L'utilisateur ${userId} ${userAcceptsNotifications ? 'accepte' : "n'accepte pas"} les notifications push`,
+                  );
+
+                  if (userAcceptsNotifications) {
+                    this.logger.log(
+                      `Envoi d'une notification push à l'utilisateur ${userId}`,
+                    );
+                    try {
+                      const pushResult =
+                        await this.pushNotificationService.sendToUser(userId, {
+                          title: 'Transaction de groupe',
+                          body: `${senderText} a envoyé ${formattedAmount} au groupe ${group.username}`,
+                          data: {
+                            type: 'transaction',
+                            id: transaction.id.toString(),
+                            action: 'group_received',
+                            groupId: group.id.toString(),
+                          },
+                          url: '/transactions',
+                        });
+                      this.logger.log(
+                        `Notification push envoyée avec succès: ${JSON.stringify(pushResult)}`,
+                      );
+                    } catch (pushError) {
+                      this.logger.error(
+                        `Échec d'envoi de notification push: ${pushError.message}`,
+                      );
+                      if (pushError.status === 401) {
+                        this.logger.error(
+                          `ERREUR 401 détectée lors de l'envoi de notification push à l'utilisateur: ${userId}`,
+                        );
+                        this.logger.error(
+                          `Détails de l'erreur 401: ${JSON.stringify(pushError.response || {})}`,
+                        );
+                      }
+                    }
+                  }
+                } catch (prefError) {
+                  this.logger.error(
+                    `Erreur lors de la vérification des préférences: ${prefError.message}`,
+                  );
+                  if (prefError.status === 401) {
+                    this.logger.error(
+                      `ERREUR 401 détectée lors de la vérification des préférences pour l'utilisateur: ${userId}`,
+                    );
+                    this.logger.error(
+                      `Détails de l'erreur 401: ${JSON.stringify(prefError.response || {})}`,
+                    );
+                  }
+                }
+
+                this.logger.log(
+                  `Traitement terminé pour l'utilisateur ${userId} du groupe ${group.username}`,
+                );
+              } else {
+                this.logger.warn(
+                  `L'userAccount ${userAccount.id} n'a pas d'objet user associé ou pas d'ID utilisateur`,
+                );
+              }
+            }
+          } catch (error) {
+            this.logger.error(
+              `Erreur lors de la notification des membres du groupe ${group.username}: ${error.message}`,
+              error.stack,
+            );
+            if (error.status === 401) {
+              this.logger.error(
+                `ERREUR 401 détectée lors du traitement du groupe: ${group.id}`,
+              );
+              this.logger.error(
+                `Détails de l'erreur 401: ${JSON.stringify(error.response || {})}`,
+              );
+            }
+          }
+        }
+      }
+
+      // Notification aux destinataires (comptes principaux) via le système FCM existant
+      if (recipientsPrincipal && recipientsPrincipal.length > 0) {
+        this.logger.log(
+          `Début des notifications push FCM aux destinataires principaux`,
+        );
+
         for (const recipient of recipientsPrincipal) {
           if (recipient.user?.id) {
             const recipientUserId = recipient.user.id;
             this.logger.log(
-              `Envoi notification au destinataire ID: ${recipientUserId}`,
+              `Préparation notification push pour le destinataire ${recipient.username} (ID: ${recipientUserId})`,
             );
 
-            // Vérifier si le destinataire accepte les notifications
-            const recipientAcceptsNotifications =
-              await this.pushNotificationService.checkUserNotificationPreferences(
-                recipientUserId,
+            try {
+              // Vérifier si le destinataire accepte les notifications
+              this.logger.log(
+                `Vérification des préférences de notification pour ${recipientUserId}`,
               );
-
-            if (recipientAcceptsNotifications) {
-              const senderText = senderPrincipal
-                ? senderPrincipal.username
-                : senderGroup
-                  ? senderGroup.username
-                  : 'Un utilisateur';
-
-              const notificationResult =
-                await this.pushNotificationService.sendToUser(recipientUserId, {
-                  title: 'Paiement reçu',
-                  body: `${senderText} vous a envoyé ${formattedAmount}`,
-                  data: {
-                    type: 'transaction',
-                    id: transaction.id.toString(),
-                    action: 'received',
-                  },
-                  url: '/transactions',
-                });
+              const recipientAcceptsNotifications =
+                await this.pushNotificationService.checkUserNotificationPreferences(
+                  recipientUserId,
+                );
 
               this.logger.log(
-                `Résultat notification destinataire ${recipient.username}: ${JSON.stringify(notificationResult)}`,
+                `L'utilisateur ${recipientUserId} ${recipientAcceptsNotifications ? 'accepte' : "n'accepte pas"} les notifications push`,
               );
-            } else {
-              this.logger.log(
-                `Le destinataire ID: ${recipientUserId} a désactivé les notifications, aucune notification envoyée`,
+
+              if (recipientAcceptsNotifications) {
+                const senderText = senderPrincipal
+                  ? senderPrincipal.username
+                  : senderGroup
+                    ? senderGroup.username
+                    : 'Un utilisateur';
+
+                this.logger.log(
+                  `Envoi de la notification push au destinataire ${recipientUserId}`,
+                );
+                const notificationResult =
+                  await this.pushNotificationService.sendToUser(
+                    recipientUserId,
+                    {
+                      title: 'Paiement reçu',
+                      body: `${senderText} vous a envoyé ${formattedAmount}`,
+                      data: {
+                        type: 'transaction',
+                        id: transaction.id.toString(),
+                        action: 'received',
+                      },
+                      url: '/transactions',
+                    },
+                  );
+
+                this.logger.log(
+                  `Résultat notification push destinataire ${recipient.username}: ${JSON.stringify(notificationResult)}`,
+                );
+              } else {
+                this.logger.log(
+                  `Le destinataire ID: ${recipientUserId} a désactivé les notifications, aucune notification push envoyée`,
+                );
+              }
+            } catch (error) {
+              this.logger.error(
+                `Erreur lors de l'envoi de notification push à ${recipientUserId}: ${error.message}`,
               );
+              if (error.status === 401) {
+                this.logger.error(
+                  `ERREUR 401 détectée lors de l'envoi de notification push au destinataire: ${recipientUserId}`,
+                );
+                this.logger.error(
+                  `Détails de l'erreur 401: ${JSON.stringify(error.response || {})}`,
+                );
+              }
             }
           } else {
             this.logger.warn(
-              `Pas d'ID utilisateur trouvé pour le destinataire ${recipient.username}, notification impossible`,
+              `Pas d'ID utilisateur trouvé pour le destinataire ${recipient.username}, notification push impossible`,
             );
           }
         }
@@ -489,6 +790,14 @@ export class TransactionService {
         "Erreur lors de l'envoi des notifications de transaction",
         error,
       );
+      if (error.status === 401) {
+        this.logger.error(
+          `ERREUR 401 GÉNÉRALE détectée dans sendTransactionNotifications`,
+        );
+        this.logger.error(
+          `Détails de l'erreur 401: ${JSON.stringify(error.response || {})}`,
+        );
+      }
     }
   }
 

@@ -32,6 +32,20 @@ export class PushNotificationService {
    */
   private initializeFirebaseAdmin(): void {
     try {
+      // Vérifier si Firebase Admin est déjà initialisé
+      try {
+        this.firebaseApp = admin.app();
+        console.log(
+          "Firebase Admin SDK déjà initialisé, réutilisation de l'instance existante",
+        );
+        return;
+      } catch (error) {
+        // L'application n'existe pas encore, on continue l'initialisation
+        console.log(
+          'Aucune instance Firebase Admin existante détectée, initialisation...',
+        );
+      }
+
       // Étape 1: Essayer de récupérer depuis la variable d'environnement
       let serviceAccount = this.configService.get('FIREBASE_SERVICE_ACCOUNT');
       let parsedServiceAccount;
@@ -126,11 +140,20 @@ export class PushNotificationService {
       // Étape 6: Initialiser Firebase Admin
       try {
         console.log("Initialisation de l'application Firebase Admin...");
-        this.firebaseApp = admin.initializeApp({
-          credential: admin.credential.cert(parsedServiceAccount),
-        });
 
-        console.log('Firebase Admin SDK initialisé avec succès');
+        // Générer un nom unique basé sur le timestamp pour éviter les conflits
+        const appName = `sonar-push-${Date.now()}`;
+
+        this.firebaseApp = admin.initializeApp(
+          {
+            credential: admin.credential.cert(parsedServiceAccount),
+          },
+          appName,
+        );
+
+        console.log(
+          `Firebase Admin SDK initialisé avec succès avec le nom: ${appName}`,
+        );
       } catch (error) {
         console.error(
           "Erreur lors de l'initialisation de l'app Firebase:",
@@ -233,30 +256,64 @@ export class PushNotificationService {
    * @returns true si l'utilisateur a activé les notifications, false sinon
    */
   async checkUserNotificationPreferences(userId: number): Promise<boolean> {
+    this.logger.log(
+      `[TRACE-PREF] Début vérification préférences pour userId: ${userId}`,
+    );
+
     try {
       // Vérifier d'abord si l'utilisateur a des appareils actifs
+      this.logger.log(
+        `[TRACE-PREF] Recherche d'appareils actifs pour l'utilisateur ${userId}`,
+      );
       const devices = await this.fcmDeviceRepository.find({
         where: { user: { id: userId }, active: true },
       });
 
+      this.logger.log(
+        `[TRACE-PREF] ${devices.length} appareil(s) actif(s) trouvé(s) pour l'utilisateur ${userId}`,
+      );
+
       // Si l'utilisateur n'a pas d'appareils actifs, on considère qu'il a désactivé les notifications
       if (!devices || devices.length === 0) {
         this.logger.log(
-          `L'utilisateur ${userId} n'a pas d'appareils actifs, notifications désactivées`,
+          `[TRACE-PREF] L'utilisateur ${userId} n'a pas d'appareils actifs, notifications désactivées`,
         );
         return false;
       }
 
       // Si l'utilisateur a au moins un appareil actif, on considère qu'il a activé les notifications
       this.logger.log(
-        `L'utilisateur ${userId} a ${devices.length} appareil(s) actif(s), notifications activées`,
+        `[TRACE-PREF] L'utilisateur ${userId} a ${devices.length} appareil(s) actif(s), notifications activées`,
       );
+
+      if (devices.length > 0) {
+        this.logger.log(
+          `[TRACE-PREF] Appareils trouvés: ${devices.map((d) => `ID:${d.id} (${d.token.substring(0, 10)}...)`).join(', ')}`,
+        );
+      }
+
       return true;
     } catch (error) {
       this.logger.error(
-        `Erreur lors de la vérification des préférences de notification pour l'utilisateur ${userId}`,
-        error,
+        `[TRACE-PREF] Erreur lors de la vérification des préférences pour l'utilisateur ${userId}: ${error.message}`,
+        error.stack,
       );
+
+      if (error.status === 401) {
+        this.logger.error(
+          `[TRACE-PREF] ERREUR 401 détectée lors de la vérification des préférences: ${JSON.stringify(error.response || {})}`,
+        );
+        this.logger.error(
+          `[TRACE-PREF] Headers: ${JSON.stringify(error.headers || {})}`,
+        );
+      } else if (error.code === 'ER_BAD_FIELD_ERROR') {
+        this.logger.error(
+          `[TRACE-PREF] Erreur de champ dans la requête SQL: ${error.message}`,
+        );
+      } else if (error.code === 'ER_NO_SUCH_TABLE') {
+        this.logger.error(`[TRACE-PREF] Table non trouvée: ${error.message}`);
+      }
+
       // En cas d'erreur, par défaut on n'envoie pas de notification
       return false;
     }
@@ -269,15 +326,27 @@ export class PushNotificationService {
    * @returns Le résultat de l'envoi
    */
   async sendToUser(userId: number, notificationDto: SendNotificationDto) {
+    this.logger.log(`[TRACE-PUSH] Début sendToUser pour userId: ${userId}`);
+    this.logger.log(
+      `[TRACE-PUSH] Notification: titre="${notificationDto.title}", type=${notificationDto.data?.type || 'non spécifié'}`,
+    );
+
     if (!this.firebaseApp) {
-      this.logger.error('Firebase Admin SDK non initialisé');
+      this.logger.error('[TRACE-PUSH] Firebase Admin SDK non initialisé');
       return { success: false, message: 'Firebase non configuré' };
     }
 
     try {
       // Vérifier d'abord si l'utilisateur accepte les notifications
+      this.logger.log(
+        `[TRACE-PUSH] Vérification des préférences de notification pour l'utilisateur ${userId}`,
+      );
       const userAcceptsNotifications =
         await this.checkUserNotificationPreferences(userId);
+
+      this.logger.log(
+        `[TRACE-PUSH] L'utilisateur ${userId} ${userAcceptsNotifications ? 'accepte' : "n'accepte pas"} les notifications`,
+      );
 
       if (!userAcceptsNotifications) {
         this.logger.warn(
@@ -289,9 +358,16 @@ export class PushNotificationService {
         };
       }
 
+      this.logger.log(
+        `[TRACE-PUSH] Recherche des appareils FCM pour l'utilisateur ${userId}`,
+      );
       const devices = await this.fcmDeviceRepository.find({
         where: { user: { id: userId }, active: true },
       });
+
+      this.logger.log(
+        `[TRACE-PUSH] ${devices.length} appareil(s) trouvé(s) pour l'utilisateur ${userId}`,
+      );
 
       if (!devices.length) {
         this.logger.warn(
@@ -300,18 +376,36 @@ export class PushNotificationService {
         return { success: false, message: 'Aucun appareil enregistré' };
       }
 
+      this.logger.log(
+        `[TRACE-PUSH] Initialisation du service de messaging Firebase`,
+      );
       const messaging = this.firebaseApp.messaging();
       const results = [];
       let atLeastOneSuccess = false;
 
+      // Améliorer le format des notifications d'événements
+      let enhancedNotification = { ...notificationDto };
+      if (notificationDto.data?.type?.startsWith('EVENT_')) {
+        this.logger.log(
+          `[TRACE-PUSH] Amélioration de la notification d'événement`,
+        );
+        enhancedNotification = this.enhanceEventNotification(notificationDto);
+      }
+
+      this.logger.log(
+        `[TRACE-PUSH] Traitement de ${devices.length} appareil(s) pour l'envoi`,
+      );
+
       for (const device of devices) {
         try {
+          this.logger.log(
+            `[TRACE-PUSH] Traitement de l'appareil ID: ${device.id}, Token: ${device.token.substring(0, 10)}...`,
+          );
+
           // Vérifier si c'est un token préférence spécial et non un vrai token FCM
           if (device.token.startsWith('web_pref_active_')) {
-            // C'est juste un marqueur de préférence, pas un vrai token FCM
-            // On l'ignore pour l'envoi mais on le compte comme un "succès" pour ne pas désactiver les notifications
             this.logger.log(
-              `Token de préférence détecté: ${device.token}, ignoré pour l'envoi mais maintenu actif`,
+              `[TRACE-PUSH] Token de préférence détecté: ${device.token}, ignoré pour l'envoi mais maintenu actif`,
             );
             results.push({
               success: true,
@@ -321,71 +415,211 @@ export class PushNotificationService {
             continue;
           }
 
+          this.logger.log(
+            `[TRACE-PUSH] Préparation du message FCM pour l'appareil`,
+          );
+
+          // Convertir toutes les valeurs dans l'objet data en chaînes de caractères
+          const stringifiedData = {};
+          if (enhancedNotification.data) {
+            Object.keys(enhancedNotification.data).forEach((key) => {
+              // Convertir toutes les valeurs en chaînes de caractères
+              stringifiedData[key] =
+                enhancedNotification.data[key] !== null &&
+                enhancedNotification.data[key] !== undefined
+                  ? String(enhancedNotification.data[key])
+                  : '';
+            });
+          }
+
+          // Ajouter le timestamp en tant que chaîne
+          stringifiedData['timestamp'] = new Date().toISOString();
+
+          this.logger.log(
+            `[TRACE-PUSH] Données converties en chaînes: ${JSON.stringify(stringifiedData)}`,
+          );
+
           const message = {
             token: device.token,
             notification: {
-              title: notificationDto.title,
-              body: notificationDto.body,
+              title: enhancedNotification.title,
+              body: enhancedNotification.body,
             },
-            data: notificationDto.data || {},
+            data: stringifiedData,
             webpush: {
               fcmOptions: {
-                link: notificationDto.url || '',
+                link: enhancedNotification.url || '',
+              },
+              notification: {
+                icon: '/assets/icons/icon-128x128.png',
+                badge: '/assets/icons/badge-96x96.png',
+                vibrate: [100, 50, 100],
+                requireInteraction: true,
+                actions: this.getNotificationActions(
+                  enhancedNotification.data?.type,
+                ),
+              },
+            },
+            android: {
+              priority: 'high' as const,
+              notification: {
+                icon: '@drawable/ic_notification',
+                color: '#4A90E2',
+                clickAction: 'FLUTTER_NOTIFICATION_CLICK',
               },
             },
           };
 
+          this.logger.log(
+            `[TRACE-PUSH] Envoi du message FCM à l'appareil via messaging.send()`,
+          );
           const result = await messaging.send(message);
+          this.logger.log(
+            `[TRACE-PUSH] Message envoyé avec succès, messageId: ${result}`,
+          );
+
           results.push({ success: true, messageId: result });
           atLeastOneSuccess = true;
         } catch (error) {
-          // Vérifier si c'est un token de préférence spécial (pas un vrai token FCM)
-          if (device.token.startsWith('web_pref_active_')) {
-            // Ne pas compter comme une erreur
-            this.logger.log(
-              `Erreur ignorée pour le token de préférence: ${device.token}`,
-            );
-            continue;
-          }
+          this.logger.error(
+            `[TRACE-PUSH] Erreur lors de l'envoi du message FCM à l'appareil: ${error.message}`,
+          );
 
-          // Vérifier d'abord si le token est invalide
-          const isInvalidToken =
-            error.code === 'messaging/invalid-registration-token' ||
-            error.code === 'messaging/registration-token-not-registered';
-
-          if (isInvalidToken) {
-            // On ne log pas d'erreur pour les tokens invalides, juste un avertissement
+          if (error.code === 'messaging/registration-token-not-registered') {
             this.logger.warn(
-              `Token FCM invalide détecté: ${device.token} - Erreur: ${error.code}`,
+              `[TRACE-PUSH] Token FCM expiré: ${device.token.substring(0, 10)}..., marqué comme inactif`,
             );
-          } else {
-            // Pour les autres types d'erreurs, on garde le log d'erreur complet
-            this.logger.error(
-              `Erreur lors de l'envoi de la notification FCM à ${device.token}`,
-              error,
-            );
-          }
-
-          // Si le token est invalide ou non enregistré, marquer comme inactif
-          if (isInvalidToken) {
             device.active = false;
             await this.fcmDeviceRepository.save(device);
-            this.logger.log(
-              `Token FCM invalide marqué comme inactif: ${device.token}`,
+          } else if (error.code === 'messaging/invalid-argument') {
+            this.logger.error(
+              `[TRACE-PUSH] Token FCM invalide: ${device.token.substring(0, 10)}..., marqué comme inactif`,
+            );
+            device.active = false;
+            await this.fcmDeviceRepository.save(device);
+          } else if (error.code === 'messaging/unknown-error') {
+            this.logger.error(
+              `[TRACE-PUSH] Erreur inconnue FCM: ${error.message}`,
+            );
+          } else if (error.status === 401) {
+            this.logger.error(
+              `[TRACE-PUSH] ERREUR 401 lors de l'envoi FCM: ${JSON.stringify(error.response || {})}`,
+            );
+          } else {
+            this.logger.error(
+              `[TRACE-PUSH] Erreur non identifiée: ${error.name}, ${error.message}`,
             );
           }
 
-          results.push({ success: false, error: error.message });
+          results.push({
+            success: false,
+            error: error.message,
+            deviceId: device.id,
+          });
         }
       }
 
+      this.logger.log(
+        `[TRACE-PUSH] Résultats de l'envoi FCM à l'utilisateur ${userId}: ${JSON.stringify(results)}`,
+      );
+
       return {
         success: atLeastOneSuccess,
+        message: atLeastOneSuccess
+          ? `Notification envoyée avec succès à l'utilisateur ${userId}`
+          : `Échec de l'envoi des notifications à l'utilisateur ${userId}`,
         results,
       };
     } catch (error) {
-      this.logger.error("Erreur lors de l'envoi de notification FCM", error);
-      throw error;
+      this.logger.error(
+        `[TRACE-PUSH] Erreur globale lors de l'envoi de notification à l'utilisateur ${userId}: ${error.message}`,
+        error.stack,
+      );
+
+      if (error.status === 401) {
+        this.logger.error(
+          `[TRACE-PUSH] ERREUR 401 DÉTECTÉE dans sendToUser: ${JSON.stringify(error.response || {})}`,
+        );
+        this.logger.error(
+          `[TRACE-PUSH] Headers: ${JSON.stringify(error.headers || {})}`,
+        );
+      }
+
+      return {
+        success: false,
+        message: `Erreur lors de l'envoi de la notification: ${error.message}`,
+      };
+    }
+  }
+
+  /**
+   * Améliore le format des notifications d'événements
+   */
+  private enhanceEventNotification(
+    notification: SendNotificationDto,
+  ): SendNotificationDto {
+    const enhanced = { ...notification };
+
+    switch (notification.data?.type) {
+      case 'EVENT_UPDATED':
+        enhanced.title = '🔄 ' + enhanced.title;
+        if (notification.data?.changes) {
+          enhanced.body = notification.data.changes;
+        }
+        break;
+      case 'EVENT_STATUS_CHANGED':
+        switch (notification.data?.newStatus) {
+          case 'CONFIRMED':
+            enhanced.title = '✅ ' + enhanced.title;
+            break;
+          case 'CANCELLED':
+            enhanced.title = '❌ ' + enhanced.title;
+            break;
+          case 'PENDING':
+            enhanced.title = '⏳ ' + enhanced.title;
+            break;
+        }
+        break;
+      case 'EVENT_CREATED':
+        enhanced.title = '📅 ' + enhanced.title;
+        break;
+      case 'EVENT_DELETED':
+        enhanced.title = '🗑️ ' + enhanced.title;
+        break;
+      case 'EVENT_INVITATION':
+        enhanced.title = '📨 ' + enhanced.title;
+        break;
+      case 'EVENT_REMINDER':
+        enhanced.title = '⏰ ' + enhanced.title;
+        break;
+    }
+
+    return enhanced;
+  }
+
+  /**
+   * Retourne les actions disponibles pour chaque type de notification
+   */
+  private getNotificationActions(
+    type: string | undefined,
+  ): { action: string; title: string }[] {
+    switch (type) {
+      case 'EVENT_UPDATED':
+      case 'EVENT_STATUS_CHANGED':
+      case 'EVENT_CREATED':
+        return [{ action: 'view', title: 'Voir les détails' }];
+      case 'EVENT_INVITATION':
+        return [
+          { action: 'accept', title: 'Accepter' },
+          { action: 'decline', title: 'Refuser' },
+        ];
+      case 'EVENT_REMINDER':
+        return [
+          { action: 'respond', title: 'Répondre' },
+          { action: 'dismiss', title: 'Plus tard' },
+        ];
+      default:
+        return [];
     }
   }
 
@@ -419,7 +653,7 @@ export class PushNotificationService {
             title: notificationDto.title,
             body: notificationDto.body,
           },
-          data: notificationDto.data || {},
+          data: {},
           webpush: {
             fcmOptions: {
               link: notificationDto.url || '',
@@ -427,6 +661,24 @@ export class PushNotificationService {
           },
           tokens: tokens.slice(0, 500), // Firebase limite à 500 tokens par requête
         };
+
+        // Convertir toutes les valeurs dans l'objet data en chaînes de caractères
+        if (notificationDto.data) {
+          const stringifiedData = {};
+          Object.keys(notificationDto.data).forEach((key) => {
+            // Convertir toutes les valeurs en chaînes de caractères
+            stringifiedData[key] =
+              notificationDto.data[key] !== null &&
+              notificationDto.data[key] !== undefined
+                ? String(notificationDto.data[key])
+                : '';
+          });
+          message.data = stringifiedData;
+        }
+
+        this.logger.log(
+          `[TRACE-PUSH] Envoi en masse - Données converties en chaînes: ${JSON.stringify(message.data)}`,
+        );
 
         // Utilisation de l'API de multicast de Firebase
         const batchResponse = await messaging.sendEachForMulticast(message);
