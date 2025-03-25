@@ -2,6 +2,9 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateEventEntity1742914187445 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // Activation de l'extension uuid-ossp
+    await queryRunner.query(`CREATE EXTENSION IF NOT EXISTS "uuid-ossp"`);
+
     // Création de l'enum EventStatus
     await queryRunner.query(`
             CREATE TYPE "event_status_enum" AS ENUM ('PENDING', 'CONFIRMED', 'CANCELLED')
@@ -9,7 +12,7 @@ export class CreateEventEntity1742914187445 implements MigrationInterface {
 
     // Création de l'enum InvitationStatus
     await queryRunner.query(`
-            CREATE TYPE "invitation_status_enum" AS ENUM ('PENDING', 'ACCEPTED', 'DECLINED')
+            CREATE TYPE "invitation_status_enum" AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED')
         `);
 
     // Création de la table Event
@@ -54,5 +57,7 @@ export class CreateEventEntity1742914187445 implements MigrationInterface {
     // Suppression des enums
     await queryRunner.query(`DROP TYPE "invitation_status_enum"`);
     await queryRunner.query(`DROP TYPE "event_status_enum"`);
+
+    // Note: Nous ne supprimons pas l'extension uuid-ossp car elle pourrait être utilisée ailleurs
   }
 }
