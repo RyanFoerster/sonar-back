@@ -18,7 +18,7 @@ export class CreateGroupeInvitationEntity1742914199545
     if (!enumExists[0].exists) {
       // Si l'enum n'existe pas, on le crée avec les valeurs nécessaires pour cette entité
       await queryRunner.query(`
-        CREATE TYPE "invitation_status_enum" AS ENUM ('PENDING', 'ACCEPTED', 'REJECTED')
+        CREATE TYPE "invitation_status_enum" AS ENUM ('PENDING', 'ACCEPTED', 'DECLINED')
       `);
     } else {
       // Si l'enum existe, on vérifie si 'REJECTED' est déjà une valeur possible
@@ -26,7 +26,7 @@ export class CreateGroupeInvitationEntity1742914199545
         SELECT EXISTS (
           SELECT 1 FROM pg_enum 
           WHERE enumtypid = (SELECT oid FROM pg_type WHERE typname = 'invitation_status_enum')
-          AND enumlabel = 'REJECTED'
+          AND enumlabel = 'DECLINED'
         )
       `);
 

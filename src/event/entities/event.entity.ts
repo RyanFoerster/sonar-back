@@ -18,7 +18,7 @@ export enum EventStatus {
 export enum InvitationStatus {
   PENDING = 'PENDING',
   ACCEPTED = 'ACCEPTED',
-  REJECTED = 'REJECTED',
+  DECLINED = 'DECLINED',
 }
 
 export interface InvitedPerson {
