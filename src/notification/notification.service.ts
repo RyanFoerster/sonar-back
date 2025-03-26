@@ -272,4 +272,44 @@ export class NotificationService {
       },
     });
   }
+
+  /**
+   * Envoie une notification d'invitation à un événement
+   */
+  async sendEventInvitationNotification(
+    userId: number,
+    eventId: string,
+    eventTitle: string,
+    groupId: number,
+    organizerName?: string,
+  ): Promise<Notification> {
+    try {
+      const title = 'Nouvelle invitation à un événement';
+      const message = organizerName
+        ? `${organizerName} vous a invité à participer à l'événement "${eventTitle}"`
+        : `Vous avez été invité à participer à l'événement "${eventTitle}"`;
+
+      const notification = await this.create({
+        userId,
+        type: 'event_invitation',
+        title,
+        message,
+        isRead: false,
+        data: {
+          eventId,
+          groupId,
+          eventTitle,
+          organizerName,
+        },
+      });
+
+      return notification;
+    } catch (error) {
+      this.logger.error(
+        `Erreur lors de l'envoi de la notification d'invitation à un événement: ${error.message}`,
+        error.stack,
+      );
+      throw error;
+    }
+  }
 }

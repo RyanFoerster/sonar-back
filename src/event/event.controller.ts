@@ -9,6 +9,7 @@ import {
   UseGuards,
   ParseIntPipe,
   Query,
+  All,
 } from '@nestjs/common';
 import { EventService } from './event.service';
 import { CreateEventDto } from './dto/create-event.dto';
@@ -42,6 +43,14 @@ export class EventController {
   @Get(':groupId/events')
   findAll(@Param('groupId', ParseIntPipe) groupId: number) {
     return this.eventService.findAllByGroup(groupId);
+  }
+
+  /**
+   * Liste tous les événements d'un utilisateur (où il est invité ou organisateur)
+   */
+  @Get('user/:userId/events')
+  findAllByUser(@Param('userId', ParseIntPipe) userId: number) {
+    return this.eventService.findAllByUser(userId);
   }
 
   /**
@@ -118,19 +127,20 @@ export class EventController {
   }
 
   /**
-   * Point d'entrée pour les réponses aux invitations
-   * Ce endpoint n'est pas protégé par JwtAuthGuard pour permettre
-   * aux invités externes de répondre sans authentification
+   * Point d'entrée exact qui correspond à l'URL utilisée par le frontend
    */
   @Post('events/:eventId/response')
-  respondToInvitation(
+  respondToInvitationExact(
     @Param('eventId') eventId: string,
     @Query('personId') personId: string,
-    @Query('token') token: string,
     @Body('status') status: InvitationStatus,
   ) {
-    // TODO: Vérifier le token pour les invités externes
-    // Pour simplifier, on accepte directement la réponse
+    console.log(
+      'Responding to invitation with exact route match:',
+      eventId,
+      personId,
+      status,
+    );
     return this.eventService.respondToInvitation(eventId, personId, status);
   }
 }

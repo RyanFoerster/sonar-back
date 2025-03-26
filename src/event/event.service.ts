@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -15,6 +16,7 @@ import { MailService } from '../mail/mail.services';
 import { PushNotificationService } from '../push-notification/push-notification.service';
 import { v4 as uuidv4 } from 'uuid';
 import { ConfigService } from '@nestjs/config';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class EventService {
@@ -24,6 +26,7 @@ export class EventService {
     private readonly mailService: MailService,
     private readonly pushNotificationService: PushNotificationService,
     private readonly configService: ConfigService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   /**
@@ -100,6 +103,37 @@ export class EventService {
     return this.eventRepository.find({
       where: { groupId },
       order: { startDateTime: 'DESC' },
+    });
+  }
+
+  /**
+   * Trouve tous les événements d'un utilisateur à travers tous les groupes
+   * Inclut les événements où l'utilisateur est invité ou organisateur
+   */
+  async findAllByUser(userId: number): Promise<Event[]> {
+    // Récupérer tous les événements (ou optimiser avec des jointures si nécessaire)
+    const allEvents = await this.eventRepository.find({
+      order: { startDateTime: 'DESC' },
+    });
+
+    // Filtrer pour ne conserver que les événements liés à l'utilisateur
+    return allEvents.filter((event) => {
+      // Vérifier si l'utilisateur est un organisateur
+      const isOrganizer = event.organizers && event.organizers.includes(userId);
+
+      // Vérifier si l'utilisateur est invité
+      const isInvited =
+        event.invitedPeople &&
+        event.invitedPeople.some(
+          (person) =>
+            person.personId === userId || person.personId === userId.toString(),
+        );
+
+      // Vérifier si l'utilisateur est un participant
+      const isParticipant =
+        event.participants && event.participants.includes(userId);
+
+      return isOrganizer || isInvited || isParticipant;
     });
   }
 
@@ -407,8 +441,10 @@ export class EventService {
 
     // Trouver l'invité dans la liste
     const inviteeIndex = event.invitedPeople.findIndex(
-      (person) => person.personId === personId,
+      (person) => person.personId === +personId,
     );
+
+    Logger.debug('event', JSON.stringify(event, null, 2));
 
     if (inviteeIndex === -1) {
       throw new NotFoundException(
@@ -553,6 +589,27 @@ export class EventService {
         eventId: event.id,
       },
     });
+
+    // Envoyer une notification interne via le service de notification
+    try {
+      const organizerNames =
+        event.organizers && event.organizers.length > 0
+          ? 'Un organisateur vous a invité' // Idéalement, récupérer les noms des organisateurs
+          : undefined;
+
+      await this.notificationService.sendEventInvitationNotification(
+        Number(userId),
+        event.id,
+        event.title,
+        event.groupId,
+        organizerNames,
+      );
+    } catch (error) {
+      console.error(
+        "Erreur lors de l'envoi de la notification d'invitation:",
+        error,
+      );
+    }
 
     // TODO: Envoyer également un email si nécessaire
   }
