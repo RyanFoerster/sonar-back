@@ -6,6 +6,7 @@ import { Invoice } from '@/invoice/entities/invoice.entity';
 import { Resend } from 'resend';
 import { S3Service } from '@/services/s3/s3.service';
 import { Event } from '@/event/entities/event.entity';
+import * as QRCode from 'qrcode';
 
 @Injectable()
 export class MailService {
@@ -155,7 +156,7 @@ export class MailService {
               <div style="border: 4px solid #C8C04D; padding: 32px; background-color: #ffffff;">
                 <!-- Titre principal -->
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px;">
-                  <h1 style="font-size: 1.875rem; font-weight: 700; color: #C8C04D; margin: 0;">${isUpdate ? `Devis modifié par le groupe ${project}` : 'Devis à confirmer'}</h1>
+                  <h1 style="font-size: 1.875rem; font-weight: 700; color: #C8C04D; margin: 0;">${isUpdate ? `Devis modifié par le projet ${project}` : 'Devis à confirmer'}</h1>
                   <div style="text-align: right;">
                     ${firstName ? `<p style="color: #4b5563; margin: 0;">${firstName} ${name || ''} ${role ? `- ${role}` : ''}</p>` : ''}
                     ${email ? `<p style="color: #4b5563; margin: 0;">${email}</p>` : ''}
@@ -257,7 +258,7 @@ export class MailService {
 
     const statusText = status === 'accepted' ? 'accepté' : 'refusé';
     const statusColor = status === 'accepted' ? '#10b981' : '#ef4444';
-    const roleText = role === 'GROUP' ? 'Le groupe' : 'Le client';
+    const roleText = role === 'GROUP' ? 'Le projet' : 'Le client';
     const otherRoleParam = role === 'GROUP' ? 'CLIENT' : 'GROUP';
 
     const { data, error } = await this.resend.emails.send({
@@ -389,30 +390,129 @@ export class MailService {
     return data;
   }
 
+  // Méthode utilitaire pour formater les dates
+  private formatDateString(date: Date): string {
+    if (!date) return '';
+    return new Date(date).toLocaleDateString('fr-BE');
+  }
+
+  // Nouvelle méthode pour générer le QR code de paiement
+  private async generatePaymentQRCode(
+    invoice: Invoice,
+    client: any,
+  ): Promise<string | null> {
+    try {
+      // Informations simplifiées pour le QR code
+      const qrCodeText = `IBAN: BE56 1030 5642 6988
+BIC: GKCCBEBB
+Montant: ${Math.abs(invoice.total).toFixed(2)}€
+Référence: Facture ${invoice.invoice_number}`;
+
+      console.log('Génération du QR code avec texte simplifié');
+
+      // Alternative 1: Générer un lien vers un QR code public
+      const encodedText = encodeURIComponent(qrCodeText);
+      const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodedText}`;
+
+      console.log('QR code URL généré:', qrCodeImageUrl);
+      return qrCodeImageUrl;
+    } catch (error) {
+      console.error('Exception lors de la génération du QR code:', error);
+      return null;
+    }
+  }
+
+  private formatDateBelgium(date: Date): string {
+    if (!date) return '';
+    const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
+    return date.toLocaleDateString(
+      'fr-BE',
+      options as Intl.DateTimeFormatOptions,
+    );
+  }
+
   async sendInvoiceEmail(quote: Quote | Invoice, pdfKey: string) {
-    const pdfContent = await this.s3Service.getFile(pdfKey);
+    try {
+      const pdfContent = await this.s3Service.getFile(pdfKey);
 
-    // Déterminer l'environnement pour les liens
-    const config = this.configService.get('isProd') === true ? 'PROD' : 'DEV';
-    const baseUrl =
-      config === 'PROD' ? 'https://sonarartists.be' : 'http://localhost:4200';
+      // Déterminer l'environnement pour les liens
+      const config = this.configService.get('isProd') === true ? 'PROD' : 'DEV';
+      const baseUrl =
+        config === 'PROD' ? 'https://sonarartists.be' : 'http://localhost:4200';
 
-    // Déterminer le numéro de facture
-    const invoiceNumber =
-      'invoice_number' in quote ? quote.invoice_number : quote.id;
+      const cc = this.configService.get('isProd')
+        ? 'vente-0700273583@soligere.clouddemat.be'
+        : '';
 
-    // Déterminer la date de la facture
-    const invoiceDate =
-      'invoice_date' in quote ? this.formatDateString(quote.invoice_date) : '';
+      // Déterminer le numéro de facture
+      const invoiceNumber =
+        'invoice_number' in quote ? quote.invoice_number : quote.id;
 
-    // Déterminer le montant
-    const amount = 'total' in quote ? quote.total : 0;
+      // Déterminer la date de la facture
+      const invoiceDate =
+        'invoice_date' in quote
+          ? this.formatDateString(quote.invoice_date)
+          : '';
 
-    const { data, error } = await this.resend.emails.send({
-      from: 'info@sonarartists.be',
-      to: quote.client.email,
-      subject: `Facture N°${invoiceNumber} - Sonar Artists`,
-      html: `
+      // Déterminer le montant
+      const amount = 'total' in quote ? quote.total : 0;
+
+      // Créer une section pour les informations de paiement
+      const paymentInfoHtml = `
+        <div style="margin: 30px 0; border: 1px solid #e5e7eb; padding: 20px; border-radius: 8px; background-color: #f9fafb;">
+          <p style="color: #1f2937; font-weight: 600; margin-bottom: 15px; font-size: 16px;">Informations de paiement</p>
+          <p style="color: #4b5563; margin: 5px 0;">IBAN: BE56 1030 5642 6988</p>
+          <p style="color: #4b5563; margin: 5px 0;">BIC: GKCCBEBB</p>
+          <p style="color: #4b5563; margin: 5px 0;">Montant: ${amount.toFixed(2)}€</p>
+          <p style="color: #4b5563; margin: 5px 0;">Référence: Facture N°${invoiceNumber}</p>
+        </div>
+      `;
+
+      // Variable pour stocker le QR code HTML
+      let qrCodeHtml = '';
+
+      // Essayer de générer le QR code seulement si c'est une facture
+      if ('invoice_number' in quote) {
+        try {
+          console.log(
+            'Tentative de génération du QR code pour la facture',
+            invoiceNumber,
+          );
+          const qrCodeUrl = await this.generatePaymentQRCode(
+            quote,
+            quote.client,
+          );
+
+          if (qrCodeUrl) {
+            console.log(
+              "QR code généré avec succès, ajout à l'email avec URL:",
+              qrCodeUrl,
+            );
+
+            // Créer le HTML pour le QR code avec URL externe
+            qrCodeHtml = `
+              <div style="text-align: center; margin: 20px 0;">
+                <p style="color: #1f2937; font-weight: 600; margin-bottom: 15px;">Paiement par QR code</p>
+                <img src="${qrCodeUrl}" alt="QR Code de paiement" style="width: 150px; height: 150px; border: 1px solid #e5e7eb;" />
+                <p style="color: #6b7280; font-size: 14px; margin-top: 15px;">Scannez ce QR code avec votre application bancaire pour effectuer le paiement</p>
+              </div>
+            `;
+          } else {
+            console.log('Génération du QR code échouée, valeur null retournée');
+          }
+        } catch (error) {
+          console.error(
+            'Erreur lors de la génération/intégration du QR code:',
+            error,
+          );
+        }
+      }
+
+      // Construire l'email
+      console.log("Construction du corps de l'email...");
+
+      // Note: ne pas modifier le reste du code de l'email
+      const emailHtml = `
         <!DOCTYPE html>
         <html lang="fr">
         <head>
@@ -461,6 +561,12 @@ export class MailService {
                   <p style="color: #1f2937; margin-bottom: 24px;">${quote.client.name}</p>
                 </div>
 
+                <!-- Informations de paiement -->
+                ${paymentInfoHtml}
+
+                <!-- QR Code de paiement si disponible -->
+                ${qrCodeHtml}
+
                 <!-- Message de paiement -->
                 <p style="color: #1f2937; margin-bottom: 24px;">Merci de bien vouloir procéder au paiement selon les modalités indiquées sur la facture.</p>
 
@@ -486,98 +592,156 @@ export class MailService {
           </div>
         </body>
         </html>
-      `,
-      attachments: [
-        {
-          filename: `facture_${invoiceNumber}_${quote.client.name}.pdf`,
-          content: pdfContent,
-        },
-      ],
-    });
+      `;
 
-    if (error) {
-      Logger.error('Error:', error.message);
-      throw error;
-    }
-
-    return data;
-  }
-
-  // Méthode utilitaire pour formater les dates
-  private formatDateString(date: Date): string {
-    if (!date) return '';
-    return new Date(date).toLocaleDateString('fr-BE');
-  }
-
-  async sendCreditNoteEmail(creditNote: Invoice, pdfContent: any) {
-    const API_KEY =
-      this.configService.get('isProd') === true
-        ? this.configService.get('mailhub.api_key_prod')
-        : this.configService.get('mailhub.api_key_dev');
-
-    try {
-      // Vérifier la taille du PDF avant encodage
-      const pdfSizeInMB = Buffer.from(pdfContent).length / (1024 * 1024);
-
-      // Si la taille est supérieure à 7.5MB, on risque de dépasser la limite après encodage en base64
-      if (pdfSizeInMB > 7.5) {
-      }
-
-      // Convertir l'arraybuffer en base64
-      const base64Content = Buffer.from(pdfContent).toString('base64');
-      const base64SizeInMB = base64Content.length / (1024 * 1024);
-
-      const requestBody = {
-        layout_identifier: 'tp-5eded5ab563d474d',
-        variables: {
-          invoice_number: creditNote.invoice_number,
-          account_name: creditNote.main_account
-            ? creditNote.main_account.username
-            : '',
-        },
-        from: 'info@sonarartists.fr',
-        to: creditNote.client.email, // Utiliser l'email du client au lieu d'une adresse en dur
-        subject: `Facture de ${creditNote.client.name}`,
-        language: null,
+      console.log("Envoi de l'email avec Resend...");
+      const { data, error } = await this.resend.emails.send({
+        from: 'info@sonarartists.be',
+        to: quote.client.email,
+        subject: `Facture N°${invoiceNumber} - Sonar Artists`,
+        cc,
+        html: emailHtml,
         attachments: [
           {
-            filename: `facture_${creditNote.id}_${creditNote.client.name}.pdf`,
-            content: base64Content,
-            contentType: 'application/pdf',
+            filename: `facture_${invoiceNumber}_${quote.client.name}.pdf`,
+            content: pdfContent,
           },
         ],
-      };
+      });
 
-      // Calculer la taille approximative de la requête
-      const payloadSize = JSON.stringify(requestBody).length / (1024 * 1024);
-
-      if (payloadSize > 9.5) {
-        Logger.warn(
-          `La requête est proche ou dépasse la limite de 10MB (${payloadSize.toFixed(2)} MB)`,
-        );
+      if (error) {
+        console.error('Erreur Resend:', error.message);
+        throw error;
       }
 
-      const response = await axios.post(
-        'https://api.mailhub.sh/v1/send',
-        requestBody,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${API_KEY}`,
-          },
-          maxBodyLength: Infinity,
-          maxContentLength: Infinity,
-          timeout: 60000, // Augmenter le timeout à 60 secondes pour les requêtes volumineuses
-        },
-      );
-
-      return response.data;
+      console.log('Email envoyé avec succès à', quote.client.email);
+      return data;
     } catch (error) {
-      Logger.error(
-        `Erreur lors de l'envoi de l'email de facture pour le devis ${creditNote.id}:`,
-        error.response?.data || error.message,
-      );
+      console.error("Exception lors de l'envoi de l'email:", error);
       throw error;
+    }
+  }
+
+  async sendCreditNoteEmail(creditNote: Invoice, pdfContent: Buffer) {
+    // Déterminer l'environnement pour les liens et CC
+    const isProd = this.configService.get('isProd') === true;
+    const baseUrl = isProd
+      ? 'https://sonarartists.be'
+      : 'http://localhost:4200';
+    const cc = isProd ? 'vente-0700273583@soligere.clouddemat.be' : '';
+
+    const creditNoteNumber = creditNote.invoice_number;
+    // Utilisation de || '' pour gérer le cas où invoice_date pourrait être null/undefined
+    const creditNoteDate = this.formatDateString(
+      creditNote.invoice_date || new Date(),
+    );
+    const amount = creditNote.total; // Assurez-vous que total existe sur Invoice
+
+    try {
+      const { data, error } = await this.resend.emails.send({
+        from: 'info@sonarartists.be',
+        to: creditNote.client.email,
+        cc: cc || undefined,
+        subject: `Note de crédit N°${creditNoteNumber} - Sonar Artists`,
+        html: `
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Note de crédit Sonar Artists</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Montserrat', Arial, sans-serif; background-color: #f4f4f4; color: #333333; min-height: 100vh;">
+          <div style="min-height: 100%; display: flex; justify-content: space-between; max-width: 600px; margin: 0 auto;">
+            <div style="width: 100%;">
+              <!-- En-tête avec logo Sonar -->
+              <div style="background-color: #ffffff; padding: 16px; display: flex; align-items: center; gap: 8px;">
+                <img src="https://sonarartists.be/logo-SONAR.png" alt="Sonar" style="width: 32px; height: auto;" />
+                <img src="https://sonarartists.be/sonar-texte.png" alt="Sonar" style="width: 80px; height: auto;" />
+              </div>
+
+              <!-- Contenu principal avec bordure jaune -->
+              <div style="border: 4px solid #C8C04D; padding: 32px; background-color: #ffffff;">
+                <!-- Titre principal -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px;">
+                  <h1 style="font-size: 1.875rem; font-weight: 700; color: #C8C04D; margin: 0;">Note de Crédit</h1>
+                  <div style="text-align: right;">
+                    <p style="color: #4b5563; margin: 0;">${creditNote.client.name}</p>
+                    <p style="color: #4b5563; margin: 0;">${creditNote.client.email}</p>
+                  </div>
+                </div>
+
+                <!-- Salutation -->
+                <p style="color: #1f2937; margin-bottom: 24px;">Chèr·e client·e,</p>
+
+                <!-- Corps du message -->
+                <p style="color: #1f2937; margin-bottom: 24px;">Veuillez trouver ci-joint votre note de crédit :</p>
+
+                <!-- Détails de la note de crédit -->
+                <div style="margin-bottom: 24px;">
+                  <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Numéro de note de crédit :</span></p>
+                  <p style="color: #1f2937; margin-bottom: 16px;">N°${creditNoteNumber}</p>
+
+                  <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Date :</span></p>
+                  <p style="color: #1f2937; margin-bottom: 16px;">${creditNoteDate}</p>
+
+                  <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Montant total :</span></p>
+                  <p style="color: #1f2937; margin-bottom: 16px;">${amount !== undefined && amount !== null ? amount.toFixed(2) : 'N/A'}€</p>
+
+                  <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Associée à :</span></p>
+                  <p style="color: #1f2937; margin-bottom: 24px;">${creditNote.client.name}</p>
+                </div>
+
+                <!-- Signature -->
+                <p style="color: #1f2937; margin-bottom: 8px;">Je vous remercie pour votre confiance,</p>
+                <p style="color: #1f2937; margin-bottom: 32px;">L'équipe Sonar Artists</p>
+
+                <!-- Pied de page -->
+                <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #d1d5db;">
+                  <p style="color: #4b5563; margin-bottom: 4px;">powered by</p>
+                  <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0;">
+                    <img src="https://sonarartists.be/logo-SONAR.png" alt="Sonar" style="width: 32px; height: auto;" />
+                    <img src="https://sonarartists.be/sonar-texte.png" alt="Sonar" style="width: 80px; height: auto;" />
+                  </div>
+
+                  <p style="color: #C8C04D; margin-bottom: 4px;">+32 498 62 45 65</p>
+                  <p style="color: #C8C04D; margin-bottom: 4px;">info@sonarartists.be</p>
+                  <p style="color: #4b5563; margin-bottom: 4px;">Rue Francisco Ferrer 6</p>
+                  <p style="color: #4b5563; margin-bottom: 0;">4460 GRÂCE-BERLEUR</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+        attachments: [
+          {
+            filename: `note_credit_${creditNoteNumber}_${creditNote.client.name}.pdf`,
+            content: pdfContent, // Passer le Buffer directement
+          },
+        ],
+      });
+
+      if (error) {
+        Logger.error(
+          `Erreur lors de l'envoi de l'email de note de crédit pour ${creditNote.client.name} (N° ${creditNoteNumber}):`,
+          error.message,
+        );
+        throw error;
+      }
+
+      Logger.log(
+        `Email de note de crédit envoyé à ${creditNote.client.email} (N° ${creditNoteNumber})`,
+      );
+      return data;
+    } catch (error) {
+      // L'erreur est déjà loggée dans le bloc if(error), mais on relance pour la gestion globale
+      Logger.error(
+        `Erreur inattendue lors de la tentative d'envoi de l'email de note de crédit N° ${creditNoteNumber}:`,
+        error instanceof Error ? error.stack : String(error), // Gestion améliorée des erreurs
+      );
+      throw error; // Relancer l'erreur pour que l'appelant puisse la gérer
     }
   }
 

@@ -120,6 +120,7 @@ export class QuoteService {
     createQuoteDto: CreateQuoteDto,
     user_id: number,
     files: Express.Multer.File[],
+    isDoubleValidation: boolean,
   ) {
     // Validation de base
     if (!createQuoteDto.client_id || !createQuoteDto.products_id?.length) {
@@ -268,6 +269,12 @@ export class QuoteService {
     const userConnected = await this.usersService.findOne(user_id);
     quote.created_by_mail = userConnected.email;
     quote = await this.quoteRepository.save(quote);
+    if (isDoubleValidation !== true) {
+      Logger.log('updateQuoteGroupAcceptance');
+      setTimeout(() => {
+        this.updateQuoteGroupAcceptance(quote.id);
+      }, 3000);
+    }
 
     // Envoi des emails avec les pièces jointes
     const sendEmail = async (
@@ -332,8 +339,16 @@ export class QuoteService {
   }
 
   findOne(id: number) {
-    const response = this.quoteRepository.findOneBy({ id });
-    return response;
+    return this.quoteRepository.findOne({
+      where: { id },
+      relations: {
+        products: true,
+        client: true,
+        group_account: true,
+        main_account: true,
+        // Ne pas charger invoice pour éviter la boucle
+      },
+    });
   }
 
   findOneWithoutRelation(id: number) {
@@ -356,6 +371,7 @@ export class QuoteService {
     updateQuoteDto: UpdateQuoteDto,
     user_id: number,
     files: Express.Multer.File[],
+    isDoubleValidation: boolean,
   ) {
     let quote: Quote = await this.findOne(+id);
     if (!quote) {
@@ -517,6 +533,13 @@ export class QuoteService {
     // Mise à jour des statuts
     quote.group_acceptance = 'pending';
     quote.order_giver_acceptance = 'pending';
+
+    if (isDoubleValidation !== true) {
+      Logger.log('updateQuoteGroupAcceptance IN UPDATE');
+      setTimeout(() => {
+        this.updateQuoteGroupAcceptance(quote.id);
+      }, 3000);
+    }
 
     // Sauvegarde du devis
     try {
