@@ -12,6 +12,8 @@ import {
   Logger,
   Res,
   NotFoundException,
+  Query,
+  ParseBoolPipe,
 } from '@nestjs/common';
 import { QuoteService } from './quote.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
@@ -30,9 +32,15 @@ export class QuoteController {
     @Body() body: { data: string },
     @Req() req,
     @UploadedFiles() files: Express.Multer.File[],
+    @Query('isDoubleValidation', ParseBoolPipe) isDoubleValidation: boolean,
   ) {
     const createQuoteDto = JSON.parse(body.data) as CreateQuoteDto;
-    return this.quoteService.create(createQuoteDto, req.user.id, files || []);
+    return this.quoteService.create(
+      createQuoteDto,
+      req.user.id,
+      files || [],
+      isDoubleValidation,
+    );
   }
 
   @Get()
@@ -53,6 +61,7 @@ export class QuoteController {
     @Body() body: { data: string },
     @Req() req,
     @UploadedFiles() files: Express.Multer.File[],
+    @Query('isDoubleValidation', ParseBoolPipe) isDoubleValidation: boolean,
   ) {
     const updateQuoteDto = JSON.parse(body.data) as UpdateQuoteDto;
     return this.quoteService.update(
@@ -60,6 +69,7 @@ export class QuoteController {
       updateQuoteDto,
       req.user.id,
       files || [],
+      isDoubleValidation,
     );
   }
 

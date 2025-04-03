@@ -37,7 +37,7 @@ export class InvoiceService {
     city: '4460 Grâce-Hollogne, Belgique',
     email: 'info@sonarartists.be',
     vat: 'TVA BE0700273583',
-    iban: 'BE0700273583', // À remplacer par l'IBAN réel
+    iban: 'BE56 1030 5642 6988', // À remplacer par l'IBAN réel
     bic: 'GEBABEBB', // À remplacer par le BIC réel
   };
 
@@ -65,6 +65,7 @@ export class InvoiceService {
     params: { account_id: number; type: 'PRINCIPAL' | 'GROUP' },
   ) {
     let quoteFromDB = await this.quoteService.findOne(quoteObject.id);
+    Logger.log('QUOTE FROM DB', JSON.stringify(quoteFromDB, null, 2));
     let account;
     let userFromDB = await this.usersService.findOne(user.id);
 
@@ -149,7 +150,10 @@ export class InvoiceService {
   async createInvoiceFromQuote(quote: Quote) {
     const currentDate = new Date();
     let group;
-    Logger.log(JSON.stringify(quote, null, 2));
+    Logger.log(
+      'QUOTE IN CREATE INVOICE FROM QUOTE',
+      JSON.stringify(quote, null, 2),
+    );
     if (quote.group_account) {
       group = await this.compteGroupeService.findOne(quote.group_account.id);
     } else {
@@ -1040,7 +1044,7 @@ export class InvoiceService {
 
       const pdf = await this.generateCreditNotePDF(creditNote);
 
-      this.mailService.sendCreditNoteEmail(creditNote, pdf);
+      this.mailService.sendCreditNoteEmail(creditNote, Buffer.from(pdf));
 
       // Sauvegarder la note de crédit
       return true;
