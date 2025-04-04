@@ -11,6 +11,7 @@ import { MailService } from '../mail/mail.services';
 import { UsersModule } from '../users/users.module';
 import { S3Module } from '@/services/s3/s3.module';
 import { InvoiceModule } from '@/invoice/invoice.module';
+import { MailModule } from '@/mail/mail.module';
 
 @Module({
   controllers: [QuoteController],
@@ -25,6 +26,7 @@ import { InvoiceModule } from '@/invoice/invoice.module';
     UsersModule,
     S3Module,
     forwardRef(() => InvoiceModule),
+    forwardRef(() => MailModule),
   ],
 })
 export class QuoteModule {}

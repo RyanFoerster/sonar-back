@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { InvoiceService } from './invoice.service';
 import { InvoiceController } from './invoice.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -12,6 +12,7 @@ import { ComptePrincipalModule } from '../compte_principal/compte_principal.modu
 import { MailService } from '../mail/mail.services';
 import { AssetsService } from '../services/assets.service';
 import { S3Module } from '@/services/s3/s3.module';
+import { MailModule } from '@/mail/mail.module';
 
 @Module({
   controllers: [InvoiceController],
@@ -28,6 +29,7 @@ import { S3Module } from '@/services/s3/s3.module';
     ComptePrincipalModule,
     UsersModule,
     S3Module,
+    forwardRef(() => MailModule),
   ],
 })
 export class InvoiceModule {}

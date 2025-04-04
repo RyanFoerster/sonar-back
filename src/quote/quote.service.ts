@@ -34,6 +34,7 @@ export class QuoteService {
     private productService: ProductService,
     private comptePrincipalService: ComptePrincipalService,
     private compteGroupeService: CompteGroupeService,
+    @Inject(forwardRef(() => MailService))
     private readonly mailService: MailService,
     private readonly s3Service: S3Service,
     @Inject(forwardRef(() => InvoiceService))
@@ -268,13 +269,12 @@ export class QuoteService {
 
     const userConnected = await this.usersService.findOne(user_id);
     quote.created_by_mail = userConnected.email;
-    quote = await this.quoteRepository.save(quote);
+    Logger.log('[QuoteService] isDoubleValidation', isDoubleValidation);
     if (isDoubleValidation !== true) {
       Logger.log('updateQuoteGroupAcceptance');
-      setTimeout(() => {
-        this.updateQuoteGroupAcceptance(quote.id);
-      }, 3000);
+      quote.group_acceptance = 'accepted';
     }
+    quote = await this.quoteRepository.save(quote);
 
     // Envoi des emails avec les pièces jointes
     const sendEmail = async (
@@ -328,7 +328,9 @@ export class QuoteService {
     // Envoyer les emails en parallèle
     await Promise.all([
       sendEmail(quote.client.email, quote.client.name, 'CLIENT'),
-      sendEmail(userConnected.email, userConnected.firstName, 'GROUP'),
+      isDoubleValidation
+        ? sendEmail(userConnected.email, userConnected.firstName, 'GROUP')
+        : null,
     ]);
 
     return quote ? true : false;
@@ -536,9 +538,7 @@ export class QuoteService {
 
     if (isDoubleValidation !== true) {
       Logger.log('updateQuoteGroupAcceptance IN UPDATE');
-      setTimeout(() => {
-        this.updateQuoteGroupAcceptance(quote.id);
-      }, 3000);
+      quote.group_acceptance = 'accepted';
     }
 
     // Sauvegarde du devis
@@ -606,7 +606,9 @@ export class QuoteService {
     try {
       await Promise.all([
         sendEmail(quote.client.email, quote.client.name, 'CLIENT'),
-        sendEmail(userConnected.email, userConnected.firstName, 'GROUP'),
+        isDoubleValidation
+          ? sendEmail(userConnected.email, userConnected.firstName, 'GROUP')
+          : null,
       ]);
     } catch (error) {
       Logger.error("Erreur lors de l'envoi des emails:", error);
@@ -1004,6 +1006,80 @@ export class QuoteService {
       throw new NotFoundException(
         'Erreur lors de la récupération de la pièce jointe',
       );
+    }
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  async sendQuoteReminderEmails() {
+    const quotes = await this.quoteRepository.find({
+      where: {
+        status: 'pending',
+      },
+      relations: ['client'],
+    });
+    Logger.log(
+      `[QuoteService] Sending quote reminder emails for ${quotes.length} quotes`,
+    );
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    for (const quote of quotes) {
+      if (!quote.validation_deadline) continue;
+
+      const deadline = new Date(quote.validation_deadline);
+      deadline.setHours(0, 0, 0, 0);
+
+      // Calculer la différence en jours
+      const diffTime = deadline.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      // Envoyer le rappel uniquement si le devis expire demain
+      if (diffDays === 1) {
+        Logger.log(
+          `[QuoteService] Sending quote reminder emails for quote ${quote.id}`,
+        );
+        // Envoyer un rappel au client si nécessaire
+        if (quote.order_giver_acceptance === 'pending') {
+          await this.mailService.sendQuoteReminderEmail(
+            quote.client.email,
+            quote.client.name,
+            quote.id,
+            'CLIENT',
+            quote.client.email,
+            this.formatDate(quote.quote_date),
+            quote.comment,
+            quote.price_htva,
+            quote.client.name,
+            this.formatDate(quote.validation_deadline),
+
+            undefined,
+            quote.attachment_url,
+            quote.attachment_url?.map((url) => this.extractFileName(url)),
+            quote.created_by_project_name,
+          );
+        }
+
+        // Envoyer un rappel au projet si nécessaire
+        if (quote.group_acceptance === 'pending' && quote.created_by_mail) {
+          await this.mailService.sendQuoteReminderEmail(
+            quote.created_by_mail,
+            quote.created_by_project_name,
+            quote.id,
+            'GROUP',
+            quote.created_by_mail,
+            this.formatDate(quote.quote_date),
+            quote.comment,
+            quote.price_htva,
+            quote.client.name,
+            this.formatDate(quote.validation_deadline),
+
+            undefined,
+            quote.attachment_url,
+            quote.attachment_url?.map((url) => this.extractFileName(url)),
+            quote.created_by_project_name,
+          );
+        }
+      }
     }
   }
 }
