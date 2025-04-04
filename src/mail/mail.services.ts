@@ -7,12 +7,14 @@ import { Resend } from 'resend';
 import { S3Service } from '@/services/s3/s3.service';
 import { Event } from '@/event/entities/event.entity';
 import * as QRCode from 'qrcode';
+import { InvoiceService } from '@/invoice/invoice.service';
 
 @Injectable()
 export class MailService {
   constructor(
     private readonly configService: ConfigService,
     private readonly s3Service: S3Service,
+    private readonly invoiceService: InvoiceService,
   ) {}
 
   private readonly resend = new Resend(
@@ -125,16 +127,16 @@ export class MailService {
     const baseUrl =
       config === 'PROD' ? 'https://sonarartists.be' : 'http://localhost:4200';
 
-    const attachmentsToSend = attachments.map((attachment, index) => ({
-      path: attachment,
-      filename: attachmentNames[index],
-    }));
+    // const attachmentsToSend = attachments.map((attachment, index) => ({
+    //   path: attachment,
+    //   filename: attachmentNames[index],
+    // }));
 
     const { data, error } = await this.resend.emails.send({
       from: 'info@sonarartists.be',
       to,
       subject: 'Acceptation de devis',
-      attachments: attachmentsToSend,
+      // attachments: attachmentsToSend,
       html: `
         <!DOCTYPE html>
         <html lang="fr">
@@ -402,17 +404,26 @@ export class MailService {
     client: any,
   ): Promise<string | null> {
     try {
-      // Informations simplifiées pour le QR code
-      const qrCodeText = `IBAN: BE56 1030 5642 6988
-BIC: GKCCBEBB
-Montant: ${Math.abs(invoice.total).toFixed(2)}€
-Référence: Facture ${invoice.invoice_number}`;
+      // Format EPC069-12 pour les virements SEPA
+      const reference = `facture_${new Date().getFullYear()}/000${invoice.invoice_number}`;
+      const qrData = [
+        'BCD', // Service Tag
+        '002', // Version
+        '1', // Character Set
+        'SCT', // Identification
+        'GKCCBEBB', // BIC
+        'Sonar Artists ASBL', // Nom du bénéficiaire
+        'BE56103056426988', // IBAN
+        `EUR${Math.abs(invoice.total).toFixed(2)}`, // Montant
+        '', // Purpose (peut être laissé vide)
+        reference, // Référence personnalisée
+        `FACTURE ${new Date().getFullYear()}/000${invoice.invoice_number}`, // Description détaillée
+      ].join('\n');
 
-      console.log('Génération du QR code avec texte simplifié');
+      console.log('Génération du QR code avec format EPC069-12');
 
-      // Alternative 1: Générer un lien vers un QR code public
-      const encodedText = encodeURIComponent(qrCodeText);
-      const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodedText}`;
+      // Générer le QR code avec les options appropriées
+      const qrCodeImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&data=${encodeURIComponent(qrData)}`;
 
       console.log('QR code URL généré:', qrCodeImageUrl);
       return qrCodeImageUrl;
@@ -431,7 +442,7 @@ Référence: Facture ${invoice.invoice_number}`;
     );
   }
 
-  async sendInvoiceEmail(quote: Quote | Invoice, pdfKey: string) {
+  async sendInvoiceEmail(quote: Invoice, pdfKey: string) {
     try {
       const pdfContent = await this.s3Service.getFile(pdfKey);
 
@@ -443,16 +454,8 @@ Référence: Facture ${invoice.invoice_number}`;
       const cc = this.configService.get('isProd')
         ? 'vente-0700273583@soligere.clouddemat.be'
         : '';
-
-      // Déterminer le numéro de facture
-      const invoiceNumber =
-        'invoice_number' in quote ? quote.invoice_number : quote.id;
-
-      // Déterminer la date de la facture
-      const invoiceDate =
-        'invoice_date' in quote
-          ? this.formatDateString(quote.invoice_date)
-          : '';
+      let invoiceNumber: number = quote.invoice_number;
+      let invoiceDate: string = this.formatDateString(quote.invoice_date);
 
       // Déterminer le montant
       const amount = 'total' in quote ? quote.total : 0;
@@ -464,7 +467,7 @@ Référence: Facture ${invoice.invoice_number}`;
           <p style="color: #4b5563; margin: 5px 0;">IBAN: BE56 1030 5642 6988</p>
           <p style="color: #4b5563; margin: 5px 0;">BIC: GKCCBEBB</p>
           <p style="color: #4b5563; margin: 5px 0;">Montant: ${amount.toFixed(2)}€</p>
-          <p style="color: #4b5563; margin: 5px 0;">Référence: Facture N°${invoiceNumber}</p>
+          <p style="color: #4b5563; margin: 5px 0;">Référence: Facture N°${new Date().getFullYear()}/000${invoiceNumber}</p>
         </div>
       `;
 
@@ -472,7 +475,7 @@ Référence: Facture ${invoice.invoice_number}`;
       let qrCodeHtml = '';
 
       // Essayer de générer le QR code seulement si c'est une facture
-      if ('invoice_number' in quote) {
+      if (quote.invoice_number) {
         try {
           console.log(
             'Tentative de génération du QR code pour la facture',
@@ -549,7 +552,7 @@ Référence: Facture ${invoice.invoice_number}`;
                 <!-- Détails de la facture -->
                 <div style="margin-bottom: 24px;">
                   <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Numéro de facture :</span></p>
-                  <p style="color: #1f2937; margin-bottom: 16px;">N°${invoiceNumber}</p>
+                  <p style="color: #1f2937; margin-bottom: 16px;">N°${new Date().getFullYear()}/000${invoiceNumber}</p>
                   
                   <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Date :</span></p>
                   <p style="color: #1f2937; margin-bottom: 16px;">${invoiceDate}</p>
@@ -598,12 +601,12 @@ Référence: Facture ${invoice.invoice_number}`;
       const { data, error } = await this.resend.emails.send({
         from: 'info@sonarartists.be',
         to: quote.client.email,
-        subject: `Facture N°${invoiceNumber} - Sonar Artists`,
-        cc,
+        subject: `Facture N°${new Date().getFullYear()}/000${invoiceNumber}`,
+        bcc: cc || undefined,
         html: emailHtml,
         attachments: [
           {
-            filename: `facture_${invoiceNumber}_${quote.client.name}.pdf`,
+            filename: `facture_${new Date().getFullYear()}/000${invoiceNumber}.pdf`,
             content: pdfContent,
           },
         ],
@@ -641,7 +644,7 @@ Référence: Facture ${invoice.invoice_number}`;
       const { data, error } = await this.resend.emails.send({
         from: 'info@sonarartists.be',
         to: creditNote.client.email,
-        cc: cc || undefined,
+        bcc: cc || undefined,
         subject: `Note de crédit N°${creditNoteNumber} - Sonar Artists`,
         html: `
         <!DOCTYPE html>
@@ -875,8 +878,7 @@ Référence: Facture ${invoice.invoice_number}`;
       from: 'info@sonarartists.be',
       to,
       subject: `Invitation à l'événement : ${event.title}`,
-      html: `
-        <!DOCTYPE html>
+      html: `        <!DOCTYPE html>
         <html lang="fr">
         <head>
           <meta charset="UTF-8">
@@ -1079,6 +1081,133 @@ Référence: Facture ${invoice.invoice_number}`;
               </td>
             </tr>
           </table>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      Logger.error('Error:', error.message);
+      throw error;
+    }
+
+    return data;
+  }
+
+  async sendQuoteReminderEmail(
+    to: string,
+    firstName: string,
+    quote_id: number,
+    role: 'GROUP' | 'CLIENT',
+    email: string,
+    date: string,
+    comment: string,
+    amount: number,
+    client: string,
+    validationDeadline: string,
+
+    name?: string,
+    attachments?: string[],
+    attachmentNames?: string[],
+    project?: string,
+  ) {
+    // Déterminer l'environnement pour les liens
+    const config = this.configService.get('isProd') === true ? 'PROD' : 'DEV';
+    const baseUrl =
+      config === 'PROD' ? 'https://sonarartists.be' : 'http://localhost:4200';
+
+    const { data, error } = await this.resend.emails.send({
+      from: 'info@sonarartists.be',
+      to,
+      subject: 'Rappel - Devis à confirmer avant expiration',
+      html: `        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Rappel - Devis à confirmer</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Montserrat', Arial, sans-serif; background-color: #f4f4f4; color: #333333; min-height: 100vh;">
+          <div style="min-height: 100%; display: flex; justify-content: space-between; max-width: 600px; margin: 0 auto;">
+            <div style="width: 100%;">
+              <!-- En-tête avec logo Sonar -->
+              <div style="background-color: #ffffff; padding: 16px; display: flex; align-items: center; gap: 8px;">
+                <img src="https://sonarartists.be/logo-SONAR.png" alt="Sonar" style="width: 32px; height: auto;" />
+                <img src="https://sonarartists.be/sonar-texte.png" alt="Sonar" style="width: 80px; height: auto;" />
+              </div>
+
+              <!-- Contenu principal avec bordure rouge -->
+              <div style="border: 4px solid #ef4444; padding: 32px; background-color: #ffffff;">
+                <!-- Titre principal -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px;">
+                  <h1 style="font-size: 1.875rem; font-weight: 700; color: #ef4444; margin: 0;">Rappel - Devis à confirmer</h1>
+                  <div style="text-align: right;">
+                    ${firstName ? `<p style="color: #4b5563; margin: 0;">${firstName} ${name || ''} ${role ? `- ${role}` : ''}</p>` : ''}
+                    ${email ? `<p style="color: #4b5563; margin: 0;">${email}</p>` : ''}
+                  </div>
+                </div>
+
+                <!-- Message d'urgence -->
+                <div style="background-color: #fef2f2; border: 1px solid #ef4444; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+                  <p style="color: #ef4444; font-weight: 600; margin: 0;">
+                    Attention ! Ce devis expire demain (${validationDeadline}). Veuillez le confirmer ou le refuser avant cette date.
+                  </p>
+                </div>
+
+                <!-- Salutation -->
+                <p style="color: #1f2937; margin-bottom: 24px;">Chèr·e ${firstName} ${name || ''},</p>
+
+                <!-- Corps du message -->
+                <p style="color: #1f2937; margin-bottom: 24px;">Nous vous rappelons que le devis suivant est toujours en attente de votre confirmation :</p>
+
+                <!-- Détails du devis -->
+                <div style="margin-bottom: 24px;">
+                  ${
+                    project
+                      ? `
+                    <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Nom du projet :</span></p>
+                    <p style="color: #1f2937; margin-bottom: 16px;">${project}</p>
+                  `
+                      : ''
+                  }
+                  
+                  <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Dates :</span></p>
+                  <p style="color: #1f2937; margin-bottom: 16px;">${date || ''}</p>
+
+                  <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Montant HTVA :</span></p>
+                  <p style="color: #1f2937; margin-bottom: 16px;">${amount.toFixed(2) || ''}€</p>
+
+                  <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">À facturer à :</span></p>
+                  <p style="color: #1f2937; margin-bottom: 24px;">${client || ''}</p>
+                </div>
+
+                <!-- Bouton d'action -->
+                <div style="display: flex; justify-content: center; margin-top: 24px; margin-bottom: 24px;">
+                  <a href="${baseUrl}/quote-decision?quote_id=${quote_id}&role=${role}" target="_blank" style="background-color: #ef4444; color: #ffffff; padding: 8px 24px; border-radius: 9999px; font-size: 1.125rem; font-weight: 600; text-decoration: none; display: inline-block;">
+                    Voir le devis
+                  </a>
+                </div>
+
+                <!-- Signature -->
+                <p style="color: #1f2937; margin-bottom: 8px;">Je vous remercie pour votre confiance,</p>
+                <p style="color: #1f2937; margin-bottom: 32px;">L'équipe Sonar Artists</p>
+
+                <!-- Pied de page -->
+                <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #d1d5db;">
+                  <p style="color: #4b5563; margin-bottom: 4px;">powered by</p>
+                  <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0;">
+                    <img src="https://sonarartists.be/logo-SONAR.png" alt="Sonar" style="width: 32px; height: auto;" />
+                    <img src="https://sonarartists.be/sonar-texte.png" alt="Sonar" style="width: 80px; height: auto;" />
+                  </div>
+
+                  <p style="color: #C8C04D; margin-bottom: 4px;">+32 498 62 45 65</p>
+                  <p style="color: #C8C04D; margin-bottom: 4px;">info@sonarartists.be</p>
+                  <p style="color: #4b5563; margin-bottom: 4px;">Rue Francisco Ferrer 6</p>
+                  <p style="color: #4b5563; margin-bottom: 0;">4460 GRÂCE-BERLEUR</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </body>
         </html>
       `,

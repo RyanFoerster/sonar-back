@@ -2,6 +2,8 @@ import { Product } from '@/product/entities/product.entity';
 import { ProductService } from '@/product/product.service';
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   Logger,
   UnauthorizedException,
@@ -52,6 +54,7 @@ export class InvoiceService {
     private comptePrincipalService: ComptePrincipalService,
     private compteGroupeService: CompteGroupeService,
     private dataSource: DataSource,
+    @Inject(forwardRef(() => MailService))
     private mailService: MailService,
     private usersService: UsersService,
     private productService: ProductService,
@@ -138,7 +141,7 @@ export class InvoiceService {
       'invoices',
       invoiceCreated.id,
     );
-    this.mailService.sendInvoiceEmail(quoteFromDB, pdfKey);
+    this.mailService.sendInvoiceEmail(invoiceCreated, pdfKey);
 
     return await this._invoiceRepository.findOneBy({ id: invoiceCreated.id });
   }
@@ -199,11 +202,17 @@ export class InvoiceService {
   private addHeader(doc: jsPDF, pageWidth: number): void {
     try {
       const logoData = this.assetsService.getAssetBuffer(
-        'assets/images/Groupe-30.png',
+        'images/Groupe-30.png',
       );
-      // Note: Le chargement du logo est temporairement désactivé en raison de problèmes de compatibilité de types
-      // TODO: Résoudre le problème de type avec le Buffer pour le logo
-      // doc.addImage(logoData, 'PNG', 10, 10, 50, 20);
+      const base64Image = `data:image/png;base64,${logoData.toString('base64')}`;
+      doc.addImage(
+        base64Image,
+        'PNG',
+        this.PAGE_MARGIN,
+        this.PAGE_MARGIN,
+        50,
+        20,
+      );
     } catch (error) {
       this.logger.warn(`Impossible de charger le logo: ${error.message}`);
     }
@@ -391,9 +400,9 @@ export class InvoiceService {
     client: any,
   ): Promise<string> {
     // Format EPC069-12 pour les virements SEPA
-    const reference = `facture_${
+    const reference = `facture_${new Date().getFullYear()}/000${
       invoice.invoice_number
-    }_${client.name.replace(/[^a-zA-Z0-9]/g, '_')}`;
+    }`;
     const qrData = [
       'BCD', // Service Tag
       '002', // Version
@@ -405,7 +414,7 @@ export class InvoiceService {
       `EUR${Math.abs(invoice.total).toFixed(2)}`, // Montant
       '', // Purpose (peut être laissé vide)
       reference, // Référence personnalisée
-      `FACTURE ${invoice.invoice_number} - ${this.formatDateBelgium(
+      `FACTURE ${new Date().getFullYear()}/000${invoice.invoice_number} - ${this.formatDateBelgium(
         invoice.invoice_date,
       )}`, // Description détaillée
     ].join('\n');
@@ -541,10 +550,11 @@ export class InvoiceService {
 
     try {
       const logoData = this.assetsService.getAssetBuffer(
-        '../assets/images/Groupe-30.png',
+        'images/Groupe-30.png',
       );
+      const base64Image = `data:image/png;base64,${logoData.toString('base64')}`;
       doc.addImage(
-        logoData as any,
+        base64Image,
         'PNG',
         this.PAGE_MARGIN,
         this.PAGE_MARGIN,
@@ -616,7 +626,7 @@ export class InvoiceService {
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text(
-      `Facture N°${invoice.invoice_number} pour ${quote.client.name}`,
+      `Facture N°${new Date().getFullYear()}/000${invoice.invoice_number} pour ${quote.client.name}`,
       this.PAGE_MARGIN,
       105,
     );
