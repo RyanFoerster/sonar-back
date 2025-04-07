@@ -51,6 +51,9 @@ export class Invoice {
   @Column()
   status: string;
 
+  @Column({ nullable: true })
+  comment: string;
+
   @ManyToOne(
     () => ComptePrincipal,
     (comptePrincipal) => comptePrincipal.invoice,
@@ -85,4 +88,7 @@ export class Invoice {
 
   @Column({ type: 'double precision', nullable: true })
   creditNoteAmount: number; // Montant de la note de crédit
+
+  @Column({ default: false })
+  isVatIncluded: boolean; // Indique si la TVA est incluse dans les prix
 }

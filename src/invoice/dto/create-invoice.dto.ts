@@ -29,4 +29,5 @@ export class CreateCreditNoteDto {
   readonly linkedInvoiceId: number; // ID de la facture liée
   readonly creditNoteAmount: number; // Montant de la note de crédit
   readonly products_ids: number[]; // ID des produits liés
+  readonly isVatIncluded: boolean; // Indique si la TVA est incluse dans les prix
 }
