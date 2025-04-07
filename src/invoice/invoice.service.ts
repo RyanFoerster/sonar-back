@@ -167,9 +167,9 @@ export class InvoiceService {
     invoice.invoice_date = currentDate;
     invoice.service_date = quote.service_date;
 
-    // Calculer la date limite de paiement
+    // Correction: créer une nouvelle date pour le payment_deadline sans modifier currentDate
     const paymentDeadline = new Date(currentDate);
-    paymentDeadline.setDate(currentDate.getDate() + quote.payment_deadline);
+    paymentDeadline.setDate(paymentDeadline.getDate() + quote.payment_deadline);
     invoice.payment_deadline = paymentDeadline;
     invoice.validation_deadline = quote.validation_deadline;
 
@@ -179,6 +179,7 @@ export class InvoiceService {
     invoice.total_vat_6 = quote.total_vat_6;
     invoice.status = 'payment_pending';
     invoice.type = 'invoice';
+    invoice.comment = quote.comment;
     // invoice.invoice_number = group.next_invoice_number;
     // group.next_invoice_number += 1;
     // await this.compteGroupeService.save(group);
@@ -367,6 +368,26 @@ export class InvoiceService {
         }
       },
     });
+
+    // Ajout des commentaires si présents
+    if (invoice.comment) {
+      const commentY = (doc as any).lastAutoTable.finalY + 20;
+
+      // Titre des commentaires
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Commentaires:', this.PAGE_MARGIN, commentY);
+      doc.setFont('helvetica', 'normal');
+
+      // Division du texte en lignes
+      const maxWidth = pageWidth - 2 * this.PAGE_MARGIN;
+      const commentLines = doc.splitTextToSize(invoice.comment, maxWidth);
+
+      // Affichage des lignes de commentaire
+      commentLines.forEach((line: string, index: number) => {
+        doc.text(line, this.PAGE_MARGIN, commentY + 7 + index * 5);
+      });
+    }
   }
 
   private addFooter(doc: jsPDF, pageHeight: number): void {
@@ -478,9 +499,9 @@ export class InvoiceService {
         textY,
       );
       textY += 6; // Réduit l'espacement vertical de 8 à 6
-      const reference = `facture_${
+      const reference = `facture N°${new Date().getFullYear()}/000${
         invoice.invoice_number
-      }_${client.name.replace(/[^a-zA-Z0-9]/g, '_')}`;
+      }`;
       doc.text(
         `Communication: ${reference}`,
         qrCodeX + qrCodeWidth + 10,
@@ -581,7 +602,7 @@ export class InvoiceService {
       { align: 'right' },
     );
     doc.text(
-      `N°${new Date().getFullYear()}-${invoice.invoice_number}`,
+      `N°${new Date().getFullYear()}/000${invoice.invoice_number}`,
       pageWidth - this.PAGE_MARGIN,
       55,
       {
@@ -626,7 +647,7 @@ export class InvoiceService {
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
     doc.text(
-      `Facture N°${new Date().getFullYear()}/000${invoice.invoice_number} pour ${quote.client.name}`,
+      `Facture N°${new Date().getFullYear()}/000${invoice.invoice_number}`,
       this.PAGE_MARGIN,
       105,
     );
@@ -825,8 +846,14 @@ export class InvoiceService {
         const invoice = new Invoice();
         invoice.invoice_date = currentDate;
         invoice.service_date = quote.service_date;
-        currentDate.setDate(currentDate.getDate() + quote.payment_deadline);
-        invoice.payment_deadline = currentDate;
+
+        // Correction: créer une nouvelle date pour le payment_deadline sans modifier currentDate
+        const paymentDeadline = new Date(currentDate);
+        paymentDeadline.setDate(
+          paymentDeadline.getDate() + quote.payment_deadline,
+        );
+        invoice.payment_deadline = paymentDeadline;
+        invoice.comment = quote.comment;
         invoice.price_htva = quote.price_htva;
         invoice.total = quote.total;
         invoice.total_vat_21 = quote.total_vat_21;
@@ -900,6 +927,40 @@ export class InvoiceService {
         }
       }
 
+      // Recalculer les montants des produits en fonction de isVatIncluded
+      if (createCreditNoteDto.isVatIncluded) {
+        await Promise.all(
+          products.map(async (product) => {
+            // Si TVA incluse, on recalcule les montants HTVA
+            const priceWithVAT = product.price * product.quantity;
+            const vatRate = product.vat;
+            const priceHTVA = priceWithVAT / (1 + vatRate);
+            const tvaAmount = priceWithVAT - priceHTVA;
+
+            // Mettre à jour le produit dans la base de données
+            product.price_htva = priceHTVA;
+            product.tva_amount = tvaAmount;
+            product.total = priceWithVAT;
+            return await this.productService.saveProduct(product);
+          }),
+        );
+      } else {
+        await Promise.all(
+          products.map(async (product) => {
+            // Si TVA non incluse, on recalcule les montants avec TVA
+            const priceHTVA = product.price * product.quantity;
+            const tvaAmount = priceHTVA * product.vat;
+            const total = priceHTVA + tvaAmount;
+
+            // Mettre à jour le produit dans la base de données
+            product.price_htva = priceHTVA;
+            product.tva_amount = tvaAmount;
+            product.total = total;
+            return await this.productService.saveProduct(product);
+          }),
+        );
+      }
+
       // Récupérer le compte principal par défaut
       let account: ComptePrincipal | CompteGroupe;
       if (params.type === 'PRINCIPAL') {
@@ -930,6 +991,7 @@ export class InvoiceService {
         products: products,
         type: 'credit_note',
         invoice_number: null, // On réinitialise le numéro de facture
+        isVatIncluded: createCreditNoteDto.isVatIncluded,
       });
       if (params.type === 'PRINCIPAL') {
         creditNote.main_account = account as ComptePrincipal;
@@ -985,12 +1047,45 @@ export class InvoiceService {
   ): Promise<boolean> {
     return await this.dataSource.transaction(async (manager) => {
       // Récupérer les produits lié a la note de crédit
-
       const products = [];
 
       for (const productId of createCreditNoteDto.products_id) {
         const product = await this.productService.findOne(productId);
         products.push(product);
+      }
+
+      // Recalculer les montants des produits en fonction de isVatIncluded
+      if (createCreditNoteDto.isVatIncluded) {
+        await Promise.all(
+          products.map(async (product) => {
+            // Si TVA incluse, on recalcule les montants HTVA
+            const priceWithVAT = product.price * product.quantity;
+            const vatRate = product.vat;
+            const priceHTVA = priceWithVAT / (1 + vatRate);
+            const tvaAmount = priceWithVAT - priceHTVA;
+
+            // Mettre à jour le produit dans la base de données
+            product.price_htva = priceHTVA;
+            product.tva_amount = tvaAmount;
+            product.total = priceWithVAT;
+            return await this.productService.saveProduct(product);
+          }),
+        );
+      } else {
+        await Promise.all(
+          products.map(async (product) => {
+            // Si TVA non incluse, on recalcule les montants avec TVA
+            const priceHTVA = product.price * product.quantity;
+            const tvaAmount = priceHTVA * product.vat;
+            const total = priceHTVA + tvaAmount;
+
+            // Mettre à jour le produit dans la base de données
+            product.price_htva = priceHTVA;
+            product.tva_amount = tvaAmount;
+            product.total = total;
+            return await this.productService.saveProduct(product);
+          }),
+        );
       }
 
       createCreditNoteDto.products = products;
@@ -1021,6 +1116,7 @@ export class InvoiceService {
         type: 'credit_note',
         payment_deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // +30 jours par défaut
         invoice_number: account.next_invoice_number, // Utiliser le prochain numéro de facture
+        isVatIncluded: createCreditNoteDto.isVatIncluded,
       });
 
       // Associer le client
@@ -1153,6 +1249,27 @@ export class InvoiceService {
       'credit_note',
     );
     this.addTotals(doc, creditNote, finalY, pageWidth);
+
+    // Ajout des commentaires si présents
+    if (creditNote.comment) {
+      const commentY = (doc as any).lastAutoTable.finalY + 20;
+
+      // Titre des commentaires
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Commentaires:', this.PAGE_MARGIN, commentY);
+      doc.setFont('helvetica', 'normal');
+
+      // Division du texte en lignes
+      const maxWidth = pageWidth - 2 * this.PAGE_MARGIN;
+      const commentLines = doc.splitTextToSize(creditNote.comment, maxWidth);
+
+      // Affichage des lignes de commentaire
+      commentLines.forEach((line: string, index: number) => {
+        doc.text(line, this.PAGE_MARGIN, commentY + 7 + index * 5);
+      });
+    }
+
     this.addFooter(doc, pageHeight);
 
     return doc.output('arraybuffer');
