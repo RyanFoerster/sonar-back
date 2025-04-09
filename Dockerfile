@@ -8,7 +8,10 @@ RUN npm install
 
 COPY . .
 
-RUN npm run build
+ARG NODE_ENV=production
+ENV NODE_ENV=${NODE_ENV}
+
+RUN if [ "$NODE_ENV" = "staging" ] ; then npm run build:staging ; else npm run build ; fi
 
 RUN npm prune --production
 
