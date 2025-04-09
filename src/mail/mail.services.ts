@@ -456,6 +456,9 @@ export class MailService {
         : '';
       let invoiceNumber: number = quote.invoice_number;
       let invoiceDate: string = this.formatDateString(quote.invoice_date);
+      let paymentDeadline: string = this.formatDateString(
+        quote.payment_deadline,
+      );
 
       // Déterminer le montant
       const amount = 'total' in quote ? quote.total : 0;
@@ -556,6 +559,9 @@ export class MailService {
                   
                   <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Date :</span></p>
                   <p style="color: #1f2937; margin-bottom: 16px;">${invoiceDate}</p>
+
+                  <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Date de paiement :</span></p>
+                  <p style="color: #1f2937; margin-bottom: 16px;">${paymentDeadline}</p>
 
                   <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Montant total :</span></p>
                   <p style="color: #1f2937; margin-bottom: 16px;">${amount.toFixed(2)}€</p>

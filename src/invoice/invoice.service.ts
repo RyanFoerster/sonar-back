@@ -168,7 +168,7 @@ export class InvoiceService {
     invoice.service_date = quote.service_date;
 
     // Correction: créer une nouvelle date pour le payment_deadline sans modifier currentDate
-    const paymentDeadline = new Date(currentDate);
+    const paymentDeadline = new Date(quote.service_date);
     paymentDeadline.setDate(paymentDeadline.getDate() + quote.payment_deadline);
     invoice.payment_deadline = paymentDeadline;
     invoice.validation_deadline = quote.validation_deadline;
