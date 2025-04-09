@@ -5,9 +5,6 @@ export class CreateInvoiceDto {
   invoice_date: Date;
 
   @IsDate()
-  service_date: Date;
-
-  @IsDate()
   payment_deadline: Date;
 
   @IsDate()
