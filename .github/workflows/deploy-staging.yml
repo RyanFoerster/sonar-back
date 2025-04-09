@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: ['Ryan']
   workflow_run:
-    workflows: ['docker-staging-image.yml']
+    workflows: ['Build and Publish Docker Staging Image']
     types:
       - completed
 
