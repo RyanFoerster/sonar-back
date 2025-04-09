@@ -1,12 +1,10 @@
 name: Deploy to Staging
 
 on:
-  push:
-    branches: ['Ryan']
-  pull_request:
-    branches: ['Ryan']
   workflow_run:
     workflows: ['Build and Publish Docker Staging Image']
+    branches:
+      - Ryan
     types:
       - completed
 

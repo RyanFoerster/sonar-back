@@ -2,7 +2,8 @@ name: Build and Publish Docker Staging Image
 
 on:
   push:
-    branches: ['Ryan']
+    branches:
+      - Ryan
 
 jobs:
   build:
