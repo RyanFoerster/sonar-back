@@ -1,6 +1,10 @@
 name: Deploy to Staging
 
 on:
+  push:
+    branches: ['Ryan']
+  pull_request:
+    branches: ['Ryan']
   workflow_run:
     workflows: ['docker-staging-image.yml']
     types:
