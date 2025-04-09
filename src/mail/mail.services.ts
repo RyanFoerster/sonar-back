@@ -640,19 +640,18 @@ export class MailService {
     const cc = isProd ? 'vente-0700273583@soligere.clouddemat.be' : '';
 
     const creditNoteNumber = creditNote.invoice_number;
-    // Utilisation de || '' pour gérer le cas où invoice_date pourrait être null/undefined
+    // Utilisation de || new Date() pour gérer le cas où invoice_date pourrait être null/undefined
     const creditNoteDate = this.formatDateString(
       creditNote.invoice_date || new Date(),
     );
-    const amount = creditNote.total; // Assurez-vous que total existe sur Invoice
+    // Assurez-vous que total existe sur Invoice, sinon mettre 0
+    const amount = 'total' in creditNote ? creditNote.total : 0;
 
     try {
-      const { data, error } = await this.resend.emails.send({
-        from: 'info@sonarartists.be',
-        to: creditNote.client.email,
-        bcc: cc || undefined,
-        subject: `Note de crédit N°${creditNoteNumber} - Sonar Artists`,
-        html: `
+      // Construire l'email
+      console.log("Construction du corps de l'email pour la note de crédit...");
+
+      const emailHtml = `
         <!DOCTYPE html>
         <html lang="fr">
         <head>
@@ -689,13 +688,13 @@ export class MailService {
                 <!-- Détails de la note de crédit -->
                 <div style="margin-bottom: 24px;">
                   <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Numéro de note de crédit :</span></p>
-                  <p style="color: #1f2937; margin-bottom: 16px;">N°${creditNoteNumber}</p>
+                  <p style="color: #1f2937; margin-bottom: 16px;">N°${new Date().getFullYear()}/000${creditNoteNumber}</p>
 
                   <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Date :</span></p>
                   <p style="color: #1f2937; margin-bottom: 16px;">${creditNoteDate}</p>
 
                   <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Montant total :</span></p>
-                  <p style="color: #1f2937; margin-bottom: 16px;">${amount !== undefined && amount !== null ? amount.toFixed(2) : 'N/A'}€</p>
+                  <p style="color: #1f2937; margin-bottom: 16px;">${amount.toFixed(2)}€</p>
 
                   <p style="color: #1f2937; margin-bottom: 8px;"><span style="font-weight: 600;">Associée à :</span></p>
                   <p style="color: #1f2937; margin-bottom: 24px;">${creditNote.client.name}</p>
@@ -723,10 +722,18 @@ export class MailService {
           </div>
         </body>
         </html>
-      `,
+      `;
+
+      console.log("Envoi de l'email de note de crédit avec Resend...");
+      const { data, error } = await this.resend.emails.send({
+        from: 'info@sonarartists.be',
+        to: creditNote.client.email,
+        bcc: cc || undefined, // Utilisation de bcc ici pour la cohérence
+        subject: `Note de crédit N°${creditNoteNumber} - Sonar Artists`,
+        html: emailHtml,
         attachments: [
           {
-            filename: `note_credit_${creditNoteNumber}_${creditNote.client.name}.pdf`,
+            filename: `note_credit_${creditNoteNumber}.pdf`, // Nom de fichier simplifié
             content: pdfContent, // Passer le Buffer directement
           },
         ],
@@ -734,21 +741,20 @@ export class MailService {
 
       if (error) {
         Logger.error(
-          `Erreur lors de l'envoi de l'email de note de crédit pour ${creditNote.client.name} (N° ${creditNoteNumber}):`,
+          `Erreur Resend lors de l'envoi de l'email de note de crédit N° ${creditNoteNumber}:`,
           error.message,
         );
         throw error;
       }
 
       Logger.log(
-        `Email de note de crédit envoyé à ${creditNote.client.email} (N° ${creditNoteNumber})`,
+        `Email de note de crédit N° ${creditNoteNumber} envoyé avec succès à ${creditNote.client.email}`,
       );
       return data;
     } catch (error) {
-      // L'erreur est déjà loggée dans le bloc if(error), mais on relance pour la gestion globale
       Logger.error(
-        `Erreur inattendue lors de la tentative d'envoi de l'email de note de crédit N° ${creditNoteNumber}:`,
-        error instanceof Error ? error.stack : String(error), // Gestion améliorée des erreurs
+        `Exception lors de l'envoi de l'email de note de crédit N° ${creditNoteNumber}:`,
+        error instanceof Error ? error.stack : String(error),
       );
       throw error; // Relancer l'erreur pour que l'appelant puisse la gérer
     }

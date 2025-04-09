@@ -60,24 +60,44 @@ export class BeneficiariesService {
       `Fetching beneficiaries for user ${user_id} (page ${page}, limit ${limit})`,
     );
 
+    if (typeof page !== 'number') {
+      this.logger.warn(`Invalid page parameter: ${page}, converting to number`);
+      page = Number(page) || 1;
+    }
+
+    if (typeof limit !== 'number') {
+      this.logger.warn(
+        `Invalid limit parameter: ${limit}, converting to number`,
+      );
+      limit = Number(limit) || 10;
+    }
+
+    const skip = (page - 1) * limit;
+    this.logger.debug(`Query with skip=${skip}, take=${limit}`);
+
     const [items, total] = await this.beneficiariesRepository.findAndCount({
       where: {
         user: {
           id: user_id,
         },
       },
-      skip: (page - 1) * limit,
+      skip,
       take: limit,
       order: {
         account_owner: 'ASC',
       },
     });
 
+    const totalPages = Math.ceil(total / limit);
+    this.logger.debug(
+      `Found ${items.length} items for page ${page}/${totalPages}, with skip=${skip} and limit=${limit}`,
+    );
+
     return {
       items,
       total,
       page,
-      totalPages: Math.ceil(total / limit),
+      totalPages,
     };
   }
 
