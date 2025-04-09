@@ -10,6 +10,8 @@ COPY . .
 
 ARG NODE_ENV=production
 
+FROM node:23-alpine3.19 AS production
+
 WORKDIR /app
 
 COPY --from=build /app/dist ./dist
