@@ -3,8 +3,6 @@ name: Build and Publish Docker Staging Image
 on:
   push:
     branches: ['Ryan']
-  pull_request:
-    branches: ['Ryan']
 
 jobs:
   build:

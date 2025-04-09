@@ -1,5 +1,5 @@
 services:
-  sonardevbackend:
+  sonarstagingbackend:
     image: dimagin/sonar-back:staging
     container_name: sonar-staging-back
     restart: unless-stopped
