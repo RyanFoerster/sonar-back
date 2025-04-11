@@ -729,11 +729,11 @@ export class MailService {
         from: 'info@sonarartists.be',
         to: creditNote.client.email,
         bcc: cc || undefined, // Utilisation de bcc ici pour la cohérence
-        subject: `Note de crédit N°${creditNoteNumber} - Sonar Artists`,
+        subject: `Note de crédit N°${new Date().getFullYear()}/000${creditNoteNumber}`,
         html: emailHtml,
         attachments: [
           {
-            filename: `note_credit_${creditNoteNumber}.pdf`, // Nom de fichier simplifié
+            filename: `note_credit_${new Date().getFullYear()}/000${creditNoteNumber}.pdf`, // Nom de fichier simplifié
             content: pdfContent, // Passer le Buffer directement
           },
         ],
