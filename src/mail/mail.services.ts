@@ -1232,4 +1232,286 @@ export class MailService {
 
     return data;
   }
+
+  // Nouvelle méthode pour le premier rappel
+  async sendFirstReminderEmail(
+    invoice: Invoice,
+    companyName: string,
+    iban: string,
+    bic: string,
+    communication: string,
+    pdfContent: Buffer | null, // Ajouter le paramètre pdfContent
+  ) {
+    const to = invoice.client.email;
+    const invoiceNumber = invoice.invoice_number;
+    const invoiceDate = this.formatDateBelgium(invoice.invoice_date);
+    // Pour l'instant, invoicebalance est le total. À ajuster si des paiements partiels sont possibles.
+    const invoiceBalance = invoice.total.toFixed(2);
+    const logoUrl = 'https://sonarartists.be/logo-SONAR.png'; // Assurez-vous que cette URL est correcte
+    const sonarTexteUrl = 'https://sonarartists.be/sonar-texte.png';
+
+    const attachments = [];
+    if (pdfContent) {
+      attachments.push({
+        filename: `facture_${new Date(invoice.invoice_date).getFullYear()}/000${invoiceNumber}.pdf`,
+        content: pdfContent,
+      });
+    }
+
+    const { data, error } = await this.resend.emails.send({
+      from: 'info@sonarartists.be',
+      to,
+      subject: 'Rappel de paiement',
+      html: `
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Rappel de paiement</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Montserrat', Arial, sans-serif; background-color: #f4f4f4; color: #333333; min-height: 100vh;">
+          <div style="min-height: 100%; display: flex; justify-content: space-between; max-width: 600px; margin: 0 auto;">
+            <div style="width: 100%;">
+              <!-- En-tête avec logo Sonar -->
+              <div style="background-color: #ffffff; padding: 16px; display: flex; align-items: center; gap: 8px;">
+                <img src="${logoUrl}" alt="Sonar" style="width: 32px; height: auto;" />
+                <img src="${sonarTexteUrl}" alt="Sonar" style="width: 80px; height: auto;" />
+              </div>
+
+              <!-- Contenu principal avec bordure jaune -->
+              <div style="border: 4px solid #C8C04D; padding: 32px; background-color: #ffffff;">
+                <!-- Titre principal -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px;">
+                  <h1 style="font-size: 1.875rem; font-weight: 700; color: #C8C04D; margin: 0;">Rappel de paiement</h1>
+                  <div style="text-align: right;">
+                     <p style="color: #4b5563; margin: 0;">Facture N°${new Date(invoice.invoice_date).getFullYear()}/000${invoiceNumber}</p>
+                     <p style="color: #4b5563; margin: 0;">${invoice.client.name}</p>
+                  </div>
+                </div>
+
+                <!-- Corps du message -->
+                <p style="color: #1f2937; margin-bottom: 24px;">Madame, Monsieur,</p>
+                <p style="color: #1f2937; margin-bottom: 24px;">Il résulte de notre comptabilité que nous n'avons pas encore reçu le paiement complet de notre facture N°${new Date(invoice.invoice_date).getFullYear()}/000${invoiceNumber} du ${invoiceDate}.</p>
+                <p style="color: #1f2937; margin-bottom: 24px;">Nous vous prions de bien vouloir vérifier et de nous verser le montant de ${invoiceBalance}€ sur notre compte ${iban} (BIC ${bic}) en mentionnant la référence ${communication}.</p>
+                <p style="color: #1f2937; margin-bottom: 24px;">Si votre paiement et notre courrier se sont croisés, veuillez considérer la présente comme sans effet.</p>
+                <p style="color: #1f2937; margin-bottom: 32px;">Cordialement,</p>
+
+                <!-- Pied de page interne -->
+                <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #d1d5db;">
+                  <p style="color: #4b5563; margin-bottom: 4px;">powered by</p>
+                  <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0;">
+                    <img src="${logoUrl}" alt="Sonar" style="width: 32px; height: auto;" />
+                    <img src="${sonarTexteUrl}" alt="Sonar" style="width: 80px; height: auto;" />
+                  </div>
+                  <p style="color: #C8C04D; margin-bottom: 4px;">+32 498 62 45 65</p>
+                  <p style="color: #C8C04D; margin-bottom: 4px;">info@sonarartists.be</p>
+                  <p style="color: #4b5563; margin-bottom: 4px;">Rue Francisco Ferrer 6</p>
+                  <p style="color: #4b5563; margin-bottom: 0;">4460 GRÂCE-BERLEUR</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      attachments: attachments, // Ajouter les pièces jointes
+    });
+
+    if (error) {
+      Logger.error('Error sending first reminder:', error.message);
+      throw error;
+    }
+    Logger.log(
+      `Premier rappel envoyé pour la facture ${invoiceNumber} à ${to}`,
+    );
+    return data;
+  }
+
+  // Nouvelle méthode pour le deuxième rappel
+  async sendSecondReminderEmail(
+    invoice: Invoice,
+    companyName: string,
+    iban: string,
+    bic: string,
+    communication: string,
+    pdfContent: Buffer | null, // Ajouter le paramètre pdfContent
+  ) {
+    const to = invoice.client.email;
+    const invoiceNumber = invoice.invoice_number;
+    const invoiceDate = this.formatDateBelgium(invoice.invoice_date);
+    const invoiceBalance = invoice.total.toFixed(2);
+    const logoUrl = 'https://sonarartists.be/logo-SONAR.png';
+    const sonarTexteUrl = 'https://sonarartists.be/sonar-texte.png';
+
+    const attachments = [];
+    if (pdfContent) {
+      attachments.push({
+        filename: `facture_${new Date(invoice.invoice_date).getFullYear()}_${invoiceNumber}.pdf`,
+        content: pdfContent,
+      });
+    }
+
+    const { data, error } = await this.resend.emails.send({
+      from: 'info@sonarartists.be',
+      to,
+      subject: 'Deuxième rappel de paiement',
+      html: `
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Deuxième rappel de paiement</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Montserrat', Arial, sans-serif; background-color: #f4f4f4; color: #333333; min-height: 100vh;">
+          <div style="min-height: 100%; display: flex; justify-content: space-between; max-width: 600px; margin: 0 auto;">
+            <div style="width: 100%;">
+              <!-- En-tête avec logo Sonar -->
+              <div style="background-color: #ffffff; padding: 16px; display: flex; align-items: center; gap: 8px;">
+                <img src="${logoUrl}" alt="Sonar" style="width: 32px; height: auto;" />
+                <img src="${sonarTexteUrl}" alt="Sonar" style="width: 80px; height: auto;" />
+              </div>
+
+              <!-- Contenu principal avec bordure orange -->
+              <div style="border: 4px solid #f97316; padding: 32px; background-color: #ffffff;"> <!-- Orange border -->
+                <!-- Titre principal -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px;">
+                  <h1 style="font-size: 1.875rem; font-weight: 700; color: #f97316; margin: 0;">Deuxième rappel de paiement</h1>
+                  <div style="text-align: right;">
+                     <p style="color: #4b5563; margin: 0;">Facture N°${new Date(invoice.invoice_date).getFullYear()}/000${invoiceNumber}</p>
+                     <p style="color: #4b5563; margin: 0;">${invoice.client.name}</p>
+                  </div>
+                </div>
+
+                <!-- Corps du message -->
+                <p style="color: #1f2937; margin-bottom: 24px;">Madame, Monsieur,</p>
+                <p style="color: #1f2937; margin-bottom: 24px;">Malgré notre précédent rappel, il semblerait que vous n'ayez pas encore effectué le paiement complet de notre facture N°${new Date(invoice.invoice_date).getFullYear()}/000${invoiceNumber} du ${invoiceDate}.</p>
+                <p style="color: #1f2937; margin-bottom: 24px;">Nous vous prions donc de bien vouloir payer <b>endéans les 5 jours ouvrables</b> le montant de ${invoiceBalance}€ sur notre compte ${iban} (BIC ${bic}) en mentionnant la référence ${communication}.</p>
+                <p style="color: #1f2937; margin-bottom: 32px;">Cordialement,</p>
+
+                <!-- Pied de page interne -->
+                <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #d1d5db;">
+                  <p style="color: #4b5563; margin-bottom: 4px;">powered by</p>
+                  <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0;">
+                    <img src="${logoUrl}" alt="Sonar" style="width: 32px; height: auto;" />
+                    <img src="${sonarTexteUrl}" alt="Sonar" style="width: 80px; height: auto;" />
+                  </div>
+                  <p style="color: #C8C04D; margin-bottom: 4px;">+32 498 62 45 65</p>
+                  <p style="color: #C8C04D; margin-bottom: 4px;">info@sonarartists.be</p>
+                  <p style="color: #4b5563; margin-bottom: 4px;">Rue Francisco Ferrer 6</p>
+                  <p style="color: #4b5563; margin-bottom: 0;">4460 GRÂCE-BERLEUR</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      attachments: attachments, // Ajouter les pièces jointes
+    });
+
+    if (error) {
+      Logger.error('Error sending second reminder:', error.message);
+      throw error;
+    }
+    Logger.log(
+      `Deuxième rappel envoyé pour la facture ${invoiceNumber} à ${to}`,
+    );
+    return data;
+  }
+
+  // Nouvelle méthode pour la mise en demeure
+  async sendFinalNoticeEmail(
+    invoice: Invoice,
+    companyName: string,
+    iban: string,
+    bic: string,
+    communication: string,
+    pdfContent: Buffer | null, // Ajouter le paramètre pdfContent
+  ) {
+    const to = invoice.client.email;
+    const invoiceNumber = invoice.invoice_number;
+    const invoiceDate = this.formatDateBelgium(invoice.invoice_date);
+    const invoiceBalance = invoice.total.toFixed(2);
+    const logoUrl = 'https://sonarartists.be/logo-SONAR.png';
+    const sonarTexteUrl = 'https://sonarartists.be/sonar-texte.png';
+
+    const attachments = [];
+    if (pdfContent) {
+      attachments.push({
+        filename: `facture_${new Date(invoice.invoice_date).getFullYear()}_${invoiceNumber}.pdf`,
+        content: pdfContent,
+      });
+    }
+
+    const { data, error } = await this.resend.emails.send({
+      from: 'info@sonarartists.be',
+      to,
+      subject: 'Mise en demeure',
+      html: `
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Mise en demeure</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Montserrat', Arial, sans-serif; background-color: #f4f4f4; color: #333333; min-height: 100vh;">
+          <div style="min-height: 100%; display: flex; justify-content: space-between; max-width: 600px; margin: 0 auto;">
+            <div style="width: 100%;">
+              <!-- En-tête avec logo Sonar -->
+              <div style="background-color: #ffffff; padding: 16px; display: flex; align-items: center; gap: 8px;">
+                <img src="${logoUrl}" alt="Sonar" style="width: 32px; height: auto;" />
+                <img src="${sonarTexteUrl}" alt="Sonar" style="width: 80px; height: auto;" />
+              </div>
+
+              <!-- Contenu principal avec bordure rouge -->
+              <div style="border: 4px solid #ef4444; padding: 32px; background-color: #ffffff;"> <!-- Red border -->
+                <!-- Titre principal -->
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 32px;">
+                  <h1 style="font-size: 1.875rem; font-weight: 700; color: #ef4444; margin: 0;">Mise en demeure</h1>
+                   <div style="text-align: right;">
+                     <p style="color: #4b5563; margin: 0;">Facture N°${new Date(invoice.invoice_date).getFullYear()}/000${invoiceNumber}</p>
+                     <p style="color: #4b5563; margin: 0;">${invoice.client.name}</p>
+                  </div>
+                </div>
+
+                <!-- Corps du message -->
+                <p style="color: #1f2937; margin-bottom: 24px;">Madame, Monsieur,</p>
+                <p style="color: #1f2937; margin-bottom: 24px;">Malgré nos précédents rappels, vous n'avez toujours pas effectué le paiement complet de notre facture N°${new Date(invoice.invoice_date).getFullYear()}/000${invoiceNumber} du ${invoiceDate}.</p>
+                <p style="color: #1f2937; margin-bottom: 24px;">Nous vous mettons en demeure de payer <b>endéans les 5 jours ouvrables</b> le montant de ${invoiceBalance}€ sur notre compte ${iban} (BIC ${bic}) en mentionnant la référence ${communication}.</p>
+                <p style="color: #1f2937; margin-bottom: 24px;"><b>Sans paiement de votre part dans le délai indiqué, le dossier sera remis à notre avocat.</b> Afin d'éviter des frais inutiles, nous comptons sur votre paiement rapide.</p>
+                <p style="color: #1f2937; margin-bottom: 32px;">Nous vous prions d'agréer nos salutations,</p>
+
+                <!-- Pied de page interne -->
+                <div style="margin-top: 32px; padding-top: 16px; border-top: 1px solid #d1d5db;">
+                  <p style="color: #4b5563; margin-bottom: 4px;">powered by</p>
+                  <div style="display: flex; align-items: center; gap: 8px; margin: 8px 0;">
+                    <img src="${logoUrl}" alt="Sonar" style="width: 32px; height: auto;" />
+                    <img src="${sonarTexteUrl}" alt="Sonar" style="width: 80px; height: auto;" />
+                  </div>
+                  <p style="color: #C8C04D; margin-bottom: 4px;">+32 498 62 45 65</p>
+                  <p style="color: #C8C04D; margin-bottom: 4px;">info@sonarartists.be</p>
+                  <p style="color: #4b5563; margin-bottom: 4px;">Rue Francisco Ferrer 6</p>
+                  <p style="color: #4b5563; margin-bottom: 0;">4460 GRÂCE-BERLEUR</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+      attachments: attachments, // Ajouter les pièces jointes
+    });
+
+    if (error) {
+      Logger.error('Error sending final notice:', error.message);
+      throw error;
+    }
+    Logger.log(
+      `Mise en demeure envoyée pour la facture ${invoiceNumber} à ${to}`,
+    );
+    return data;
+  }
 }

@@ -12,7 +12,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { ClientsService } from '../clients/clients.service';
 import { CompteGroupeService } from '../compte_groupe/compte_groupe.service';
 import { ComptePrincipalService } from '../compte_principal/compte_principal.service';
@@ -29,6 +29,7 @@ import { ComptePrincipal } from '@/compte_principal/entities/compte_principal.en
 import { AssetsService } from '../services/assets.service';
 import { S3Service } from '@/services/s3/s3.service';
 import * as QRCode from 'qrcode';
+import { LessThan } from 'typeorm';
 
 @Injectable()
 export class InvoiceService {
@@ -128,7 +129,6 @@ export class InvoiceService {
     if (invoiceCreated.type !== 'credit_note') {
       invoiceCreated.products = quoteFromDB.products;
     }
-    await this._invoiceRepository.save(invoiceCreated);
     quoteFromDB.status = 'invoiced';
     quoteFromDB.invoice = invoiceCreated;
     await this.quoteService.save(quoteFromDB);
@@ -141,6 +141,9 @@ export class InvoiceService {
       'invoices',
       invoiceCreated.id,
     );
+    invoiceCreated.pdfS3Key = pdfKey;
+    await this._invoiceRepository.save(invoiceCreated);
+
     this.mailService.sendInvoiceEmail(invoiceCreated, pdfKey);
 
     return await this._invoiceRepository.findOneBy({ id: invoiceCreated.id });
@@ -901,7 +904,8 @@ export class InvoiceService {
           'invoices',
           invoiceCreated.id,
         );
-        await this.mailService.sendInvoiceEmail(invoiceCreated, pdfKey);
+        invoiceCreated.pdfS3Key = pdfKey;
+        this.mailService.sendInvoiceEmail(invoiceCreated, pdfKey);
       }
     }
   }
@@ -1034,10 +1038,133 @@ export class InvoiceService {
       invoice.linkedInvoiceId = creditNoteSaved.id;
       await manager.save(invoice);
       return creditNoteSaved;
-      // return null;
     });
-    // Récupère la facture liée
-    // Sauvegarde la note de crédit dans la base de données
+  }
+
+  // Tâche CRON pour envoyer les rappels de paiement
+  @Cron(CronExpression.EVERY_DAY_AT_8AM) // Exécute tous les jours à 9h
+  async sendPaymentReminders() {
+    this.logger.log('Vérification des factures impayées pour les rappels...');
+    const today = new Date();
+
+    // Récupérer les factures impayées dont l'échéance est passée
+    const overdueInvoices = await this._invoiceRepository.find({
+      where: {
+        status: In([
+          'payment_pending',
+          'first_reminder_sent',
+          'second_reminder_sent',
+          'final_notice_sent', // Ou un autre statut indiquant non payé
+        ]),
+        payment_deadline: LessThan(today),
+        type: 'invoice', // Ne pas envoyer de rappels pour les notes de crédit
+      },
+      relations: ['client'], // Assurez-vous que le client est chargé
+    });
+
+    this.logger.log(
+      `Nombre de factures impayées trouvées : ${overdueInvoices.length}`,
+    );
+
+    for (const invoice of overdueInvoices) {
+      const deadline = new Date(invoice.payment_deadline);
+      const daysOverdue = Math.floor(
+        (today.getTime() - deadline.getTime()) / (1000 * 60 * 60 * 24),
+      );
+
+      this.logger.debug('daysOverdue', daysOverdue);
+      this.logger.debug('invoice.reminder_level', invoice.reminder_level);
+      this.logger.debug('invoice.status', invoice.status);
+
+      const companyName = this.COMPANY_INFO.name;
+      const iban = this.COMPANY_INFO.iban;
+      const bic = this.COMPANY_INFO.bic;
+      const communication = `Facture N°${new Date(invoice.invoice_date).getFullYear()}/000${invoice.invoice_number}`;
+
+      let pdfContent: Buffer | null = null;
+      if (invoice.pdfS3Key) {
+        try {
+          pdfContent = await this.s3Service.getFile(invoice.pdfS3Key);
+        } catch (s3Error) {
+          this.logger.error(
+            `Impossible de récupérer le PDF depuis S3 pour la facture ${invoice.invoice_number} (clé: ${invoice.pdfS3Key}): ${s3Error.message}`,
+          );
+        }
+      } else {
+        this.logger.warn(
+          `Aucune clé S3 trouvée pour la facture ${invoice.invoice_number}, le rappel sera envoyé sans PDF.`,
+        );
+      }
+
+      try {
+        if (
+          daysOverdue >= 30 &&
+          invoice.reminder_level < 3 &&
+          invoice.status !== 'paid' // Vérification supplémentaire
+        ) {
+          // 3ème rappel : Mise en demeure
+          this.logger.log(
+            `Envoi de la mise en demeure pour la facture ${invoice.invoice_number}`,
+          );
+          await this.mailService.sendFinalNoticeEmail(
+            invoice,
+            companyName,
+            iban,
+            bic,
+            communication,
+            pdfContent,
+          );
+          invoice.reminder_level = 3;
+          invoice.status = 'final_notice_sent'; // Mettre à jour le statut
+          await this._invoiceRepository.save(invoice);
+        } else if (
+          daysOverdue >= 20 &&
+          invoice.reminder_level < 2 &&
+          invoice.status !== 'paid'
+        ) {
+          // 2ème rappel
+          this.logger.log(
+            `Envoi du deuxième rappel pour la facture ${invoice.invoice_number}`,
+          );
+          await this.mailService.sendSecondReminderEmail(
+            invoice,
+            companyName,
+            iban,
+            bic,
+            communication,
+            pdfContent,
+          );
+          invoice.reminder_level = 2;
+          invoice.status = 'second_reminder_sent'; // Mettre à jour le statut
+          await this._invoiceRepository.save(invoice);
+        } else if (
+          daysOverdue >= 10 &&
+          invoice.reminder_level < 1 &&
+          invoice.status !== 'paid'
+        ) {
+          // 1er rappel
+          this.logger.log(
+            `Envoi du premier rappel pour la facture ${invoice.invoice_number}`,
+          );
+          await this.mailService.sendFirstReminderEmail(
+            invoice,
+            companyName,
+            iban,
+            bic,
+            communication,
+            pdfContent,
+          );
+          invoice.reminder_level = 1;
+          invoice.status = 'first_reminder_sent'; // Mettre à jour le statut
+          await this._invoiceRepository.save(invoice);
+        }
+      } catch (error) {
+        this.logger.error(
+          `Erreur lors de l'envoi du rappel pour la facture ${invoice.invoice_number}: ${error.message}`,
+        );
+      }
+    }
+    this.logger.log('Vérification des rappels terminée.');
   }
 
   async createCreditNoteWithoutInvoice(
