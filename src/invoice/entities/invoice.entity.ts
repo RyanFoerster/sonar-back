@@ -91,4 +91,10 @@ export class Invoice {
 
   @Column({ default: false })
   isVatIncluded: boolean; // Indique si la TVA est incluse dans les prix
+
+  @Column({ type: 'int', default: 0 })
+  reminder_level: number; // 0: aucun rappel, 1: premier rappel, 2: deuxième rappel, 3: mise en demeure
+
+  @Column({ nullable: true })
+  pdfS3Key: string; // Clé S3 du fichier PDF de la facture
 }

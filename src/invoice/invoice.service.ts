@@ -12,7 +12,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { ClientsService } from '../clients/clients.service';
 import { CompteGroupeService } from '../compte_groupe/compte_groupe.service';
 import { ComptePrincipalService } from '../compte_principal/compte_principal.service';
@@ -29,6 +29,7 @@ import { ComptePrincipal } from '@/compte_principal/entities/compte_principal.en
 import { AssetsService } from '../services/assets.service';
 import { S3Service } from '@/services/s3/s3.service';
 import * as QRCode from 'qrcode';
+import { LessThan } from 'typeorm';
 
 @Injectable()
 export class InvoiceService {
@@ -128,7 +129,6 @@ export class InvoiceService {
     if (invoiceCreated.type !== 'credit_note') {
       invoiceCreated.products = quoteFromDB.products;
     }
-    await this._invoiceRepository.save(invoiceCreated);
     quoteFromDB.status = 'invoiced';
     quoteFromDB.invoice = invoiceCreated;
     await this.quoteService.save(quoteFromDB);
@@ -141,6 +141,9 @@ export class InvoiceService {
       'invoices',
       invoiceCreated.id,
     );
+    invoiceCreated.pdfS3Key = pdfKey;
+    await this._invoiceRepository.save(invoiceCreated);
+
     this.mailService.sendInvoiceEmail(invoiceCreated, pdfKey);
 
     return await this._invoiceRepository.findOneBy({ id: invoiceCreated.id });
@@ -901,7 +904,8 @@ export class InvoiceService {
           'invoices',
           invoiceCreated.id,
         );
-        await this.mailService.sendInvoiceEmail(invoiceCreated, pdfKey);
+        invoiceCreated.pdfS3Key = pdfKey;
+        this.mailService.sendInvoiceEmail(invoiceCreated, pdfKey);
       }
     }
   }
@@ -1034,10 +1038,133 @@ export class InvoiceService {
       invoice.linkedInvoiceId = creditNoteSaved.id;
       await manager.save(invoice);
       return creditNoteSaved;
-      // return null;
     });
-    // Récupère la facture liée
-    // Sauvegarde la note de crédit dans la base de données
+  }
+
+  // Tâche CRON pour envoyer les rappels de paiement
+  @Cron(CronExpression.EVERY_DAY_AT_8AM) // Exécute tous les jours à 9h
+  async sendPaymentReminders() {
+    this.logger.log('Vérification des factures impayées pour les rappels...');
+    const today = new Date();
+
+    // Récupérer les factures impayées dont l'échéance est passée
+    const overdueInvoices = await this._invoiceRepository.find({
+      where: {
+        status: In([
+          'payment_pending',
+          'first_reminder_sent',
+          'second_reminder_sent',
+          'final_notice_sent', // Ou un autre statut indiquant non payé
+        ]),
+        payment_deadline: LessThan(today),
+        type: 'invoice', // Ne pas envoyer de rappels pour les notes de crédit
+      },
+      relations: ['client'], // Assurez-vous que le client est chargé
+    });
+
+    this.logger.log(
+      `Nombre de factures impayées trouvées : ${overdueInvoices.length}`,
+    );
+
+    for (const invoice of overdueInvoices) {
+      const deadline = new Date(invoice.payment_deadline);
+      const daysOverdue = Math.floor(
+        (today.getTime() - deadline.getTime()) / (1000 * 60 * 60 * 24),
+      );
+
+      this.logger.debug('daysOverdue', daysOverdue);
+      this.logger.debug('invoice.reminder_level', invoice.reminder_level);
+      this.logger.debug('invoice.status', invoice.status);
+
+      const companyName = this.COMPANY_INFO.name;
+      const iban = this.COMPANY_INFO.iban;
+      const bic = this.COMPANY_INFO.bic;
+      const communication = `Facture N°${new Date(invoice.invoice_date).getFullYear()}/000${invoice.invoice_number}`;
+
+      let pdfContent: Buffer | null = null;
+      if (invoice.pdfS3Key) {
+        try {
+          pdfContent = await this.s3Service.getFile(invoice.pdfS3Key);
+        } catch (s3Error) {
+          this.logger.error(
+            `Impossible de récupérer le PDF depuis S3 pour la facture ${invoice.invoice_number} (clé: ${invoice.pdfS3Key}): ${s3Error.message}`,
+          );
+        }
+      } else {
+        this.logger.warn(
+          `Aucune clé S3 trouvée pour la facture ${invoice.invoice_number}, le rappel sera envoyé sans PDF.`,
+        );
+      }
+
+      try {
+        if (
+          daysOverdue >= 30 &&
+          invoice.reminder_level < 3 &&
+          invoice.status !== 'paid' // Vérification supplémentaire
+        ) {
+          // 3ème rappel : Mise en demeure
+          this.logger.log(
+            `Envoi de la mise en demeure pour la facture ${invoice.invoice_number}`,
+          );
+          await this.mailService.sendFinalNoticeEmail(
+            invoice,
+            companyName,
+            iban,
+            bic,
+            communication,
+            pdfContent,
+          );
+          invoice.reminder_level = 3;
+          invoice.status = 'final_notice_sent'; // Mettre à jour le statut
+          await this._invoiceRepository.save(invoice);
+        } else if (
+          daysOverdue >= 20 &&
+          invoice.reminder_level < 2 &&
+          invoice.status !== 'paid'
+        ) {
+          // 2ème rappel
+          this.logger.log(
+            `Envoi du deuxième rappel pour la facture ${invoice.invoice_number}`,
+          );
+          await this.mailService.sendSecondReminderEmail(
+            invoice,
+            companyName,
+            iban,
+            bic,
+            communication,
+            pdfContent,
+          );
+          invoice.reminder_level = 2;
+          invoice.status = 'second_reminder_sent'; // Mettre à jour le statut
+          await this._invoiceRepository.save(invoice);
+        } else if (
+          daysOverdue >= 10 &&
+          invoice.reminder_level < 1 &&
+          invoice.status !== 'paid'
+        ) {
+          // 1er rappel
+          this.logger.log(
+            `Envoi du premier rappel pour la facture ${invoice.invoice_number}`,
+          );
+          await this.mailService.sendFirstReminderEmail(
+            invoice,
+            companyName,
+            iban,
+            bic,
+            communication,
+            pdfContent,
+          );
+          invoice.reminder_level = 1;
+          invoice.status = 'first_reminder_sent'; // Mettre à jour le statut
+          await this._invoiceRepository.save(invoice);
+        }
+      } catch (error) {
+        this.logger.error(
+          `Erreur lors de l'envoi du rappel pour la facture ${invoice.invoice_number}: ${error.message}`,
+        );
+      }
+    }
+    this.logger.log('Vérification des rappels terminée.');
   }
 
   async createCreditNoteWithoutInvoice(
@@ -1205,72 +1332,246 @@ export class InvoiceService {
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
 
-    // Configuration initiale
-    doc.setFontSize(10);
-    doc.setFont('helvetica');
+    // Couleur principale pour le design (identique à generateInvoicePDF)
+    const mainColor = [200, 192, 77] as [number, number, number];
 
-    // Ajout des différentes sections
-    this.addHeader(doc, pageWidth);
-    this.addClientInfo(doc, creditNote.client, pageWidth);
+    // Logo (identique à generateInvoicePDF)
+    try {
+      const logoData = this.assetsService.getAssetBuffer(
+        'images/Groupe-30.png',
+      );
+      const base64Image = `data:image/png;base64,${logoData.toString('base64')}`;
+      doc.addImage(
+        base64Image,
+        'PNG',
+        this.PAGE_MARGIN,
+        this.PAGE_MARGIN,
+        50,
+        20,
+      );
+    } catch (error) {
+      this.logger.warn(`Impossible de charger le logo: ${error.message}`);
+    }
 
-    // Titre et numéro
+    // Titre "Note de crédit" en haut à droite (style generateInvoicePDF)
     doc.setFontSize(28);
     doc.setTextColor(51, 51, 51);
     doc.setFont('helvetica', 'bold');
-    doc.text('Note de crédit', pageWidth - 60, 30, { align: 'right' });
-    doc.setFontSize(11);
-    doc.setFont('helvetica', 'normal');
-    doc.text(
-      this.formatDateBelgium(creditNote.invoice_date),
-      pageWidth - 60,
-      40,
-      { align: 'right' },
-    );
-    doc.text(`N°${creditNote.invoice_number}`, pageWidth - 60, 45, {
+    doc.text('Note de crédit', pageWidth - this.PAGE_MARGIN, 35, {
       align: 'right',
     });
 
-    // Informations de facturation
+    // Date et numéro de note de crédit (style generateInvoicePDF)
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.text(
+      this.formatDateBelgium(creditNote.invoice_date), // Utilise invoice_date comme date d'émission
+      pageWidth - this.PAGE_MARGIN,
+      45,
+      { align: 'right' },
+    );
+    // Utilisation de l'année actuelle pour la numérotation comme dans generateInvoicePDF
+    const creditNoteYear = new Date(creditNote.invoice_date).getFullYear();
+    doc.text(
+      `N°${creditNoteYear}/000${creditNote.invoice_number}`,
+      pageWidth - this.PAGE_MARGIN,
+      55,
+      {
+        align: 'right',
+      },
+    );
+
+    // Informations de l'émetteur (style generateInvoicePDF)
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text(this.COMPANY_INFO.name, this.PAGE_MARGIN, 70);
+    doc.setFont('helvetica', 'normal');
+    doc.text(this.COMPANY_INFO.address, this.PAGE_MARGIN, 75);
+    doc.text(this.COMPANY_INFO.city, this.PAGE_MARGIN, 80);
+    doc.text(`Email: ${this.COMPANY_INFO.email}`, this.PAGE_MARGIN, 85);
+    doc.text(this.COMPANY_INFO.vat, this.PAGE_MARGIN, 90);
+
+    // Informations du client (style generateInvoicePDF)
+    if (creditNote.client) {
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(creditNote.client.name, pageWidth - this.PAGE_MARGIN - 60, 70);
+      doc.setFont('helvetica', 'normal');
+      doc.text(
+        `${creditNote.client.street} ${creditNote.client.number}`,
+        pageWidth - this.PAGE_MARGIN - 60,
+        75,
+      );
+      doc.text(
+        `${creditNote.client.postalCode} ${creditNote.client.city}`,
+        pageWidth - this.PAGE_MARGIN - 60,
+        80,
+      );
+      if (creditNote.client.company_vat_number) {
+        doc.text(
+          creditNote.client.company_vat_number,
+          pageWidth - this.PAGE_MARGIN - 60,
+          85,
+        );
+      }
+    } else {
+      this.logger.warn(
+        `Client non trouvé pour la note de crédit ID: ${creditNote.id}`,
+      );
+      doc.text('Client non spécifié', pageWidth - this.PAGE_MARGIN - 60, 70);
+    }
+
+    // Titre du document (style generateInvoicePDF)
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Note de crédit n°${creditNote.invoice_number}`, 10, 95);
+    doc.text(
+      `Note de crédit N°${creditNoteYear}/000${creditNote.invoice_number}`,
+      this.PAGE_MARGIN,
+      105,
+    );
+
+    // Date d'émission (équivalent du délai de paiement dans generateInvoicePDF)
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(
       `Date d'émission : ${this.formatDateBelgium(creditNote.invoice_date)}`,
-      10,
-      105,
+      pageWidth - this.PAGE_MARGIN,
+      115, // Position Y similaire au payment_deadline de generateInvoicePDF
+      { align: 'right' },
     );
 
-    // Tableau des produits et totaux
-    const finalY = this.addProductsTable(
-      doc,
-      creditNote.products,
-      'credit_note',
-    );
-    this.addTotals(doc, creditNote, finalY, pageWidth);
+    // Tableau des produits (style generateInvoicePDF)
+    const startY = 125;
+    autoTable(doc, {
+      head: [
+        ['Description', 'Quantité', 'Prix unitaire HT', 'TVA', 'Total HT'],
+      ],
+      body: creditNote.products.map((product) => [
+        product.description,
+        product.quantity.toString(),
+        `${product.price_htva.toFixed(2)}€`, // Assumer que price_htva est correct pour NC
+        `${(product.vat * 100).toFixed(0)}%`,
+        `${(product.price_htva * product.quantity).toFixed(2)}€`, // Assumer total HT par ligne
+      ]),
+      startY: startY,
+      styles: {
+        fontSize: 9,
+        cellPadding: 5,
+      },
+      headStyles: {
+        fillColor: mainColor,
+        textColor: 255,
+        fontSize: 9,
+        fontStyle: 'bold',
+        halign: 'center', // Centré par défaut pour l'en-tête
+      },
+      columnStyles: {
+        // Styles des colonnes comme dans generateInvoicePDF
+        0: { cellWidth: 'auto', halign: 'left' },
+        1: { cellWidth: 30, halign: 'center' },
+        2: { cellWidth: 40, halign: 'right' },
+        3: { cellWidth: 30, halign: 'center' },
+        4: { cellWidth: 40, halign: 'right' },
+      },
+      // Configuration spécifique pour les en-têtes de colonnes comme dans generateInvoicePDF
+      willDrawCell: function (data) {
+        if (data.row.section === 'head') {
+          if (data.column.index === 0) {
+            data.cell.styles.halign = 'left';
+          } else if (data.column.index === 1 || data.column.index === 3) {
+            data.cell.styles.halign = 'center';
+          } else {
+            data.cell.styles.halign = 'right';
+          }
+        }
+      },
+      margin: { left: this.PAGE_MARGIN, right: this.PAGE_MARGIN },
+    });
 
-    // Ajout des commentaires si présents
+    // Position Y après le tableau
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+
+    // Sous-total et TVA (style generateInvoicePDF)
+    // Vérifier que les totaux existent sur creditNote avant de les utiliser
+    const priceHtva = creditNote.price_htva ?? 0;
+    const totalVat6 = creditNote.total_vat_6 ?? 0;
+    const totalVat21 = creditNote.total_vat_21 ?? 0;
+    const total = creditNote.total ?? 0;
+
+    autoTable(doc, {
+      body: [
+        ['Sous-total', `${priceHtva.toFixed(2)}€`],
+        ['TVA 6%', `${totalVat6.toFixed(2)}€`],
+        ['TVA 21%', `${totalVat21.toFixed(2)}€`],
+        ['Total', `${total.toFixed(2)}€`], // Utiliser le total de la note de crédit
+      ],
+      startY: finalY,
+      styles: {
+        fontSize: 9,
+        cellPadding: 3, // Ajusté comme generateInvoicePDF
+      },
+      theme: 'plain', // Thème comme generateInvoicePDF
+      columnStyles: {
+        // Styles comme generateInvoicePDF
+        0: { cellWidth: 40, halign: 'left' }, // Note: generateInvoicePDF a 'left' ici
+        1: { cellWidth: 40, halign: 'right', fontStyle: 'bold' },
+      },
+      margin: { left: pageWidth - 100 }, // Marge comme generateInvoicePDF
+      // didDrawCell n'est pas nécessaire ici car pas de ligne "Solde" spéciale
+    });
+
+    // Ajout des commentaires si présents (repris de l'ancienne méthode addTotals)
+    let lastTableY = (doc as any).lastAutoTable.finalY;
     if (creditNote.comment) {
-      const commentY = (doc as any).lastAutoTable.finalY + 20;
+      const commentY = lastTableY + 15; // Espace après le tableau des totaux
 
-      // Titre des commentaires
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
       doc.text('Commentaires:', this.PAGE_MARGIN, commentY);
       doc.setFont('helvetica', 'normal');
 
-      // Division du texte en lignes
       const maxWidth = pageWidth - 2 * this.PAGE_MARGIN;
       const commentLines = doc.splitTextToSize(creditNote.comment, maxWidth);
 
-      // Affichage des lignes de commentaire
       commentLines.forEach((line: string, index: number) => {
         doc.text(line, this.PAGE_MARGIN, commentY + 7 + index * 5);
       });
+      // Mettre à jour la position Y si des commentaires sont ajoutés
+      lastTableY = commentY + 7 + (commentLines.length - 1) * 5 + 5;
     }
 
-    this.addFooter(doc, pageHeight);
+    // Pied de page (style generateInvoicePDF)
+    const footerY = pageHeight - 30; // Position Y comme generateInvoicePDF
+
+    const col1X = this.PAGE_MARGIN;
+    const col2X = pageWidth / 3;
+    const col3X = (pageWidth / 3) * 2 - 10;
+
+    doc.setFontSize(8); // Taille de police comme generateInvoicePDF footer
+    doc.setTextColor(100); // Couleur comme generateInvoicePDF footer
+
+    // Colonne 1 - Siège social
+    doc.setFont('helvetica', 'bold');
+    doc.text('Siège social', col1X, footerY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(this.COMPANY_INFO.address, col1X, footerY + 5);
+    doc.text(this.COMPANY_INFO.city.split(',')[0], col1X, footerY + 10); // Juste la ville
+    doc.text('Belgique', col1X, footerY + 15);
+    doc.text(this.COMPANY_INFO.vat.replace('TVA ', ''), col1X, footerY + 20); // Juste le numéro
+
+    // Colonne 2 - Coordonnées
+    doc.setFont('helvetica', 'bold');
+    doc.text('Coordonnées', col2X, footerY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(this.COMPANY_INFO.name, col2X, footerY + 5);
+    doc.text(this.COMPANY_INFO.email, col2X, footerY + 10);
+
+    // Colonne 3 - Détails bancaires
+    doc.setFont('helvetica', 'bold');
+    doc.text('Détails bancaires', col3X, footerY);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`IBAN: ${this.COMPANY_INFO.iban}`, col3X, footerY + 5);
+    doc.text(`BIC: ${this.COMPANY_INFO.bic}`, col3X, footerY + 10);
 
     return doc.output('arraybuffer');
   }
