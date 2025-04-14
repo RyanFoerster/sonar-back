@@ -42,6 +42,7 @@ export class UsersService {
       .leftJoinAndSelect('user.comptePrincipal', 'comptePrincipal')
       .leftJoinAndSelect('user.userSecondaryAccounts', 'userSecondaryAccounts')
       .leftJoinAndSelect('userSecondaryAccounts.group_account', 'group_account')
+      .leftJoinAndSelect('user.clients', 'clients')
       .getOne();
 
     if (!user) return null;
