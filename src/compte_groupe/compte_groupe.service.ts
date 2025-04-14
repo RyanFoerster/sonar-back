@@ -77,6 +77,12 @@ export class CompteGroupeService {
       )
       .leftJoinAndSelect('userSecondaryAccount.user', 'user')
       .leftJoinAndSelect('compte_groupe.virementSepa', 'virementSepa')
+      .leftJoinAndSelect('compte_groupe.invoice', 'invoice')
+      .leftJoinAndSelect('compte_groupe.quote', 'quote')
+      .leftJoinAndSelect('invoice.client', 'invoice_client')
+      .leftJoinAndSelect('invoice.products', 'invoice_products')
+      .leftJoinAndSelect('quote.client', 'quote_client')
+      .leftJoinAndSelect('quote.products', 'quote_products')
       .where('compte_groupe.id = :id', { id })
       .getOne();
 

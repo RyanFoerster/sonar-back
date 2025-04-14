@@ -29,7 +29,7 @@ export class InvoiceController {
     return this.invoiceService.create(quote, req.user, params);
   }
 
-  @Get()
+  @Get('all')
   findAll(@Req() req) {
     return this.invoiceService.findAll(req.user.id);
   }
