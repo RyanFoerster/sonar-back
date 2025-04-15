@@ -58,6 +58,13 @@ export class Client {
   @Column({ default: false })
   is_physical_person: boolean;
 
+  @Column({
+    type: 'int',
+    nullable: true,
+    comment: 'Default payment deadline in days',
+  })
+  default_payment_deadline: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

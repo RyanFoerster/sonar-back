@@ -147,6 +147,11 @@ export class InvoiceService {
       invoiceCreated.id,
     );
     invoiceCreated.pdfS3Key = pdfKey;
+    const paymentDeadline = new Date(quoteFromDB.service_date);
+    paymentDeadline.setDate(
+      paymentDeadline.getDate() + quoteFromDB.payment_deadline,
+    );
+    invoiceCreated.payment_deadline = paymentDeadline;
     await this._invoiceRepository.save(invoiceCreated);
 
     this.mailService.sendInvoiceEmail(invoiceCreated, pdfKey);
