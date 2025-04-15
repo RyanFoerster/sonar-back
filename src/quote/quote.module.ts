@@ -12,6 +12,7 @@ import { UsersModule } from '../users/users.module';
 import { S3Module } from '@/services/s3/s3.module';
 import { InvoiceModule } from '@/invoice/invoice.module';
 import { MailModule } from '@/mail/mail.module';
+import { GlobalCounterModule } from '../global-counter/global-counter.module';
 
 @Module({
   controllers: [QuoteController],
@@ -27,6 +28,7 @@ import { MailModule } from '@/mail/mail.module';
     S3Module,
     forwardRef(() => InvoiceModule),
     forwardRef(() => MailModule),
+    GlobalCounterModule,
   ],
 })
 export class QuoteModule {}
