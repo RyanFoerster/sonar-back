@@ -23,6 +23,7 @@ import { ComptePrincipal } from '../compte_principal/entities/compte_principal.e
 import { CompteGroupe } from '../compte_groupe/entities/compte_groupe.entity';
 import { S3Service } from '@/services/s3/s3.service';
 import { InvoiceService } from '@/invoice/invoice.service';
+import { GlobalCounterService } from '../global-counter/global-counter.service';
 
 @Injectable()
 export class QuoteService {
@@ -39,6 +40,7 @@ export class QuoteService {
     private readonly s3Service: S3Service,
     @Inject(forwardRef(() => InvoiceService))
     private readonly invoiceService: InvoiceService,
+    private readonly globalCounterService: GlobalCounterService,
   ) {}
 
   // Fonction utilitaire pour formater les dates au format DD/MM/YYYY
@@ -66,7 +68,7 @@ export class QuoteService {
     account: ComptePrincipal | CompteGroupe;
     quoteNumber: number;
   } | null> {
-    if (accountId === undefined) {
+    if (!accountId) {
       return null;
     }
 
@@ -76,9 +78,12 @@ export class QuoteService {
         : this.compteGroupeService;
 
     const account = await service.findOne(accountId);
-    const quoteNumber = account.next_quote_number;
 
-    account.next_quote_number += 1;
+    // Utiliser le compteur global au lieu du compteur local
+    const quoteNumber = await this.globalCounterService.getNextQuoteNumber();
+
+    // Ne plus incrémenter le compteur local
+    // account.next_quote_number += 1;
     await service.save(account as ComptePrincipal);
 
     return { account, quoteNumber };

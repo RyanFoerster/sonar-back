@@ -13,6 +13,7 @@ import { MailService } from '../mail/mail.services';
 import { AssetsService } from '../services/assets.service';
 import { S3Module } from '@/services/s3/s3.module';
 import { MailModule } from '@/mail/mail.module';
+import { GlobalCounterModule } from '../global-counter/global-counter.module';
 
 @Module({
   controllers: [InvoiceController],
@@ -20,16 +21,15 @@ import { MailModule } from '@/mail/mail.module';
   exports: [InvoiceService],
   imports: [
     TypeOrmModule.forFeature([Invoice]),
-    UsersModule,
-    ClientsModule,
-    ProductModule,
     QuoteModule,
     ClientsModule,
     CompteGroupeModule,
     ComptePrincipalModule,
     UsersModule,
+    ProductModule,
     S3Module,
     forwardRef(() => MailModule),
+    GlobalCounterModule,
   ],
 })
 export class InvoiceModule {}

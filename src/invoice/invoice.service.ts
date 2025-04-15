@@ -30,6 +30,7 @@ import { AssetsService } from '../services/assets.service';
 import { S3Service } from '@/services/s3/s3.service';
 import * as QRCode from 'qrcode';
 import { LessThan } from 'typeorm';
+import { GlobalCounterService } from '../global-counter/global-counter.service';
 
 @Injectable()
 export class InvoiceService {
@@ -61,6 +62,7 @@ export class InvoiceService {
     private productService: ProductService,
     private assetsService: AssetsService,
     private s3Service: S3Service,
+    private globalCounterService: GlobalCounterService,
   ) {}
 
   async create(
@@ -87,23 +89,26 @@ export class InvoiceService {
 
     let invoice = await this.createInvoiceFromQuote(quoteFromDB);
 
+    // Utilisation du compteur global pour obtenir un numéro de facture
+    const globalInvoiceNumber =
+      await this.globalCounterService.getNextInvoiceNumber();
+    invoice.invoice_number = globalInvoiceNumber;
+
     if (params.type === 'PRINCIPAL') {
       account = await this.comptePrincipalService.findOne(params.account_id);
       invoice.main_account = account;
-      invoice.invoice_number = account.next_invoice_number;
-
-      // Incrémenter et mettre à jour le prochain numéro de facture
-      account.next_invoice_number += 1;
+      // Ne plus utiliser le compteur local
+      // invoice.invoice_number = account.next_invoice_number;
+      // account.next_invoice_number += 1;
       await this.comptePrincipalService.save(account);
     }
 
     if (params.type === 'GROUP') {
       account = await this.compteGroupeService.findOne(params.account_id);
       invoice.group_account = account;
-      invoice.invoice_number = account.next_invoice_number;
-
-      // Incrémenter et mettre à jour le prochain numéro de facture
-      account.next_invoice_number += 1;
+      // Ne plus utiliser le compteur local
+      // invoice.invoice_number = account.next_invoice_number;
+      // account.next_invoice_number += 1;
       await this.compteGroupeService.save(account);
     }
 
@@ -871,18 +876,20 @@ export class InvoiceService {
           this.logger.log(
             `Compte principal trouvé : ${invoice.main_account.next_invoice_number}`,
           );
-          invoice.invoice_number = invoice.main_account.next_invoice_number;
-          invoice.main_account.next_invoice_number += 1;
-          await this.comptePrincipalService.save(invoice.main_account);
+          // Utilisation du compteur global au lieu du compteur local
+          invoice.invoice_number =
+            await this.globalCounterService.getNextInvoiceNumber();
+          // invoice.main_account.next_invoice_number += 1;
         }
 
         if (quote.group_account) {
           invoice.group_account = await this.compteGroupeService.findOne(
             quote.group_account.id,
           );
-          invoice.invoice_number = invoice.group_account.next_invoice_number;
-          invoice.group_account.next_invoice_number += 1;
-          await this.compteGroupeService.save(invoice.group_account);
+          // Utilisation du compteur global au lieu du compteur local
+          invoice.invoice_number =
+            await this.globalCounterService.getNextInvoiceNumber();
+          // invoice.group_account.next_invoice_number += 1;
         }
 
         const invoiceCreated = await this._invoiceRepository.save(invoice);
@@ -999,14 +1006,16 @@ export class InvoiceService {
       });
       if (params.type === 'PRINCIPAL') {
         creditNote.main_account = account as ComptePrincipal;
-        creditNote.invoice_number = account.next_invoice_number;
-        account.next_invoice_number += 1;
-        await manager.save(account);
+        // Utilisation du compteur global au lieu du compteur local
+        creditNote.invoice_number =
+          await this.globalCounterService.getNextInvoiceNumber();
+        // account.next_invoice_number += 1;
       } else {
         creditNote.group_account = account as CompteGroupe;
-        creditNote.invoice_number = account.next_invoice_number;
-        account.next_invoice_number += 1;
-        await manager.save(account);
+        // Utilisation du compteur global au lieu du compteur local
+        creditNote.invoice_number =
+          await this.globalCounterService.getNextInvoiceNumber();
+        // account.next_invoice_number += 1;
       }
 
       // Calculer les totaux en fonction des produits
@@ -1242,7 +1251,7 @@ export class InvoiceService {
         status: createCreditNoteDto.status,
         type: 'credit_note',
         payment_deadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // +30 jours par défaut
-        invoice_number: account.next_invoice_number, // Utiliser le prochain numéro de facture
+        invoice_number: await this.globalCounterService.getNextInvoiceNumber(), // Utiliser le compteur global
         isVatIncluded: createCreditNoteDto.isVatIncluded,
       });
 
@@ -1271,7 +1280,7 @@ export class InvoiceService {
         creditNote.total_vat_21;
 
       // Incrémenter le numéro de facture du compte principal
-      account.next_invoice_number += 1;
+      // account.next_invoice_number += 1;
       await manager.save(account);
       await manager.save(creditNote);
 

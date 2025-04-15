@@ -31,6 +31,7 @@ import { ProjectAttachmentModule } from './user-attachment/user-attachment.modul
 import { PushNotificationModule } from './push-notification/push-notification.module';
 import { EventModule } from './event/event.module';
 import { GroupeInvitationModule } from './groupe-invitation/groupe-invitation.module';
+import { GlobalCounterModule } from './global-counter/global-counter.module';
 
 @Module({
   imports: [
@@ -103,6 +104,7 @@ import { GroupeInvitationModule } from './groupe-invitation/groupe-invitation.mo
     PushNotificationModule,
     EventModule,
     GroupeInvitationModule,
+    GlobalCounterModule,
   ],
   controllers: [AppController],
   providers: [AppService, BceService, AssetsService],
