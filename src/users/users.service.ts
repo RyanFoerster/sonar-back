@@ -18,6 +18,8 @@ import { GoogleDriveService } from 'nestjs-googledrive-upload';
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     @InjectRepository(User) private readonly usersRepository: Repository<User>,
     private readonly comptePrincipalService: ComptePrincipalService,
@@ -36,8 +38,11 @@ export class UsersService {
   }
 
   async findOne(id: number) {
+    this.logger.log(`[findOne] Recherche de l'utilisateur ID: ${id}`);
     const user = await this.usersRepository
       .createQueryBuilder('user')
+      .addSelect('user.password')
+      .addSelect('user.googleRefreshToken')
       .where('user.id = :id', { id })
       .leftJoinAndSelect('user.comptePrincipal', 'comptePrincipal')
       .leftJoinAndSelect('user.userSecondaryAccounts', 'userSecondaryAccounts')
@@ -45,7 +50,18 @@ export class UsersService {
       .leftJoinAndSelect('user.clients', 'clients')
       .getOne();
 
-    if (!user) return null;
+    if (!user) {
+      this.logger.warn(`[findOne] Utilisateur ID: ${id} non trouvé.`);
+      return null;
+    }
+
+    const secondaryAccountIds =
+      user.userSecondaryAccounts?.map((acc) => acc.id) || [];
+    const secondaryAccountGroupIds =
+      user.userSecondaryAccounts?.map((acc) => acc.secondary_account_id) || [];
+    this.logger.log(
+      `[findOne] Utilisateur ID: ${id} trouvé. IDs UserSecondaryAccount: [${secondaryAccountIds.join(', ')}] (Group IDs: [${secondaryAccountGroupIds.join(', ')}])`,
+    );
 
     return user;
   }
@@ -71,7 +87,9 @@ export class UsersService {
     return await this.usersRepository
       .createQueryBuilder('user')
       .addSelect('user.password')
+      .addSelect('user.googleRefreshToken')
       .leftJoinAndSelect('user.userSecondaryAccounts', 'userSecondaryAccounts')
+      .leftJoinAndSelect('userSecondaryAccounts.group_account', 'group_account')
       .where('user.email = :email', { email })
       .getOne();
   }

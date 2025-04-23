@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  ParseBoolPipe,
   Post,
   Put,
   Query,
@@ -42,7 +43,7 @@ export class ProductController {
   update(
     @Param('id') id: string,
     @Body() updateProductDto: UpdateProductDto,
-    @Query('tvaIncluded') tvaIncluded: boolean,
+    @Query('tvaIncluded', ParseBoolPipe) tvaIncluded: boolean,
   ) {
     return this.productService.updateProduct(
       +id,

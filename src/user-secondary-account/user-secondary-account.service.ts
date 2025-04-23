@@ -1,9 +1,11 @@
 import {
   BadRequestException,
+  ForbiddenException,
   forwardRef,
   Inject,
   Injectable,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { CreateUserSecondaryAccountDto } from './dto/create-user-secondary-account.dto';
 import { UpdateUserSecondaryAccountDto } from './dto/update-user-secondary-account.dto';
@@ -16,6 +18,8 @@ import { CompteGroupeService } from '../compte_groupe/compte_groupe.service';
 
 @Injectable()
 export class UserSecondaryAccountService {
+  private readonly logger = new Logger(UserSecondaryAccountService.name);
+
   constructor(
     @InjectRepository(UserSecondaryAccount)
     private readonly userSecondaryAccountRepository: Repository<UserSecondaryAccount>,
@@ -113,9 +117,137 @@ export class UserSecondaryAccountService {
 
   async remove(id: number) {
     try {
+      const account = await this.findOne(id);
+      if (!account) {
+        throw new NotFoundException(
+          `UserSecondaryAccount avec l'ID ${id} non trouvé.`,
+        );
+      }
       return await this.userSecondaryAccountRepository.delete({ id });
     } catch (e) {
-      throw new BadRequestException(e.message);
+      this.logger.error(
+        `Erreur lors de la suppression de UserSecondaryAccount ID ${id}: ${e.message}`,
+        e.stack,
+      );
+      if (e instanceof NotFoundException) throw e;
+      throw new BadRequestException(
+        e.message || 'Impossible de supprimer la liaison utilisateur-groupe.',
+      );
+    }
+  }
+
+  async leaveGroup(
+    userId: number,
+    groupId: number,
+  ): Promise<{ message: string }> {
+    this.logger.log(
+      `[TRACE] Tentative de départ du groupe ${groupId} par l'utilisateur ${userId}`,
+    );
+
+    const account = await this.userSecondaryAccountRepository.findOne({
+      where: {
+        user: { id: userId },
+        secondary_account_id: groupId,
+      },
+      relations: ['user', 'group_account'],
+    });
+
+    if (!account) {
+      throw new NotFoundException(
+        `L'utilisateur ${userId} n'est pas membre du groupe ${groupId}.`,
+      );
+    }
+
+    if (account.role_gestion === 'ADMIN') {
+      const admins = await this.findAdminsForGroup(groupId);
+      if (admins.length <= 1 && admins[0].user.id === userId) {
+        throw new ForbiddenException(
+          'Vous ne pouvez pas quitter le groupe car vous êtes le seul administrateur.',
+        );
+      }
+    }
+
+    try {
+      await this.userSecondaryAccountRepository.delete(account.id);
+      this.logger.log(
+        `[TRACE] Utilisateur ${userId} a quitté le groupe ${groupId} avec succès.`,
+      );
+      return { message: 'Vous avez quitté le groupe avec succès.' };
+    } catch (error) {
+      this.logger.error(
+        `[TRACE] Erreur lors du départ du groupe ${groupId} par l'utilisateur ${userId}: ${error.message}`,
+        error.stack,
+      );
+      throw new BadRequestException('Impossible de quitter le groupe.');
+    }
+  }
+
+  async removeMember(
+    adminUserId: number,
+    memberUserId: number,
+    groupId: number,
+    role: string,
+  ): Promise<{ message: string }> {
+    this.logger.log(
+      `[TRACE] Tentative de suppression du membre ${memberUserId} du groupe ${groupId} par l'admin ${adminUserId}`,
+    );
+
+    if (adminUserId === memberUserId) {
+      throw new BadRequestException(
+        "Vous ne pouvez pas vous retirer vous-même avec cette fonction. Utilisez 'Quitter le groupe'.",
+      );
+    }
+
+    const adminAccount = await this.userSecondaryAccountRepository.findOne({
+      where: {
+        user: { id: adminUserId },
+        secondary_account_id: groupId,
+      },
+    });
+
+    if (role !== 'ADMIN') {
+      if (!adminAccount || adminAccount.role_gestion !== 'ADMIN') {
+        throw new ForbiddenException(
+          "Vous n'avez pas les droits nécessaires pour retirer un membre de ce groupe.",
+        );
+      }
+    }
+
+    const memberAccount = await this.userSecondaryAccountRepository.findOne({
+      where: {
+        user: { id: memberUserId },
+        secondary_account_id: groupId,
+      },
+      relations: ['user', 'group_account'],
+    });
+
+    if (!memberAccount) {
+      throw new NotFoundException(
+        `L'utilisateur ${memberUserId} n'est pas membre du groupe ${groupId}.`,
+      );
+    }
+
+    if (memberAccount.role_gestion === 'ADMIN') {
+      const admins = await this.findAdminsForGroup(groupId);
+      if (admins.length <= 1) {
+        throw new ForbiddenException(
+          'Vous ne pouvez pas retirer le dernier administrateur du groupe.',
+        );
+      }
+    }
+
+    try {
+      await this.userSecondaryAccountRepository.delete(memberAccount.id);
+      this.logger.log(
+        `[TRACE] Membre ${memberUserId} retiré du groupe ${groupId} par l'admin ${adminUserId} avec succès.`,
+      );
+      return { message: 'Membre retiré avec succès.' };
+    } catch (error) {
+      this.logger.error(
+        `[TRACE] Erreur lors du retrait du membre ${memberUserId} du groupe ${groupId}: ${error.message}`,
+        error.stack,
+      );
+      throw new BadRequestException('Impossible de retirer le membre.');
     }
   }
 

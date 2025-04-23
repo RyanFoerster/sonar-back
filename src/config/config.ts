@@ -39,4 +39,12 @@ export default () => ({
     vapidKey: process.env.FIREBASE_VAPID_KEY,
   },
   isProd: process.env.STAGE === 'prod',
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    apiBaseUrl: process.env.API_BASE_URL,
+    frontendUrl: process.env.FRONTEND_URL,
+    encryptionKey: process.env.ENCRYPTION_KEY,
+    encryptionIv: process.env.ENCRYPTION_IV,
+  },
 });

@@ -808,7 +808,17 @@ export class InvoiceService {
         "Vous n'êtes pas autorisé à accéder à cette ressource",
       );
     }
-    return this._invoiceRepository.find({});
+    const invoices = await this._invoiceRepository
+      .createQueryBuilder('invoice')
+      .select('invoice')
+      .leftJoin('invoice.main_account', 'main_account')
+      .addSelect('main_account.username', 'main_account_username')
+      .leftJoin('invoice.group_account', 'group_account')
+      .addSelect('group_account.username', 'group_account_username')
+      .leftJoinAndSelect('invoice.client', 'client')
+      .leftJoinAndSelect('invoice.quote', 'quote')
+      .getMany();
+    return invoices;
   }
 
   async findOne(id: number) {

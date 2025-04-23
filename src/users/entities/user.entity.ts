@@ -65,7 +65,6 @@ export class User {
     () => UserSecondaryAccount,
     (userSecondaryAccount) => userSecondaryAccount.user,
     {
-      eager: true,
       cascade: true,
     },
   )
@@ -82,4 +81,11 @@ export class User {
 
   @OneToMany(() => Beneficiary, (beneficiary) => beneficiary.user)
   beneficiary: Beneficiary;
+
+  @Column({ nullable: true, unique: true })
+  googleId: string;
+
+  // Store encrypted refresh token
+  @Column({ nullable: true, select: false })
+  googleRefreshToken: string;
 }

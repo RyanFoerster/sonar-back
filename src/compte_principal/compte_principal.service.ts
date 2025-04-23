@@ -69,11 +69,31 @@ export class ComptePrincipalService {
   }
 
   async findOneWithRelations(id: number) {
-    return await this.comptePrincipalRepository.findOne({
-      where: {
-        id,
-      },
-    });
+    return await this.comptePrincipalRepository
+      .createQueryBuilder('comptePrincipal')
+      .where('comptePrincipal.id = :id', { id })
+      // Charger les relations directes souhaitées
+      .leftJoinAndSelect('comptePrincipal.user', 'user')
+      // Charger la relation invoice
+      .leftJoinAndSelect('comptePrincipal.invoice', 'invoice')
+      .leftJoinAndSelect('invoice.client', 'invoice_client')
+      .leftJoinAndSelect('invoice.products', 'invoice_products')
+      // Charger sélectivement les comptes liés aux factures
+      .leftJoin('invoice.main_account', 'invoice_main_account')
+      .addSelect(['invoice_main_account.id', 'invoice_main_account.username'])
+      .leftJoin('invoice.group_account', 'invoice_group_account')
+      .addSelect(['invoice_group_account.id', 'invoice_group_account.username'])
+
+      // Charger la relation quote
+      .leftJoinAndSelect('comptePrincipal.quote', 'quote')
+      .leftJoinAndSelect('quote.client', 'quote_client')
+      .leftJoinAndSelect('quote.products', 'quote_products')
+      // Charger sélectivement les comptes liés aux devis
+      .leftJoin('quote.main_account', 'quote_main_account')
+      .addSelect(['quote_main_account.id', 'quote_main_account.username'])
+      .leftJoin('quote.group_account', 'quote_group_account')
+      .addSelect(['quote_group_account.id', 'quote_group_account.username'])
+      .getOne();
   }
 
   findOneWithoutRelation(id: number) {
