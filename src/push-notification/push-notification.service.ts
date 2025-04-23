@@ -648,18 +648,28 @@ export class PushNotificationService {
       const tokens = devices.map((device) => device.token);
 
       try {
-        const message = {
+        const messagePayload: admin.messaging.MulticastMessage = {
           notification: {
             title: notificationDto.title,
             body: notificationDto.body,
           },
           data: {},
           webpush: {
+            notification: {
+              title: notificationDto.title,
+              body: notificationDto.body,
+              icon: 'https://sonarartists.be/icons/icon.webp',
+              badge: 'https://sonarartists.be/icons/icon.webp',
+              ...(notificationDto.actions && notificationDto.actions.length > 0
+                ? { actions: notificationDto.actions }
+                : {}),
+              ...(notificationDto.data ? { data: notificationDto.data } : {}),
+            },
             fcmOptions: {
-              link: notificationDto.url || '',
+              link: notificationDto.url,
             },
           },
-          tokens: tokens.slice(0, 500), // Firebase limite à 500 tokens par requête
+          tokens: tokens,
         };
 
         // Convertir toutes les valeurs dans l'objet data en chaînes de caractères
@@ -673,15 +683,16 @@ export class PushNotificationService {
                 ? String(notificationDto.data[key])
                 : '';
           });
-          message.data = stringifiedData;
+          messagePayload.data = stringifiedData;
         }
 
         this.logger.log(
-          `[TRACE-PUSH] Envoi en masse - Données converties en chaînes: ${JSON.stringify(message.data)}`,
+          `[TRACE-PUSH] Envoi en masse - Données converties en chaînes: ${JSON.stringify(messagePayload.data)}`,
         );
 
         // Utilisation de l'API de multicast de Firebase
-        const batchResponse = await messaging.sendEachForMulticast(message);
+        const batchResponse =
+          await messaging.sendEachForMulticast(messagePayload);
 
         this.logger.log(
           `Notification FCM envoyée à ${batchResponse.successCount}/${tokens.length} appareils`,

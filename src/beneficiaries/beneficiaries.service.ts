@@ -3,7 +3,7 @@ import { CreateBeneficiaryDto } from './dto/create-beneficiary.dto';
 import { UpdateBeneficiaryDto } from './dto/update-beneficiary.dto';
 import { Beneficiary } from './entities/beneficiary.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Like, Repository } from 'typeorm';
+import { ILike, Like, Repository } from 'typeorm';
 import { UsersService } from '@/users/users.service';
 import { User } from '@/users/entities/user.entity';
 
@@ -125,7 +125,7 @@ export class BeneficiariesService {
 
     const beneficiaries = await this.beneficiariesRepository.find({
       where: {
-        account_owner: Like(`%${query}%`),
+        account_owner: ILike(`%${query}%`),
         user: {
           id: user_id,
         },
