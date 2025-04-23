@@ -13,6 +13,8 @@ import { S3Module } from '@/services/s3/s3.module';
 import { InvoiceModule } from '@/invoice/invoice.module';
 import { MailModule } from '@/mail/mail.module';
 import { GlobalCounterModule } from '../global-counter/global-counter.module';
+import { PushNotificationModule } from '../push-notification/push-notification.module';
+import { NotificationModule } from '../notification/notification.module';
 
 @Module({
   controllers: [QuoteController],
@@ -29,6 +31,8 @@ import { GlobalCounterModule } from '../global-counter/global-counter.module';
     forwardRef(() => InvoiceModule),
     forwardRef(() => MailModule),
     GlobalCounterModule,
+    PushNotificationModule,
+    NotificationModule,
   ],
 })
 export class QuoteModule {}

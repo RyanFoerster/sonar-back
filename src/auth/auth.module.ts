@@ -12,6 +12,7 @@ import { UsersModule } from '../users/users.module';
 import { ComptePrincipalModule } from '../compte_principal/compte_principal.module';
 import { HttpModule } from '@nestjs/axios';
 import { MailModule } from '@/mail/mail.module';
+import { User } from '../users/entities/user.entity';
 
 @Module({
   controllers: [AuthController],
@@ -25,7 +26,7 @@ import { MailModule } from '@/mail/mail.module';
   ],
   exports: [AuthService],
   imports: [
-    TypeOrmModule.forFeature([RefreshToken, ResetToken]),
+    TypeOrmModule.forFeature([RefreshToken, ResetToken, User]),
     UsersModule,
     ComptePrincipalModule,
     HttpModule,

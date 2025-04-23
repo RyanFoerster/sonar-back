@@ -24,6 +24,10 @@ import { CompteGroupe } from '../compte_groupe/entities/compte_groupe.entity';
 import { S3Service } from '@/services/s3/s3.service';
 import { InvoiceService } from '@/invoice/invoice.service';
 import { GlobalCounterService } from '../global-counter/global-counter.service';
+import { PushNotificationService } from '../push-notification/push-notification.service';
+import { SendNotificationDto } from '../push-notification/dto/send-notification.dto';
+import { NotificationService } from '../notification/notification.service';
+import sanitizeHtml from 'sanitize-html';
 
 @Injectable()
 export class QuoteService {
@@ -41,7 +45,68 @@ export class QuoteService {
     @Inject(forwardRef(() => InvoiceService))
     private readonly invoiceService: InvoiceService,
     private readonly globalCounterService: GlobalCounterService,
+    private readonly pushNotificationService: PushNotificationService,
+    private readonly notificationService: NotificationService,
   ) {}
+
+  // Définir les options de sanitization
+  private sanitizeOptions: sanitizeHtml.IOptions = {
+    allowedTags: [
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'blockquote',
+      'p',
+      'a',
+      'ul',
+      'ol',
+      'nl',
+      'li',
+      'b',
+      'i',
+      'strong',
+      'em',
+      'strike',
+      'abbr',
+      'code',
+      'hr',
+      'br',
+      'div',
+      'table',
+      'thead',
+      'caption',
+      'tbody',
+      'tr',
+      'th',
+      'td',
+      'pre',
+      'span',
+      'u',
+      's',
+    ],
+    allowedAttributes: {
+      a: ['href', 'name', 'target'],
+      // Autoriser les attributs pour d'autres balises si nécessaire
+      // exemple: img: [ 'src', 'alt' ]
+      '*': ['class', 'style'], // Autoriser class et style sur toutes les balises (à ajuster si trop permissif)
+    },
+    // Autoriser les schémas d'URL sûrs
+    allowedSchemes: ['http', 'https', 'ftp', 'mailto'],
+    allowedSchemesByTag: {},
+    allowedSchemesAppliedToAttributes: ['href', 'src', 'cite'],
+    allowProtocolRelative: true,
+    enforceHtmlBoundary: false,
+    // Transformer les liens pour qu'ils s'ouvrent dans un nouvel onglet par défaut
+    transformTags: {
+      a: sanitizeHtml.simpleTransform('a', {
+        target: '_blank',
+        rel: 'noopener noreferrer',
+      }),
+    },
+  };
 
   // Fonction utilitaire pour formater les dates au format DD/MM/YYYY
   private formatDate(dateValue: string | Date): string {
@@ -131,6 +196,14 @@ export class QuoteService {
     // Validation de base
     if (!createQuoteDto.client_id || !createQuoteDto.products_id?.length) {
       throw new BadRequestException('Client and products are required');
+    }
+
+    // Sanitize le commentaire AVANT de créer l'entité
+    if (createQuoteDto.comment) {
+      createQuoteDto.comment = sanitizeHtml(
+        createQuoteDto.comment,
+        this.sanitizeOptions,
+      );
     }
 
     let quote: Quote = this.quoteRepository.create(createQuoteDto);
@@ -390,11 +463,26 @@ export class QuoteService {
       throw new BadRequestException('Client and products are required');
     }
 
+    // Sanitize le commentaire AVANT de l'appliquer à l'entité
+    let sanitizedComment: string | undefined = undefined;
+    if (updateQuoteDto.comment !== undefined) {
+      sanitizedComment = sanitizeHtml(
+        updateQuoteDto.comment,
+        this.sanitizeOptions,
+      );
+    }
+
     // Mise à jour des données de base
     quote.quote_date = updateQuoteDto.quote_date;
     quote.service_date = updateQuoteDto.service_date;
     quote.payment_deadline = updateQuoteDto.payment_deadline;
     quote.client = await this.clientService.findOne(updateQuoteDto.client_id);
+    quote.isVatIncluded = updateQuoteDto.isVatIncluded; // Assigner isVatIncluded ici
+
+    // Appliquer le commentaire sanitisé s'il existe
+    if (sanitizedComment !== undefined) {
+      quote.comment = sanitizedComment;
+    }
 
     // Récupération et mise à jour des produits
     const productPromises = updateQuoteDto.products_id.map((id) =>
@@ -531,11 +619,6 @@ export class QuoteService {
 
     // Assigner les URLs au devis
     quote.attachment_url = attachment_urls;
-
-    // Gestion du commentaire
-    if (updateQuoteDto.comment !== undefined) {
-      quote.comment = updateQuoteDto.comment;
-    }
 
     // Mise à jour des statuts
     quote.group_acceptance = 'pending';
@@ -713,15 +796,14 @@ export class QuoteService {
   async updateOrderGiverAcceptance(id: number) {
     const quote = await this.updateQuoteStatus(id, 'order_giver', 'accepted');
 
-    // Envoyer un email au groupe pour l'informer que le client a accepté le devis
+    // Envoyer un email et des notifications au groupe pour l'informer que le client a accepté le devis
     try {
-      // Récupérer l'email du créateur du devis (groupe)
       const creatorEmail = quote.created_by_mail;
       if (creatorEmail) {
+        // 1. Envoi de l'email
         const creatorName =
-          quote.created_by_project_name.split(' ')[0] || 'Groupe'; // Prénom du créateur
+          quote.created_by_project_name.split(' ')[0] || 'Groupe';
         const formattedDate = this.formatDate(quote.service_date);
-
         await this.mailService.sendQuoteStatusUpdateEmail(
           creatorEmail,
           creatorName,
@@ -734,14 +816,74 @@ export class QuoteService {
           formattedDate,
           quote.client.name,
         );
-
         Logger.log(
           `Email de notification d'acceptation envoyé au groupe: ${creatorEmail}`,
         );
+
+        // 2. Récupérer l'utilisateur créateur
+        const creatorUser =
+          await this.usersService.findOneByEmail(creatorEmail);
+
+        if (creatorUser) {
+          // 3. Envoyer la notification push
+          const pushNotificationPayload: SendNotificationDto = {
+            title: `Devis Accepté: N°${quote.quote_number}`,
+            body: `Le devis N°${quote.quote_number} pour ${quote.client.name} a été accepté.`,
+            data: {
+              type: 'QUOTE_ACCEPTED',
+              quoteId: quote.id.toString(),
+              url: '/admin/quotes',
+            },
+          };
+          try {
+            await this.pushNotificationService.sendToUser(
+              creatorUser.id,
+              pushNotificationPayload,
+            );
+            Logger.log(
+              `Notification push envoyée à l'utilisateur ${creatorUser.id} (${creatorEmail}) pour l'acceptation du devis ${quote.id}`,
+            );
+          } catch (pushError) {
+            Logger.error(
+              `Erreur lors de l'envoi de la notification push à ${creatorEmail}: ${pushError.message}`,
+              pushError.stack,
+            );
+          }
+
+          // 4. Créer et envoyer la notification en temps réel (WebSocket)
+          try {
+            await this.notificationService.create({
+              userId: creatorUser.id,
+              type: 'QUOTE_ACCEPTED',
+              title: `Devis Accepté: N°${quote.quote_number}`,
+              message: `Le devis N°${quote.quote_number} pour ${quote.client.name} a été accepté par le client.`,
+              isRead: false,
+              data: {
+                quoteId: quote.id.toString(),
+                clientId: quote.client.id.toString(),
+                clientName: quote.client.name,
+                url: '/admin/quotes', // Pour gérer le clic sur la notification dans le front
+              },
+            });
+            Logger.log(
+              `Notification en temps réel créée pour l'utilisateur ${creatorUser.id} (${creatorEmail}) pour l'acceptation du devis ${quote.id}`,
+            );
+          } catch (realtimeError) {
+            Logger.error(
+              `Erreur lors de la création de la notification en temps réel pour ${creatorEmail}: ${realtimeError.message}`,
+              realtimeError.stack,
+            );
+          }
+        } else {
+          Logger.warn(
+            `Impossible d'envoyer les notifications : Utilisateur créateur non trouvé pour l'email ${creatorEmail}`,
+          );
+        }
       }
     } catch (error) {
       Logger.error(
-        `Erreur lors de l'envoi de l'email de notification: ${error.message}`,
+        `Erreur lors de l'envoi des notifications (email/push/temps réel) après acceptation du devis ${quote.id}: ${error.message}`,
+        error.stack,
       );
     }
 

@@ -4,6 +4,8 @@ import { ExpressAdapter } from '@nestjs/platform-express';
 import { INestApplication, Logger } from '@nestjs/common';
 import express from 'express';
 import { join } from 'path';
+import session from 'express-session';
+import passport from 'passport';
 
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
@@ -22,6 +24,29 @@ export const createNestServer = async (expressInstance: express.Express) => {
   );
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+
+  // Configuration de la session (AVANT Passport)
+  app.use(
+    session({
+      secret:
+        configService.get<string>('JWT_SECRET') || 'default-session-secret',
+      resave: false,
+      saveUninitialized: false,
+      cookie: { secure: configService.get('isProd') },
+    }),
+  );
+
+  // Initialisation de Passport (APRES session)
+  app.use(passport.initialize());
+  app.use(passport.session());
+
+  // Middleware de logging global TRES basique pour débogage
+  app.use((req, res, next) => {
+    console.log(
+      `[GLOBAL MIDDLEWARE] Received request: ${req.method} ${req.originalUrl}`,
+    );
+    next();
+  });
 
   // Configuration pour servir les fichiers statiques
   app.use('/assets', express.static(join(__dirname, 'assets')));
