@@ -48,6 +48,11 @@ export class QuoteController {
     return this.quoteService.findQuoteWithoutInvoice();
   }
 
+  @Get('all-admin')
+  findAllForAdmin() {
+    return this.quoteService.findAllForAdmin();
+  }
+
   @Get(':id')
   @Public()
   findOne(@Param('id') id: string) {

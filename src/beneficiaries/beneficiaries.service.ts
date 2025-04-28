@@ -18,8 +18,6 @@ export class BeneficiariesService {
   ) {}
 
   async create(createBeneficiaryDto: CreateBeneficiaryDto, user_id: number) {
-    this.logger.log(`Creating beneficiary for user ${user_id}`);
-
     const user: User = await this.usersService.findOne(user_id);
 
     if (!user) {
@@ -36,9 +34,6 @@ export class BeneficiariesService {
     );
 
     if (beneficiary) {
-      this.logger.log(
-        `Updating existing beneficiary with IBAN ${createBeneficiaryDto.iban}`,
-      );
       return this.beneficiariesRepository.save({
         id: beneficiary.id,
         account_owner: createBeneficiaryDto.account_owner,
@@ -46,9 +41,6 @@ export class BeneficiariesService {
       });
     }
 
-    this.logger.log(
-      `Creating new beneficiary with IBAN ${createBeneficiaryDto.iban}`,
-    );
     return this.beneficiariesRepository.save({
       ...createBeneficiaryDto,
       user,
@@ -56,10 +48,6 @@ export class BeneficiariesService {
   }
 
   async findAll(user_id: number, page = 1, limit = 10) {
-    this.logger.log(
-      `Fetching beneficiaries for user ${user_id} (page ${page}, limit ${limit})`,
-    );
-
     if (typeof page !== 'number') {
       this.logger.warn(`Invalid page parameter: ${page}, converting to number`);
       page = Number(page) || 1;
@@ -73,7 +61,6 @@ export class BeneficiariesService {
     }
 
     const skip = (page - 1) * limit;
-    this.logger.debug(`Query with skip=${skip}, take=${limit}`);
 
     const [items, total] = await this.beneficiariesRepository.findAndCount({
       where: {
@@ -89,9 +76,6 @@ export class BeneficiariesService {
     });
 
     const totalPages = Math.ceil(total / limit);
-    this.logger.debug(
-      `Found ${items.length} items for page ${page}/${totalPages}, with skip=${skip} and limit=${limit}`,
-    );
 
     return {
       items,
@@ -121,8 +105,6 @@ export class BeneficiariesService {
   }
 
   async search(query: string, user_id: number) {
-    this.logger.log(`Searching beneficiaries for user ${user_id}`);
-
     const beneficiaries = await this.beneficiariesRepository.find({
       where: {
         account_owner: ILike(`%${query}%`),
@@ -140,8 +122,6 @@ export class BeneficiariesService {
     updateBeneficiaryDto: UpdateBeneficiaryDto,
     user_id: number,
   ) {
-    this.logger.log(`Updating beneficiary ${id} for user ${user_id}`);
-
     const beneficiary = await this.beneficiariesRepository.findOne({
       where: {
         id,
@@ -161,7 +141,6 @@ export class BeneficiariesService {
     }
 
     await this.beneficiariesRepository.update(id, updateBeneficiaryDto);
-    this.logger.log(`Successfully updated beneficiary ${id}`);
 
     return this.beneficiariesRepository.findOne({
       where: {
@@ -174,8 +153,6 @@ export class BeneficiariesService {
   }
 
   async remove(id: number, user_id: number) {
-    this.logger.log(`Removing beneficiary ${id} for user ${user_id}`);
-
     const result = await this.beneficiariesRepository.delete({
       id,
       user: {

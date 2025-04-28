@@ -747,9 +747,6 @@ export class MailService {
         throw error;
       }
 
-      Logger.log(
-        `Email de note de crédit N° ${creditNoteNumber} envoyé avec succès à ${creditNote.client.email}`,
-      );
       return data;
     } catch (error) {
       Logger.error(
@@ -1322,9 +1319,7 @@ export class MailService {
       Logger.error('Error sending first reminder:', error.message);
       throw error;
     }
-    Logger.log(
-      `Premier rappel envoyé pour la facture ${invoiceNumber} à ${to}`,
-    );
+
     return data;
   }
 
@@ -1415,9 +1410,7 @@ export class MailService {
       Logger.error('Error sending second reminder:', error.message);
       throw error;
     }
-    Logger.log(
-      `Deuxième rappel envoyé pour la facture ${invoiceNumber} à ${to}`,
-    );
+
     return data;
   }
 
@@ -1509,9 +1502,7 @@ export class MailService {
       Logger.error('Error sending final notice:', error.message);
       throw error;
     }
-    Logger.log(
-      `Mise en demeure envoyée pour la facture ${invoiceNumber} à ${to}`,
-    );
+
     return data;
   }
 }

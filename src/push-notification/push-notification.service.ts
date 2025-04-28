@@ -191,9 +191,9 @@ export class PushNotificationService {
         device.user = user;
         device.active = true;
         await this.fcmDeviceRepository.save(device);
-        this.logger.log(
-          `Appareil FCM mis à jour pour l'utilisateur ${user.id}`,
-        );
+        // this.logger.log(
+        //   `Appareil FCM mis à jour pour l'utilisateur ${user.id}`,
+        // );
         return device;
       }
 
@@ -205,9 +205,9 @@ export class PushNotificationService {
       });
 
       await this.fcmDeviceRepository.save(device);
-      this.logger.log(
-        `Nouvel appareil FCM enregistré pour l'utilisateur ${user.id}`,
-      );
+      // this.logger.log(
+      //   `Nouvel appareil FCM enregistré pour l'utilisateur ${user.id}`,
+      // );
       return device;
     } catch (error) {
       this.logger.error(
@@ -237,7 +237,7 @@ export class PushNotificationService {
       // Marquer comme inactif plutôt que de supprimer
       device.active = false;
       await this.fcmDeviceRepository.save(device);
-      this.logger.log(`Appareil FCM désactivé: ${token}`);
+      // this.logger.log(`Appareil FCM désactivé: ${token}`);
 
       return { success: true };
     } catch (error) {
@@ -256,40 +256,40 @@ export class PushNotificationService {
    * @returns true si l'utilisateur a activé les notifications, false sinon
    */
   async checkUserNotificationPreferences(userId: number): Promise<boolean> {
-    this.logger.log(
-      `[TRACE-PREF] Début vérification préférences pour userId: ${userId}`,
-    );
+    // this.logger.log(
+    //   `[TRACE-PREF] Début vérification préférences pour userId: ${userId}`,
+    // );
 
     try {
       // Vérifier d'abord si l'utilisateur a des appareils actifs
-      this.logger.log(
-        `[TRACE-PREF] Recherche d'appareils actifs pour l'utilisateur ${userId}`,
-      );
+      // this.logger.log(
+      //   `[TRACE-PREF] Recherche d'appareils actifs pour l'utilisateur ${userId}`,
+      // );
       const devices = await this.fcmDeviceRepository.find({
         where: { user: { id: userId }, active: true },
       });
 
-      this.logger.log(
-        `[TRACE-PREF] ${devices.length} appareil(s) actif(s) trouvé(s) pour l'utilisateur ${userId}`,
-      );
+      // this.logger.log(
+      //   `[TRACE-PREF] ${devices.length} appareil(s) actif(s) trouvé(s) pour l'utilisateur ${userId}`,
+      // );
 
       // Si l'utilisateur n'a pas d'appareils actifs, on considère qu'il a désactivé les notifications
       if (!devices || devices.length === 0) {
-        this.logger.log(
-          `[TRACE-PREF] L'utilisateur ${userId} n'a pas d'appareils actifs, notifications désactivées`,
-        );
+        // this.logger.log(
+        //   `[TRACE-PREF] L'utilisateur ${userId} n'a pas d'appareils actifs, notifications désactivées`,
+        // );
         return false;
       }
 
       // Si l'utilisateur a au moins un appareil actif, on considère qu'il a activé les notifications
-      this.logger.log(
-        `[TRACE-PREF] L'utilisateur ${userId} a ${devices.length} appareil(s) actif(s), notifications activées`,
-      );
+      // this.logger.log(
+      //   `[TRACE-PREF] L'utilisateur ${userId} a ${devices.length} appareil(s) actif(s), notifications activées`,
+      // );
 
       if (devices.length > 0) {
-        this.logger.log(
-          `[TRACE-PREF] Appareils trouvés: ${devices.map((d) => `ID:${d.id} (${d.token.substring(0, 10)}...)`).join(', ')}`,
-        );
+        // this.logger.log(
+        //   `[TRACE-PREF] Appareils trouvés: ${devices.map((d) => `ID:${d.id} (${d.token.substring(0, 10)}...)`).join(', ')}`,
+        // );
       }
 
       return true;
@@ -326,10 +326,10 @@ export class PushNotificationService {
    * @returns Le résultat de l'envoi
    */
   async sendToUser(userId: number, notificationDto: SendNotificationDto) {
-    this.logger.log(`[TRACE-PUSH] Début sendToUser pour userId: ${userId}`);
-    this.logger.log(
-      `[TRACE-PUSH] Notification: titre="${notificationDto.title}", type=${notificationDto.data?.type || 'non spécifié'}`,
-    );
+    // this.logger.log(`[TRACE-PUSH] Début sendToUser pour userId: ${userId}`);
+    // this.logger.log(
+    //   `[TRACE-PUSH] Notification: titre="${notificationDto.title}", type=${notificationDto.data?.type || 'non spécifié'}`,
+    // );
 
     if (!this.firebaseApp) {
       this.logger.error('[TRACE-PUSH] Firebase Admin SDK non initialisé');
@@ -338,15 +338,15 @@ export class PushNotificationService {
 
     try {
       // Vérifier d'abord si l'utilisateur accepte les notifications
-      this.logger.log(
-        `[TRACE-PUSH] Vérification des préférences de notification pour l'utilisateur ${userId}`,
-      );
+      // this.logger.log(
+      //   `[TRACE-PUSH] Vérification des préférences de notification pour l'utilisateur ${userId}`,
+      // );
       const userAcceptsNotifications =
         await this.checkUserNotificationPreferences(userId);
 
-      this.logger.log(
-        `[TRACE-PUSH] L'utilisateur ${userId} ${userAcceptsNotifications ? 'accepte' : "n'accepte pas"} les notifications`,
-      );
+      // this.logger.log(
+      //   `[TRACE-PUSH] L'utilisateur ${userId} ${userAcceptsNotifications ? 'accepte' : "n'accepte pas"} les notifications`,
+      // );
 
       if (!userAcceptsNotifications) {
         this.logger.warn(
@@ -358,16 +358,16 @@ export class PushNotificationService {
         };
       }
 
-      this.logger.log(
-        `[TRACE-PUSH] Recherche des appareils FCM pour l'utilisateur ${userId}`,
-      );
+      // this.logger.log(
+      //   `[TRACE-PUSH] Recherche des appareils FCM pour l'utilisateur ${userId}`,
+      // );
       const devices = await this.fcmDeviceRepository.find({
         where: { user: { id: userId }, active: true },
       });
 
-      this.logger.log(
-        `[TRACE-PUSH] ${devices.length} appareil(s) trouvé(s) pour l'utilisateur ${userId}`,
-      );
+      // this.logger.log(
+      //   `[TRACE-PUSH] ${devices.length} appareil(s) trouvé(s) pour l'utilisateur ${userId}`,
+      // );
 
       if (!devices.length) {
         this.logger.warn(
@@ -376,9 +376,9 @@ export class PushNotificationService {
         return { success: false, message: 'Aucun appareil enregistré' };
       }
 
-      this.logger.log(
-        `[TRACE-PUSH] Initialisation du service de messaging Firebase`,
-      );
+      // this.logger.log(
+      //   `[TRACE-PUSH] Initialisation du service de messaging Firebase`,
+      // );
       const messaging = this.firebaseApp.messaging();
       const results = [];
       let atLeastOneSuccess = false;
@@ -386,27 +386,27 @@ export class PushNotificationService {
       // Améliorer le format des notifications d'événements
       let enhancedNotification = { ...notificationDto };
       if (notificationDto.data?.type?.startsWith('EVENT_')) {
-        this.logger.log(
-          `[TRACE-PUSH] Amélioration de la notification d'événement`,
-        );
+        // this.logger.log(
+        //   `[TRACE-PUSH] Amélioration de la notification d'événement`,
+        // );
         enhancedNotification = this.enhanceEventNotification(notificationDto);
       }
 
-      this.logger.log(
-        `[TRACE-PUSH] Traitement de ${devices.length} appareil(s) pour l'envoi`,
-      );
+      // this.logger.log(
+      //   `[TRACE-PUSH] Traitement de ${devices.length} appareil(s) pour l'envoi`,
+      // );
 
       for (const device of devices) {
         try {
-          this.logger.log(
-            `[TRACE-PUSH] Traitement de l'appareil ID: ${device.id}, Token: ${device.token.substring(0, 10)}...`,
-          );
+          // this.logger.log(
+          //   `[TRACE-PUSH] Traitement de l'appareil ID: ${device.id}, Token: ${device.token.substring(0, 10)}...`,
+          // );
 
           // Vérifier si c'est un token préférence spécial et non un vrai token FCM
           if (device.token.startsWith('web_pref_active_')) {
-            this.logger.log(
-              `[TRACE-PUSH] Token de préférence détecté: ${device.token}, ignoré pour l'envoi mais maintenu actif`,
-            );
+            // this.logger.log(
+            //   `[TRACE-PUSH] Token de préférence détecté: ${device.token}, ignoré pour l'envoi mais maintenu actif`,
+            // );
             results.push({
               success: true,
               info: 'Token de préférence, notification ignorée mais préférence maintenue',
@@ -415,9 +415,9 @@ export class PushNotificationService {
             continue;
           }
 
-          this.logger.log(
-            `[TRACE-PUSH] Préparation du message FCM pour l'appareil`,
-          );
+          // this.logger.log(
+          //   `[TRACE-PUSH] Préparation du message FCM pour l'appareil`,
+          // );
 
           // Convertir toutes les valeurs dans l'objet data en chaînes de caractères
           const stringifiedData = {};
@@ -435,9 +435,9 @@ export class PushNotificationService {
           // Ajouter le timestamp en tant que chaîne
           stringifiedData['timestamp'] = new Date().toISOString();
 
-          this.logger.log(
-            `[TRACE-PUSH] Données converties en chaînes: ${JSON.stringify(stringifiedData)}`,
-          );
+          // this.logger.log(
+          //   `[TRACE-PUSH] Données converties en chaînes: ${JSON.stringify(stringifiedData)}`,
+          // );
 
           const message = {
             token: device.token,
@@ -470,13 +470,13 @@ export class PushNotificationService {
             },
           };
 
-          this.logger.log(
-            `[TRACE-PUSH] Envoi du message FCM à l'appareil via messaging.send()`,
-          );
+          // this.logger.log(
+          //   `[TRACE-PUSH] Envoi du message FCM à l'appareil via messaging.send()`,
+          // );
           const result = await messaging.send(message);
-          this.logger.log(
-            `[TRACE-PUSH] Message envoyé avec succès, messageId: ${result}`,
-          );
+          // this.logger.log(
+          //   `[TRACE-PUSH] Message envoyé avec succès, messageId: ${result}`,
+          // );
 
           results.push({ success: true, messageId: result });
           atLeastOneSuccess = true;
@@ -519,9 +519,9 @@ export class PushNotificationService {
         }
       }
 
-      this.logger.log(
-        `[TRACE-PUSH] Résultats de l'envoi FCM à l'utilisateur ${userId}: ${JSON.stringify(results)}`,
-      );
+      // this.logger.log(
+      //   `[TRACE-PUSH] Résultats de l'envoi FCM à l'utilisateur ${userId}: ${JSON.stringify(results)}`,
+      // );
 
       return {
         success: atLeastOneSuccess,
@@ -686,17 +686,17 @@ export class PushNotificationService {
           messagePayload.data = stringifiedData;
         }
 
-        this.logger.log(
-          `[TRACE-PUSH] Envoi en masse - Données converties en chaînes: ${JSON.stringify(messagePayload.data)}`,
-        );
+        // this.logger.log(
+        //   `[TRACE-PUSH] Envoi en masse - Données converties en chaînes: ${JSON.stringify(messagePayload.data)}`,
+        // );
 
         // Utilisation de l'API de multicast de Firebase
         const batchResponse =
           await messaging.sendEachForMulticast(messagePayload);
 
-        this.logger.log(
-          `Notification FCM envoyée à ${batchResponse.successCount}/${tokens.length} appareils`,
-        );
+        // this.logger.log(
+        //   `Notification FCM envoyée à ${batchResponse.successCount}/${tokens.length} appareils`,
+        // );
 
         // Gérer les tokens qui ont échoué
         if (batchResponse.failureCount > 0) {
@@ -781,9 +781,9 @@ export class PushNotificationService {
       throw new Error('ID utilisateur invalide');
     }
 
-    this.logger.log(
-      `Désactivation forcée de tous les appareils pour l'utilisateur ${userId}`,
-    );
+    // this.logger.log(
+    //   `Désactivation forcée de tous les appareils pour l'utilisateur ${userId}`,
+    // );
 
     // Récupérer tous les appareils actifs de l'utilisateur
     const devices = await this.fcmDeviceRepository.find({
@@ -791,9 +791,9 @@ export class PushNotificationService {
     });
 
     if (devices.length === 0) {
-      this.logger.log(
-        `Aucun appareil actif trouvé pour l'utilisateur ${userId}`,
-      );
+      // this.logger.log(
+      //   `Aucun appareil actif trouvé pour l'utilisateur ${userId}`,
+      // );
       return;
     }
 
@@ -803,9 +803,9 @@ export class PushNotificationService {
       await this.fcmDeviceRepository.save(device);
     }
 
-    this.logger.log(
-      `${devices.length} appareils désactivés pour l'utilisateur ${userId}`,
-    );
+    // this.logger.log(
+    //   `${devices.length} appareils désactivés pour l'utilisateur ${userId}`,
+    // );
   }
 
   /**
@@ -829,7 +829,7 @@ export class PushNotificationService {
    */
   private async cleanupInactiveTokens(): Promise<void> {
     try {
-      this.logger.log('Nettoyage des tokens FCM inactifs...');
+      // this.logger.log('Nettoyage des tokens FCM inactifs...');
 
       // Calculer la date d'il y a 30 jours
       const thirtyDaysAgo = new Date();
@@ -843,7 +843,7 @@ export class PushNotificationService {
         .andWhere('updated_at < :date', { date: thirtyDaysAgo })
         .execute();
 
-      this.logger.log(`${result.affected || 0} tokens FCM inactifs supprimés`);
+      // this.logger.log(`${result.affected || 0} tokens FCM inactifs supprimés`);
     } catch (error) {
       this.logger.error(
         'Erreur lors du nettoyage des tokens FCM inactifs',
@@ -866,9 +866,9 @@ export class PushNotificationService {
       throw new Error('ID utilisateur invalide');
     }
 
-    this.logger.log(
-      `Activation forcée des notifications pour l'utilisateur ${userId}`,
-    );
+    // this.logger.log(
+    //   `Activation forcée des notifications pour l'utilisateur ${userId}`,
+    // );
 
     // Récupérer l'utilisateur
     const user = await this.checkUserExists(userId);
@@ -886,9 +886,9 @@ export class PushNotificationService {
       existingDevice.active = true;
       existingDevice.user = user;
       await this.fcmDeviceRepository.save(existingDevice);
-      this.logger.log(
-        `Appareil existant réactivé pour l'utilisateur ${userId}`,
-      );
+      // this.logger.log(
+      //   `Appareil existant réactivé pour l'utilisateur ${userId}`,
+      // );
     } else {
       // Créer un nouvel appareil
       const newDevice = this.fcmDeviceRepository.create({
@@ -897,9 +897,9 @@ export class PushNotificationService {
         active: true,
       });
       await this.fcmDeviceRepository.save(newDevice);
-      this.logger.log(
-        `Nouvel appareil enregistré pour l'utilisateur ${userId}`,
-      );
+      // this.logger.log(
+      //   `Nouvel appareil enregistré pour l'utilisateur ${userId}`,
+      // );
     }
   }
 

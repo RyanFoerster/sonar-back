@@ -1229,4 +1229,20 @@ export class QuoteService {
       }
     }
   }
+
+  async findAllForAdmin(): Promise<Quote[]> {
+    // Récupère tous les devis avec les relations nécessaires pour l'admin
+    // Similaire à la méthode findAll de InvoiceService
+    return this.quoteRepository
+      .createQueryBuilder('quote')
+      .select('quote')
+      .leftJoin('quote.main_account', 'main_account')
+      .addSelect(['main_account.id', 'main_account.username'])
+      .leftJoin('quote.group_account', 'group_account')
+      .addSelect(['group_account.id', 'group_account.username'])
+      .leftJoinAndSelect('quote.client', 'client')
+      .leftJoinAndSelect('quote.products', 'products')
+      .orderBy('quote.id', 'DESC') // Tri par ID décroissant par défaut
+      .getMany();
+  }
 }

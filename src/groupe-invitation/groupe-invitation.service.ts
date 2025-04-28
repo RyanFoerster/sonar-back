@@ -37,10 +37,6 @@ export class GroupeInvitationService {
    */
   async createInvitation(createInvitationDto: CreateInvitationDto) {
     try {
-      this.logger.log(
-        `Création d'une invitation pour l'utilisateur ID: ${createInvitationDto.invitedUserId} vers le groupe ID: ${createInvitationDto.secondary_account_id}`,
-      );
-
       // Vérifier que l'utilisateur existe
       const user = await this.usersService.findOne(
         createInvitationDto.invitedUserId,
@@ -71,7 +67,7 @@ export class GroupeInvitationService {
       });
 
       if (existingInvitation) {
-        this.logger.log(
+        this.logger.warn(
           `Une invitation est déjà en attente pour l'utilisateur ${createInvitationDto.invitedUserId} vers le groupe ${createInvitationDto.secondary_account_id}`,
         );
         return existingInvitation;
@@ -118,10 +114,6 @@ export class GroupeInvitationService {
    */
   private async sendInvitationNotification(invitation: GroupeInvitation) {
     try {
-      this.logger.log(
-        `Envoi d'une notification d'invitation à ${invitation.invitedUserId}`,
-      );
-
       // Créer une notification persistante
       const notificationData = {
         userId: invitation.invitedUserId,
@@ -161,10 +153,6 @@ export class GroupeInvitationService {
       await this.invitationRepository.update(invitation.id, {
         isNotified: true,
       });
-
-      this.logger.log(
-        `Notification d'invitation envoyée à l'utilisateur ${invitation.invitedUserId}`,
-      );
     } catch (error) {
       this.logger.error(
         `Erreur lors de l'envoi de la notification d'invitation: ${error.message}`,
@@ -182,14 +170,8 @@ export class GroupeInvitationService {
     userId: number,
     excludeRelations = false,
   ) {
-    this.logger.log(
-      `Récupération des invitations en attente pour l'utilisateur ${userId}. Exclure relations: ${excludeRelations}`,
-    );
-
     // Si on ne veut pas les relations complètes
     if (excludeRelations) {
-      this.logger.log('Relations partielles chargées uniquement');
-
       // Utiliser une requête personnalisée pour sélectionner uniquement les champs nécessaires
       const invitations = await this.invitationRepository
         .createQueryBuilder('invitation')
@@ -234,10 +216,6 @@ export class GroupeInvitationService {
    * @param loadRelations Si true, charge toutes les relations
    */
   async findOne(id: number, loadRelations = true) {
-    this.logger.log(
-      `Recherche de l'invitation #${id}. Charger relations: ${loadRelations}`,
-    );
-
     if (!loadRelations) {
       // Charger seulement les informations nécessaires
       const invitation = await this.invitationRepository
@@ -373,10 +351,6 @@ export class GroupeInvitationService {
       };
 
       await this.userSecondaryAccountService.create(userSecondaryAccount);
-
-      this.logger.log(
-        `Utilisateur ${invitation.invitedUserId} ajouté au groupe ${invitation.groupId} avec succès`,
-      );
     } catch (error) {
       this.logger.error(
         `Erreur lors de l'ajout de l'utilisateur au groupe: ${error.message}`,
@@ -423,10 +397,6 @@ export class GroupeInvitationService {
         // Créer la notification dans la base de données
         await this.notificationService.create(notificationData);
       }
-
-      this.logger.log(
-        `Notifications d'acceptation envoyées aux administrateurs du groupe ${invitation.groupId}`,
-      );
     } catch (error) {
       this.logger.error(
         `Erreur lors de l'envoi des notifications d'acceptation: ${error.message}`,
@@ -472,10 +442,6 @@ export class GroupeInvitationService {
         // Créer la notification dans la base de données
         await this.notificationService.create(notificationData);
       }
-
-      this.logger.log(
-        `Notifications de refus envoyées aux administrateurs du groupe ${invitation.groupId}`,
-      );
     } catch (error) {
       this.logger.error(
         `Erreur lors de l'envoi des notifications de refus: ${error.message}`,

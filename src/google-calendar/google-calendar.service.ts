@@ -36,10 +36,6 @@ export class GoogleCalendarService {
    * @returns Les détails du calendrier créé par l'API Google.
    */
   async createCalendar(userId: number, summary: string): Promise<any> {
-    this.logger.log(
-      `[createCalendar] Attempting to create calendar '${summary}' for user ID: ${userId}`,
-    );
-
     // 1. Récupérer l'utilisateur et son refresh token
     const user = await this.usersService.findOne(userId);
     if (!user) {
@@ -82,9 +78,6 @@ export class GoogleCalendarService {
         throw new Error('Failed to retrieve access token from Google.');
       }
       accessToken = tokenResponse.token;
-      this.logger.log(
-        `[createCalendar] Successfully obtained access token for user ${userId}`,
-      );
     } catch (error) {
       this.logger.error(
         `[createCalendar] Failed to obtain access token for user ${userId}: ${error.message}`,
@@ -117,9 +110,6 @@ export class GoogleCalendarService {
         },
       );
 
-      this.logger.log(
-        `[createCalendar] Successfully created calendar '${summary}' (ID: ${response.data.id}) for user ${userId}`,
-      );
       return response.data; // Retourne les détails du calendrier créé
     } catch (error) {
       this.logger.error(

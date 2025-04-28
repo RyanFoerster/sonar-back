@@ -444,8 +444,6 @@ export class EventService {
       (person) => person.personId === +personId,
     );
 
-    Logger.debug('event', JSON.stringify(event, null, 2));
-
     if (inviteeIndex === -1) {
       throw new NotFoundException(
         `Personne avec ID ${personId} non trouvée dans la liste des invités`,
