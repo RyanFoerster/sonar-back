@@ -121,6 +121,7 @@ export class MailService {
     attachmentNames?: string[],
     project?: string,
     isUpdate?: boolean,
+    needsClientInfo?: boolean, // Ajouter le paramètre ici
   ) {
     // Déterminer l'environnement pour les liens
     const config = this.configService.get('isProd') === true ? 'PROD' : 'DEV';
@@ -172,7 +173,9 @@ export class MailService {
                 ${
                   isUpdate
                     ? `<p style="color: #1f2937; margin-bottom: 24px;">Voici le devis modifié relatif à votre commande :</p>`
-                    : `<p style="color: #1f2937; margin-bottom: 24px;">Voici le devis relatif à votre commande :</p>`
+                    : needsClientInfo && role === 'CLIENT'
+                      ? `<p style="color: #1f2937; margin-bottom: 24px;">Veuillez compléter vos informations pour consulter le devis relatif à votre commande :</p>`
+                      : `<p style="color: #1f2937; margin-bottom: 24px;">Voici le devis relatif à votre commande :</p>`
                 }
 
                 <!-- Détails du devis -->
@@ -197,14 +200,22 @@ export class MailService {
                 </div>
 
                 <!-- Vérification de commande -->
-                <p style="text-align: center; color: #6b7280; margin-bottom: 16px;">Vérifiez votre commande*</p>
+                ${
+                  needsClientInfo && role === 'CLIENT'
+                    ? `<p style="text-align: center; color: #6b7280; margin-bottom: 16px;">Cliquez ci-dessous pour compléter vos informations et accéder au devis.</p>`
+                    : `<p style="text-align: center; color: #6b7280; margin-bottom: 16px;">Vérifiez votre commande*</p>`
+                }
 
-                <p style="color: #1f2937; margin-bottom: 24px;">* Cliquez sur ce lien, vous aurez le choix de <span style="font-weight: 600;">confirmer</span> ou <span style="font-weight: 600;">refuser</span> le devis.</p>
+                ${
+                  !(needsClientInfo && role === 'CLIENT')
+                    ? `<p style="color: #1f2937; margin-bottom: 24px;">* Cliquez sur ce lien, vous aurez le choix de <span style="font-weight: 600;">confirmer</span> ou <span style="font-weight: 600;">refuser</span> le devis.</p>`
+                    : ''
+                }
 
                 <!-- Bouton d'action -->
                 <div style="display: flex; justify-content: center; margin-top: 24px; margin-bottom: 24px;">
                   <a href="${baseUrl}/quote-decision?quote_id=${quote_id}&role=${role}" target="_blank" style="background-color: #ef4444; color: #ffffff; padding: 8px 24px; border-radius: 9999px; font-size: 1.125rem; font-weight: 600; text-decoration: none; display: inline-block;">
-                    Voir le devis
+                    ${needsClientInfo && role === 'CLIENT' ? 'Compléter mes informations' : 'Voir le devis'}
                   </a>
                 </div>
 

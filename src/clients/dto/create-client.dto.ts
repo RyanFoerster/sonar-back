@@ -4,8 +4,10 @@ import {
   IsNumber,
   IsString,
   IsBoolean,
+  IsOptional,
 } from 'class-validator';
 import { Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Type } from 'class-transformer';
 
 export class CreateClientDto {
   @IsString()
@@ -50,6 +52,15 @@ export class CreateClientDto {
 
   @IsBoolean()
   is_physical_person: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  is_info_pending?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  default_payment_deadline?: number;
 
   @CreateDateColumn()
   createdAt?: Date;

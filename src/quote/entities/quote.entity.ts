@@ -74,6 +74,13 @@ export class Quote {
   @Column({ default: false })
   isVatIncluded: boolean;
 
+  @Column({
+    default: false,
+    comment:
+      'Indicates if client information must be provided via the quote decision page',
+  })
+  client_info_required: boolean;
+
   @Column('text', { array: true, nullable: true, default: [] })
   attachment_url: string[];
 

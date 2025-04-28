@@ -119,6 +119,12 @@ export class QuoteController {
     return this.quoteService.updateOrderGiverRejectionCancel(+id);
   }
 
+  @Patch('mark-info-provided/:id')
+  @Public()
+  markClientInfoAsProvided(@Param('id') id: string) {
+    return this.quoteService.markClientInfoAsProvided(+id);
+  }
+
   @Patch(':id/report_date')
   updateReportDate(
     @Param('id') id: string,
