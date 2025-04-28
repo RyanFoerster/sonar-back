@@ -71,7 +71,6 @@ export class InvoiceService {
     params: { account_id: number; type: 'PRINCIPAL' | 'GROUP' },
   ) {
     let quoteFromDB = await this.quoteService.findOne(quoteObject.id);
-    Logger.log('QUOTE FROM DB', JSON.stringify(quoteFromDB, null, 2));
     let account;
     let userFromDB = await this.usersService.findOne(user.id);
 
@@ -166,10 +165,7 @@ export class InvoiceService {
   async createInvoiceFromQuote(quote: Quote) {
     const currentDate = new Date();
     let group;
-    Logger.log(
-      'QUOTE IN CREATE INVOICE FROM QUOTE',
-      JSON.stringify(quote, null, 2),
-    );
+
     if (quote.group_account) {
       group = await this.compteGroupeService.findOne(quote.group_account.id);
     } else {
@@ -817,6 +813,7 @@ export class InvoiceService {
       .addSelect('group_account.username', 'group_account_username')
       .leftJoinAndSelect('invoice.client', 'client')
       .leftJoinAndSelect('invoice.quote', 'quote')
+      .leftJoinAndSelect('invoice.products', 'products')
       .getMany();
     return invoices;
   }

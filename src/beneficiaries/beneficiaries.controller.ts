@@ -31,7 +31,6 @@ export class BeneficiariesController {
     @Query('page') page: string = '1',
     @Query('limit') limit: string = '10',
   ) {
-    this.logger.debug(`Received request for page=${page}, limit=${limit}`);
     return this.beneficiariesService.findAll(
       req.user.id,
       parseInt(page, 10),

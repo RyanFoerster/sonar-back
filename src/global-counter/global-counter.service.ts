@@ -40,7 +40,6 @@ export class GlobalCounterService {
     });
 
     if (!counter) {
-      this.logger.log('Création du compteur global initial');
       counter = new GlobalCounter();
       counter.type = 'MAIN';
       counter.next_invoice_number = 1;

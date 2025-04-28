@@ -232,6 +232,9 @@ export class QuoteService {
     // Récupération du client
     quote.client = await this.clientService.findOne(createQuoteDto.client_id);
 
+    // Définir si les infos client sont requises
+    quote.client_info_required = quote.client.is_info_pending;
+
     // Récupération des produits
     const productPromises = createQuoteDto.products_id.map((id) =>
       this.productService.findOne(id),
@@ -345,6 +348,7 @@ export class QuoteService {
     // Assigner toutes les URLs au devis
     quote.attachment_url = attachment_urls;
 
+    // Définir created_by_mail AVANT de sauvegarder
     const userConnected = await this.usersService.findOne(user_id);
     quote.created_by_mail = userConnected.email;
     Logger.log('[QuoteService] isDoubleValidation', isDoubleValidation);
@@ -360,6 +364,9 @@ export class QuoteService {
       name: string,
       role: 'CLIENT' | 'GROUP',
     ) => {
+      // Déterminer si les infos client sont nécessaires pour cet email spécifique
+      const needsClientInfo = role === 'CLIENT' && quote.client_info_required;
+
       if (attachments_mail.length === 0) {
         // Pas de pièces jointes, envoyer un email simple
         await this.mailService.sendDevisAcceptationEmail(
@@ -376,6 +383,8 @@ export class QuoteService {
           [],
           [],
           quote.created_by_project_name,
+          false, // isUpdate
+          needsClientInfo, // needsClientInfo
         );
         return;
       }
@@ -400,6 +409,8 @@ export class QuoteService {
         attachment_urls,
         fileNames,
         quote.created_by_project_name,
+        false, // isUpdate
+        needsClientInfo, // needsClientInfo
       );
     };
 
@@ -478,6 +489,9 @@ export class QuoteService {
     quote.payment_deadline = updateQuoteDto.payment_deadline;
     quote.client = await this.clientService.findOne(updateQuoteDto.client_id);
     quote.isVatIncluded = updateQuoteDto.isVatIncluded; // Assigner isVatIncluded ici
+
+    // Mettre à jour si les infos client sont requises
+    quote.client_info_required = quote.client.is_info_pending;
 
     // Appliquer le commentaire sanitisé s'il existe
     if (sanitizedComment !== undefined) {
@@ -645,6 +659,9 @@ export class QuoteService {
       name: string,
       role: 'CLIENT' | 'GROUP',
     ) => {
+      // Déterminer si les infos client sont nécessaires pour cet email spécifique
+      const needsClientInfo = role === 'CLIENT' && quote.client_info_required;
+
       if (attachments_mail.length === 0) {
         // Pas de pièces jointes, envoyer un email simple
         await this.mailService.sendDevisAcceptationEmail(
@@ -661,7 +678,8 @@ export class QuoteService {
           [],
           [],
           quote.created_by_project_name,
-          true,
+          true, // isUpdate
+          needsClientInfo, // needsClientInfo
         );
         return;
       }
@@ -686,7 +704,8 @@ export class QuoteService {
         attachment_urls,
         fileNames,
         quote.created_by_project_name,
-        true,
+        true, // isUpdate
+        needsClientInfo, // needsClientInfo
       );
     };
 
@@ -935,7 +954,7 @@ export class QuoteService {
       const creatorEmail = quote.created_by_mail;
       if (creatorEmail) {
         const creatorName =
-          quote.created_by_project_name.split(' ')[0] || 'Groupe'; // Prénom du créateur
+          quote.created_by_project_name.split(' ')[0] || 'Groupe';
         const formattedDate = this.formatDate(quote.service_date);
 
         await this.mailService.sendQuoteStatusUpdateEmail(
@@ -1228,5 +1247,37 @@ export class QuoteService {
         }
       }
     }
+  }
+
+  async findAllForAdmin(): Promise<Quote[]> {
+    // Récupère tous les devis avec les relations nécessaires pour l'admin
+    // Similaire à la méthode findAll de InvoiceService
+    return this.quoteRepository
+      .createQueryBuilder('quote')
+      .select('quote')
+      .leftJoin('quote.main_account', 'main_account')
+      .addSelect(['main_account.id', 'main_account.username'])
+      .leftJoin('quote.group_account', 'group_account')
+      .addSelect(['group_account.id', 'group_account.username'])
+      .leftJoinAndSelect('quote.client', 'client')
+      .leftJoinAndSelect('quote.products', 'products')
+      .orderBy('quote.id', 'DESC') // Tri par ID décroissant par défaut
+      .getMany();
+  }
+
+  async markClientInfoAsProvided(quoteId: number): Promise<Quote> {
+    const quote = await this.findOne(quoteId);
+    if (!quote) {
+      throw new NotFoundException(`Quote with ID ${quoteId} not found.`);
+    }
+    if (!quote.client_info_required) {
+      Logger.warn(
+        `Attempting to mark client info as provided for quote ${quoteId}, but it was not required.`,
+      );
+      return quote; // Retourner le devis tel quel
+    }
+
+    quote.client_info_required = false;
+    return this.quoteRepository.save(quote);
   }
 }

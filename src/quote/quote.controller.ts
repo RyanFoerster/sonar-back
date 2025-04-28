@@ -48,6 +48,11 @@ export class QuoteController {
     return this.quoteService.findQuoteWithoutInvoice();
   }
 
+  @Get('all-admin')
+  findAllForAdmin() {
+    return this.quoteService.findAllForAdmin();
+  }
+
   @Get(':id')
   @Public()
   findOne(@Param('id') id: string) {
@@ -112,6 +117,12 @@ export class QuoteController {
   @Public()
   updateOrderGiverRejectionCancel(@Param('id') id: string) {
     return this.quoteService.updateOrderGiverRejectionCancel(+id);
+  }
+
+  @Patch('mark-info-provided/:id')
+  @Public()
+  markClientInfoAsProvided(@Param('id') id: string) {
+    return this.quoteService.markClientInfoAsProvided(+id);
   }
 
   @Patch(':id/report_date')

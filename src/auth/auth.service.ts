@@ -324,9 +324,6 @@ export class AuthService {
     googleId: string,
     refreshToken: string | null,
   ): Promise<User> {
-    this.logger.log(
-      `[linkGoogleAccount] Linking Google ID ${googleId} to user ID ${userId}`,
-    );
     const user = await this.usersService.findOne(userId);
     if (!user) {
       this.logger.error(
@@ -354,9 +351,7 @@ export class AuthService {
     try {
       // Use repository.save to update the user entity
       const updatedUser = await this.usersRepository.save(user);
-      this.logger.log(
-        `[linkGoogleAccount] Successfully linked Google account and updated user ID ${userId}`,
-      );
+
       // It's crucial to return the updated user, especially if subsequent logic depends on it.
       // However, avoid returning sensitive data like the encrypted token if possible.
       // Consider creating a sanitized user object if this is returned to the client.
@@ -379,9 +374,6 @@ export class AuthService {
    * @returns The updated User entity.
    */
   async unlinkGoogleAccount(userId: number): Promise<User> {
-    this.logger.log(
-      `[unlinkGoogleAccount] Unlinking Google account for user ID ${userId}`,
-    );
     const user = await this.usersService.findOne(userId);
     if (!user) {
       this.logger.error(
@@ -400,9 +392,6 @@ export class AuthService {
         // Tentative de révocation (dans un try...catch imbriqué ou séparé)
         try {
           const revokeUrl = 'https://oauth2.googleapis.com/revoke';
-          this.logger.log(
-            `[unlinkGoogleAccount] Attempting to revoke Google refresh token for user ${userId}`,
-          );
 
           await firstValueFrom(
             this.httpService.post(
@@ -415,9 +404,6 @@ export class AuthService {
                 validateStatus: (status) => status >= 200 && status < 500,
               },
             ),
-          );
-          this.logger.log(
-            `[unlinkGoogleAccount] Google token revocation call finished for user ${userId}.`,
           );
         } catch (revokeError) {
           // Log l'erreur de révocation mais continuer
@@ -434,13 +420,13 @@ export class AuthService {
         );
       }
     } else {
-      this.logger.log(
+      this.logger.debug(
         `[unlinkGoogleAccount] No Google refresh token found for user ${userId}, skipping revocation call.`,
       );
     }
 
     // 2. Effacer les données locales (toujours exécuté)
-    this.logger.log(
+    this.logger.debug(
       `[unlinkGoogleAccount] Clearing local Google data for user ${userId}`,
     );
     user.googleId = null;
@@ -448,9 +434,7 @@ export class AuthService {
 
     try {
       const updatedUser = await this.usersRepository.save(user);
-      this.logger.log(
-        `[unlinkGoogleAccount] Successfully unlinked Google account for user ID ${userId}`,
-      );
+
       return updatedUser;
     } catch (error) {
       this.logger.error(
@@ -469,9 +453,6 @@ export class AuthService {
    * @returns A list of Google Calendars.
    */
   async getGoogleCalendars(userId: number): Promise<any[]> {
-    this.logger.log(
-      `[getGoogleCalendars] Fetching calendars for user ID ${userId}`,
-    );
     const user = await this.usersService.findOne(userId);
     if (!user) {
       this.logger.error(`[getGoogleCalendars] User ${userId} not found.`);
@@ -505,9 +486,6 @@ export class AuthService {
     let accessToken: string;
 
     try {
-      this.logger.log(
-        `[getGoogleCalendars] Requesting new access token for user ${userId}`,
-      );
       const tokenResponse = await firstValueFrom(
         this.httpService.post(
           tokenUrl,
@@ -526,9 +504,6 @@ export class AuthService {
       if (!accessToken) {
         throw new Error('Access token not found in Google response');
       }
-      this.logger.log(
-        `[getGoogleCalendars] New access token obtained for user ${userId}`,
-      );
     } catch (error) {
       this.logger.error(
         `[getGoogleCalendars] Failed to refresh Google token for user ${userId}: ${error.response?.data?.error || error.message}`,
@@ -548,17 +523,12 @@ export class AuthService {
     const calendarListUrl =
       'https://www.googleapis.com/calendar/v3/users/me/calendarList';
     try {
-      this.logger.log(
-        `[getGoogleCalendars] Fetching calendar list for user ${userId}`,
-      );
       const calendarResponse = await firstValueFrom(
         this.httpService.get(calendarListUrl, {
           headers: { Authorization: `Bearer ${accessToken}` },
         }),
       );
-      this.logger.log(
-        `[getGoogleCalendars] Successfully fetched ${calendarResponse.data.items?.length || 0} calendars for user ${userId}`,
-      );
+
       return calendarResponse.data.items || []; // Retourne la liste des calendriers
     } catch (error) {
       this.logger.error(

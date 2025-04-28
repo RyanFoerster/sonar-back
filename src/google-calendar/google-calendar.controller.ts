@@ -67,10 +67,6 @@ export class GoogleCalendarController {
       );
     }
 
-    this.logger.log(
-      `[POST /google/calendars] Request received from user ID: ${userId} to create calendar: '${summary}'`,
-    );
-
     // Appeler le service pour créer le calendrier
     const newCalendar = await this.googleCalendarService.createCalendar(
       userId,

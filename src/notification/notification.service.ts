@@ -26,38 +26,38 @@ export class NotificationService {
     createNotificationDto: CreateNotificationDto,
   ): Promise<Notification> {
     try {
-      this.logger.log(
-        `[TRACE] Début création notification pour userId: ${createNotificationDto.userId}`,
-      );
-      this.logger.log(
-        `[TRACE] Type: ${createNotificationDto.type}, Titre: ${createNotificationDto.title}`,
-      );
+      // this.logger.log(
+      //   `[TRACE] Début création notification pour userId: ${createNotificationDto.userId}`,
+      // );
+      // this.logger.log(
+      //   `[TRACE] Type: ${createNotificationDto.type}, Titre: ${createNotificationDto.title}`,
+      // );
 
       // 1. Créer la notification en base de données
-      this.logger.log("[TRACE] Étape 1: Création de l'entité notification");
+      // this.logger.log("[TRACE] Étape 1: Création de l'entité notification");
       const notification = this.notificationRepository.create(
         createNotificationDto,
       );
 
-      this.logger.log('[TRACE] Étape 1.1: Sauvegarde en base de données');
+      // this.logger.log('[TRACE] Étape 1.1: Sauvegarde en base de données');
       const savedNotification =
         await this.notificationRepository.save(notification);
 
-      this.logger.log(
-        `[TRACE] Notification sauvegardée avec ID: ${savedNotification.id}`,
-      );
+      // this.logger.log(
+      //   `[TRACE] Notification sauvegardée avec ID: ${savedNotification.id}`,
+      // );
 
       // 2. Envoyer la notification push via FCM
-      this.logger.log('[TRACE] Étape 2: Envoi de la notification push (FCM)');
+      // this.logger.log('[TRACE] Étape 2: Envoi de la notification push (FCM)');
       await this.sendPushNotification(savedNotification);
 
       // 3. Émettre un événement WebSocket pour les clients connectés
-      this.logger.log("[TRACE] Étape 3: Émission de l'événement WebSocket");
+      // this.logger.log("[TRACE] Étape 3: Émission de l'événement WebSocket");
       this.emitNotificationEvent(savedNotification);
 
-      this.logger.log(
-        `[TRACE] Notification créée avec succès pour userId: ${createNotificationDto.userId}`,
-      );
+      // this.logger.log(
+      //   `[TRACE] Notification créée avec succès pour userId: ${createNotificationDto.userId}`,
+      // );
       return savedNotification;
     } catch (error) {
       this.logger.error(
@@ -87,9 +87,9 @@ export class NotificationService {
   private convertToSendNotificationDto(
     notification: Notification,
   ): SendNotificationDto {
-    this.logger.log(
-      `[TRACE] Conversion de la notification ${notification.id} pour l'envoi FCM`,
-    );
+    // this.logger.log(
+    //   `[TRACE] Conversion de la notification ${notification.id} pour l'envoi FCM`,
+    // );
     return {
       title: notification.title,
       body: notification.message,
@@ -108,28 +108,28 @@ export class NotificationService {
     notification: Notification,
   ): Promise<void> {
     try {
-      this.logger.log(
-        `[TRACE] Début sendPushNotification pour userId: ${notification.userId}, notificationId: ${notification.id}`,
-      );
+      // this.logger.log(
+      //   `[TRACE] Début sendPushNotification pour userId: ${notification.userId}, notificationId: ${notification.id}`,
+      // );
 
       const pushNotificationDto =
         this.convertToSendNotificationDto(notification);
 
-      this.logger.log(
-        `[TRACE] Appel du service pushNotificationService.sendToUser pour userId: ${notification.userId}`,
-      );
-      this.logger.log(
-        `[TRACE] Données notification: ${JSON.stringify(pushNotificationDto)}`,
-      );
+      // this.logger.log(
+      //   `[TRACE] Appel du service pushNotificationService.sendToUser pour userId: ${notification.userId}`,
+      // );
+      // this.logger.log(
+      //   `[TRACE] Données notification: ${JSON.stringify(pushNotificationDto)}`,
+      // );
 
       await this.pushNotificationService.sendToUser(
         notification.userId,
         pushNotificationDto,
       );
 
-      this.logger.log(
-        `[TRACE] Notification push envoyée avec succès pour userId: ${notification.userId}`,
-      );
+      // this.logger.log(
+      //   `[TRACE] Notification push envoyée avec succès pour userId: ${notification.userId}`,
+      // );
     } catch (error) {
       this.logger.error(
         `Erreur lors de l'envoi de notification push: ${error.message}`,

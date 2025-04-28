@@ -59,6 +59,12 @@ export class Client {
   is_physical_person: boolean;
 
   @Column({
+    default: false,
+    comment: 'Indicates if client information needs to be filled by the client',
+  })
+  is_info_pending: boolean;
+
+  @Column({
     type: 'int',
     nullable: true,
     comment: 'Default payment deadline in days',

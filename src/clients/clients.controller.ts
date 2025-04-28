@@ -13,6 +13,7 @@ import { ClientsService } from './clients.service';
 import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { User } from '../users/entities/user.entity';
+import { ParseIntPipe } from '@nestjs/common';
 
 @Controller('clients')
 export class ClientsController {
@@ -37,6 +38,17 @@ export class ClientsController {
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateClientDto: UpdateClientDto) {
     return this.clientsService.update(+id, updateClientDto);
+  }
+
+  @Patch('update-details/:id')
+  updateDetails(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateClientDto: UpdateClientDto,
+  ) {
+    return this.clientsService.updateClientDetailsFromQuote(
+      id,
+      updateClientDto,
+    );
   }
 
   @Delete(':id')
