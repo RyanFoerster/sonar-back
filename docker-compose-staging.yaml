@@ -5,6 +5,8 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    networks:
+      - sonar-staging-network
     depends_on:
       sonarstagingdatabase:
         condition: service_healthy
@@ -16,6 +18,8 @@ services:
       - sonar-staging-db-data:/var/lib/postgresql/data:rw
     env_file:
       - .env
+    networks:
+      - sonar-staging-network
     healthcheck:
       test:
         [
@@ -33,4 +37,7 @@ services:
 
 volumes:
   sonar-staging-db-data:
-  
+
+networks:
+  sonar-staging-network:
+    driver: bridge
