@@ -3,9 +3,9 @@ import { ExpressAdapter } from '@nestjs/platform-express';
 
 import { INestApplication, Logger } from '@nestjs/common';
 import express from 'express';
-import { join } from 'path';
 import session from 'express-session';
 import passport from 'passport';
+import { join } from 'path';
 
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
@@ -56,6 +56,7 @@ export const createNestServer = async (expressInstance: express.Express) => {
       'https://sonarartists.fr',
       'http://localhost:4200',
       'https://sonarartists.be',
+      'https://staging.sonarartists.be',
     ],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     credentials: true,
