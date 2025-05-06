@@ -65,14 +65,22 @@ export class ProductService {
       where: { id },
     });
 
+    Logger.log('updateProductDto', updateProductDto);
+    Logger.log('existingProduct', JSON.stringify(existingProduct, null, 2));
+
     // Créer une copie de l'objet pour ne pas modifier directement l'entité
     const updatedProduct = { ...existingProduct };
 
     // Mettre à jour uniquement les champs modifiés
     Object.assign(updatedProduct, updateProductDto);
 
-    // Calculer les montants en fonction de tvaIncluded
-    if (tvaIncluded) {
+    Logger.log(
+      'updatedProduct after assign',
+      JSON.stringify(updatedProduct, null, 2),
+    );
+
+    // Calculer les montants en fonction de tvaIncluded et si le total est différent de 0
+    if (tvaIncluded && updatedProduct.total !== 0) {
       // Si TVA incluse, on recalcule les montants HTVA
       const priceWithVAT = updatedProduct.price * updatedProduct.quantity;
       const vatRate = updatedProduct.vat;
@@ -82,7 +90,7 @@ export class ProductService {
       updatedProduct.price_htva = priceHTVA;
       updatedProduct.tva_amount = tvaAmount;
       updatedProduct.total = priceWithVAT;
-    } else {
+    } else if (!tvaIncluded && updatedProduct.total !== 0) {
       // Si TVA non incluse, on recalcule les montants avec TVA
       const priceHTVA = updatedProduct.price * updatedProduct.quantity;
       const tvaAmount = priceHTVA * updatedProduct.vat;
@@ -94,9 +102,7 @@ export class ProductService {
     }
 
     // Sauvegarder les modifications dans la base de données
-    if (updateProductDto.shouldSave !== false) {
-      return this.productRepository.save(updatedProduct);
-    }
+    return this.productRepository.save(updatedProduct);
 
     // Retourner l'objet mis à jour sans le sauvegarder si shouldSave est false
     return updatedProduct;

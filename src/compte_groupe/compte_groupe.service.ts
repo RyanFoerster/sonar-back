@@ -3,7 +3,7 @@ import {
   Inject,
   Injectable,
   Logger,
-  UnauthorizedException,
+  ConflictException,
 } from '@nestjs/common';
 import { CreateCompteGroupeDto } from './dto/create-compte_groupe.dto';
 import { UpdateCompteGroupeDto } from './dto/update-compte_groupe.dto';
@@ -33,8 +33,12 @@ export class CompteGroupeService {
       await this.comptePrincipalService.findOneByUsername(
         createCompteGroupeDto.username,
       );
-    if (comptePrincipal !== null) {
-      throw new UnauthorizedException('Ce nom de compte est déjà utilisé');
+
+    const isUsernameAlreadyUsed = await this.compteGroupeRepository.findOneBy({
+      username: createCompteGroupeDto.username,
+    });
+    if (comptePrincipal !== null || isUsernameAlreadyUsed) {
+      throw new ConflictException('Ce nom de compte est déjà utilisé.');
     }
 
     const compteGroupe = await this.compteGroupeRepository.save(

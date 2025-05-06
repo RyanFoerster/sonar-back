@@ -2,33 +2,27 @@ services:
   sonarstagingbackend:
     image: dimagin/sonar-back:staging
     container_name: sonar-staging-back
+    pull_policy: always
     restart: unless-stopped
     env_file:
       - .env
+    networks:
+      - sonar-staging-network
     depends_on:
       sonarstagingdatabase:
         condition: service_healthy
-    networks:
-      - traefik-network
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.sonar-staging-back.rule=Host(`${SONAR_STAGING_BACKEND_HOST}`)
-      - traefik.http.routers.sonar-staging-back.entrypoints=websecure
-      - traefik.http.routers.sonar-staging-back.tls=true
-      - traefik.http.routers.sonar-staging-back.tls.certresolver=cloudflare
-      - traefik.http.services.sonar-staging-back.loadbalancer.server.port=3000
-      - traefik.http.routers.sonar-staging-back.service=sonar-staging-back
-      - traefik.http.routers.sonar-staging-back.tls.options=default
   sonarstagingdatabase:
     image: postgres:latest
     container_name: sonar-staging-db
+    ports:
+      - ${POSTGRES_PORT}:5432
     restart: unless-stopped
     volumes:
       - sonar-staging-db-data:/var/lib/postgresql/data:rw
-    networks:
-      - traefik-network
     env_file:
       - .env
+    networks:
+      - sonar-staging-network
     healthcheck:
       test:
         [
@@ -43,18 +37,10 @@ services:
       retries: 5
       start_interval: 5s
       start_period: 30s
-    labels:
-      - traefik.enable=true
-      - traefik.tcp.routers.sonar-staging-db.rule=HostSNI(`${SONAR_STAGING_DB_HOST}`)
-      - traefik.tcp.routers.sonar-staging-db.entrypoints=postgresql
-      - traefik.tcp.routers.sonar-staging-db.tls=true
-      - traefik.tcp.routers.sonar-staging-db.tls.certresolver=cloudflare
-      - traefik.tcp.services.sonar-staging-db.loadbalancer.server.port=5432
-      - traefik.tcp.routers.sonar-staging-db.service=sonar-staging-db
-
-networks:
-  traefik-network:
-    external: true
 
 volumes:
   sonar-staging-db-data:
+
+networks:
+  sonar-staging-network:
+    driver: bridge
