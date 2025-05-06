@@ -1,4 +1,4 @@
-name: Build and Publish Docker Image
+name: Build and Publish Docker Image Prod
 
 on:
   push:
@@ -30,3 +30,15 @@ jobs:
           tags: ${{ secrets.DOCKER_USERNAME }}/sonar-back:latest
           push: true
           platforms: linux/amd64
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Dokploy Deployment
+        run: |
+          curl -X POST "https://${{ secrets.DOKPLOY_URL }}/api/compose.deploy" \
+          -H "accept: application/json" \
+          -H "Content-Type: application/json" \
+          -H "x-api-key: ${{ secrets.DOKPLOY_PROD_API_TOKEN }}" \
+          -d '{"composeId": "${{ secrets.DOKPLOY_PROD_COMPOSE_ID }}"}'
