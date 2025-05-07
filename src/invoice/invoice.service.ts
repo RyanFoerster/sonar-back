@@ -644,13 +644,30 @@ export class InvoiceService {
       pageWidth - this.PAGE_MARGIN - 60,
       80,
     );
+
+    // Nouvelle gestion du numéro de TVA
+    let vatText = 'Non assujetti';
+    let vatLabel = 'TVA:';
+
     if (quote.client.company_vat_number) {
-      doc.text(
-        quote.client.company_vat_number,
-        pageWidth - this.PAGE_MARGIN - 60,
-        85,
-      );
+      if (quote.client.country === 'Belgique') {
+        vatText = `BE${quote.client.company_vat_number}`;
+      } else {
+        vatText = quote.client.company_vat_number;
+      }
+    } else if (quote.client.company_number) {
+      vatText = `${quote.client.company_number}`;
+      vatLabel = 'N° entreprise:';
+    } else if (quote.client.is_physical_person) {
+      // Supposant que is_physical_person est disponible
+      vatText = 'Non assujetti';
     }
+
+    doc.text(
+      `${vatLabel} ${vatText}`,
+      pageWidth - this.PAGE_MARGIN - 60,
+      85, // Position Y pour la ligne de TVA/N° entreprise
+    );
 
     // Titre du document
     doc.setFontSize(14);
@@ -672,6 +689,18 @@ export class InvoiceService {
         { align: 'right' },
       );
     }
+
+    // Ajout des informations du projet
+    const issuerNameForProject = `${
+      invoice.main_account
+        ? invoice.main_account.username
+        : invoice.group_account
+          ? invoice.group_account.username
+          : 'N/A'
+    }`;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Projet : ${issuerNameForProject}`, this.PAGE_MARGIN, 120); // Position Y après délai de paiement
 
     // Tableau des produits
     const startY = 125;

@@ -22,6 +22,7 @@ export class ClientsController {
   @Post()
   create(@Body() createClientDto: CreateClientDto, @Request() request) {
     let user: User = request.user as User;
+    Logger.log('createClientDto', createClientDto);
     return this.clientsService.create(user, createClientDto);
   }
 
