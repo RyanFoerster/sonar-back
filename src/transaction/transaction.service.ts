@@ -1,4 +1,10 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -66,7 +72,15 @@ export class TransactionService {
           senderGroup.id,
         );
       } else {
-        throw new UnauthorizedException('Solde insuffisant');
+        throw new HttpException(
+          'Solde du groupe insuffisant, solde disponible: ' +
+            senderGroup.solde +
+            ' montant demandé: ' +
+            amount +
+            'Pour le groupe: ' +
+            senderGroup.username,
+          HttpStatus.BAD_REQUEST,
+        );
       }
     }
 
@@ -84,7 +98,15 @@ export class TransactionService {
           senderPrincipal.id,
         );
       } else {
-        throw new UnauthorizedException('Solde insuffisant');
+        throw new HttpException(
+          'Solde du compte principal insuffisant, solde disponible: ' +
+            senderPrincipal.solde +
+            ' montant demandé: ' +
+            amount +
+            'Pour le compte principal: ' +
+            senderPrincipal.username,
+          HttpStatus.BAD_REQUEST,
+        );
       }
     }
 
