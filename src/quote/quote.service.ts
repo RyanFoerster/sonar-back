@@ -1064,117 +1064,112 @@ export class QuoteService {
     }
   }
 
-  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
-  async checkQuoteValidationDate() {
-    const quotes = await this.findQuoteInPending();
+  // @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
+  // async checkQuoteValidationDate() {
+  //   const quotes = await this.findQuoteInPending();
 
-    for (const quote of quotes) {
-      if (quote.validation_deadline.getTime() < new Date().getTime()) {
-        if (
-          quote.group_acceptance !== 'pending' ||
-          quote.order_giver_acceptance !== 'pending'
-        ) {
-          quote.group_acceptance = 'pending';
-          quote.order_giver_acceptance = 'pending';
-          await this.quoteRepository.save(quote);
-        }
+  //   for (const quote of quotes) {
+  //     if (quote.validation_deadline.getTime() < new Date().getTime()) {
+  //       if (
+  //         quote.group_acceptance !== 'pending' ||
+  //         quote.order_giver_acceptance !== 'pending'
+  //       ) {
+  //         quote.group_acceptance = 'pending';
+  //         quote.order_giver_acceptance = 'pending';
+  //         await this.quoteRepository.save(quote);
+  //       }
+  //     }
+  //   }
+  // }
+
+  private async sendReminderEmails(
+    quotes: Quote[],
+    daysBeforeDeadline: number | null = null,
+  ) {
+    console.log('sendReminderEmails', quotes.length);
+
+    if (quotes.length === 0) {
+      return;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Filtrer les devis avant la boucle pour éviter des traitements inutiles
+    const filteredQuotes = quotes.filter((quote) => {
+      // Vérifier que le devis est en attente
+      if (quote.status !== 'pending') {
+        return false;
+      }
+
+      // Vérifier que le devis a au moins une acceptation en attente
+      if (
+        quote.group_acceptance !== 'pending' &&
+        quote.order_giver_acceptance !== 'pending'
+      ) {
+        return false;
+      }
+
+      // Vérifier que la date d'échéance existe
+      if (!quote.validation_deadline) {
+        return false;
+      }
+
+      // Calculer le nombre de jours restants avant l'échéance
+      const deadline = new Date(quote.validation_deadline);
+      deadline.setHours(0, 0, 0, 0);
+      const diffTime = deadline.getTime() - today.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+      // Envoyer un rappel uniquement si le nombre de jours restants correspond exactement
+      // au paramètre daysBeforeDeadline (2 jours avant, 1 jour avant, ou le jour même)
+      return diffDays === daysBeforeDeadline;
+    });
+
+    console.log(
+      `Devis filtrés pour rappel à ${daysBeforeDeadline} jours de l'échéance:`,
+      filteredQuotes.length,
+    );
+
+    // Traiter les devis filtrés
+    for (const quote of filteredQuotes) {
+      // Envoyer un email au groupe si nécessaire
+      if (quote.group_acceptance === 'pending' && quote.created_by_mail) {
+        await this.mailService.sendDevisAcceptationEmail(
+          quote.created_by_mail,
+          quote.created_by_project_name,
+          quote.id,
+          'GROUP',
+          quote.created_by_mail,
+          this.formatDate(quote.quote_date),
+          quote.comment,
+          quote.price_htva,
+          quote.client.name,
+        );
+      }
+
+      // Envoyer un email au client si nécessaire
+      if (quote.order_giver_acceptance === 'pending' && quote.client?.email) {
+        await this.mailService.sendDevisAcceptationEmail(
+          quote.client.email,
+          quote.client.name,
+          quote.id,
+          'CLIENT',
+          quote.client.email,
+          this.formatDate(quote.quote_date),
+          quote.comment,
+          quote.price_htva,
+          quote.client.name,
+        );
       }
     }
   }
 
-  // private async sendReminderEmails(
-  //   quotes: Quote[],
-  //   timeThreshold: number | null = null,
-  // ) {
-  //   console.log('sendReminderEmails', quotes.length);
-
-  //   if (quotes.length === 0) {
-  //     return;
-  //   }
-
-  //   for (const quote of quotes) {
-  //     const currentTime = new Date().getTime();
-  //     const deadlineTime = quote.validation_deadline.getTime();
-
-  //     // Ce bloc de code sert à filtrer les devis (`quote`) pour lesquels une relance par email doit être envoyée.
-  //     // Il y a deux scénarios principaux, en fonction de la valeur de `timeThreshold` (seuil de temps).
-
-  //     // Scénario 1: Un `timeThreshold` est fourni (il n'est pas `null`).
-  //     // `timeThreshold` représente une durée (par exemple, 2 jours en millisecondes).
-  //     if (timeThreshold !== null) {
-  //       // On vérifie deux conditions. Si l'UNE OU L'AUTRE est vraie, on passe au devis suivant (`continue`).
-  //       if (
-  //         // Condition 1: Le statut du devis n'est pas 'pending' (en attente).
-  //         // Si le devis n'est plus en attente (par exemple, accepté ou refusé), on ne fait rien.
-  //         quote.status !== 'pending' ||
-  //         // Condition 2: L'échéance (`deadlineTime`) est supérieure ou égale au temps actuel (`currentTime`) PLUS le `timeThreshold`.
-  //         // Cela signifie que l'échéance est encore "trop loin" dans le futur par rapport au seuil.
-  //         // Par exemple, si `timeThreshold` est de 2 jours, et que l'échéance est dans 3 jours, cette condition est vraie.
-  //         deadlineTime >= currentTime + timeThreshold
-  //       ) {
-  //         // Si l'une de ces conditions est vraie, on saute ce devis et on passe au suivant dans la boucle.
-  //         continue;
-  //       }
-  //       // Si on arrive ici, cela signifie que:
-  //       // 1. Le statut du devis EST 'pending'.
-  //       // ET
-  //       // 2. L'échéance est DANS la fenêtre définie par `timeThreshold` (c'est-à-dire `deadlineTime < currentTime + timeThreshold`).
-  //       //    Par exemple, si `timeThreshold` est de 2 jours, l'échéance est dans moins de 2 jours.
-  //     }
-  //     // Scénario 2: Aucun `timeThreshold` n'est fourni (`timeThreshold` est `null`).
-  //     // Dans ce cas, on s'intéresse aux devis dont l'échéance est déjà passée.
-  //     else if (deadlineTime >= currentTime) {
-  //       // Si l'échéance (`deadlineTime`) est supérieure ou égale au temps actuel (`currentTime`),
-  //       // cela signifie que l'échéance n'est pas encore passée.
-  //       // Donc, on saute ce devis et on passe au suivant.
-  //       continue;
-  //     }
-  //     // Si on arrive à la fin de ce bloc (c'est-à-dire qu'aucun `continue` n'a été exécuté), cela signifie que :
-  //     // - Soit un `timeThreshold` était fourni, le devis est 'pending', ET son échéance est dans la période définie par `timeThreshold`.
-  //     // - Soit aucun `timeThreshold` n'était fourni, ET l'échéance du devis est passée (`deadlineTime < currentTime`).
-  //     // Dans ces cas, le code continuera pour potentiellement envoyer un email de rappel.
-
-  //     if (quote.group_acceptance === 'pending') {
-  //       await this.mailService.sendDevisAcceptationEmail(
-  //         quote.created_by_mail,
-  //         quote.created_by_project_name,
-  //         quote.id,
-  //         'GROUP',
-  //         quote.created_by_mail,
-  //         this.formatDate(quote.quote_date),
-  //         quote.comment,
-  //         quote.price_htva,
-  //         quote.client.name,
-  //       );
-  //     }
-
-  //     if (quote.order_giver_acceptance === 'pending') {
-  //       await this.mailService.sendDevisAcceptationEmail(
-  //         quote.client.email,
-  //         quote.client.name,
-  //         quote.id,
-  //         'CLIENT',
-  //         quote.client.email,
-  //         this.formatDate(quote.quote_date),
-  //         quote.comment,
-  //         quote.price_htva,
-  //         quote.client.name,
-  //       );
-  //     }
-  //   }
-  // }
-
-  // @Cron(CronExpression.EVERY_DAY_AT_9AM)
-  // async sendReminderEmailLessThan2Days() {
-  //   const quotes = await this.findQuoteInPending();
-  //   await this.sendReminderEmails(quotes, 2 * 24 * 60 * 60 * 1000);
-  // }
-
-  // @Cron(CronExpression.EVERY_DAY_AT_9AM)
-  // async sendReminderEmailLessThan1Day() {
-  //   const quotes = await this.findQuoteInPending();
-  //   await this.sendReminderEmails(quotes);
-  // }
+  @Cron(CronExpression.EVERY_DAY_AT_9AM)
+  async sendReminderEmailTwoDaysBefore() {
+    const quotes = await this.findQuoteInPending();
+    await this.sendReminderEmails(quotes, 2); // 2 jours avant l'échéance
+  }
 
   findQuoteInPending() {
     return this.quoteRepository.find({
