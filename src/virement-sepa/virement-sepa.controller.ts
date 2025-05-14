@@ -13,7 +13,7 @@ import {
   Logger,
   Res,
   UseGuards,
-  BadRequestException,
+  BadRequestException, Put,
 } from '@nestjs/common';
 import { VirementSepaService } from './virement-sepa.service';
 import { CreateVirementSepaDto } from './dto/create-virement-sepa.dto';
@@ -30,7 +30,8 @@ export class VirementSepaController {
   constructor(
     private readonly virementSepaService: VirementSepaService,
     private readonly s3Service: S3Service,
-  ) {}
+  ) {
+  }
 
   @Post()
   @UseInterceptors(FileInterceptor('invoice'))
@@ -143,4 +144,14 @@ export class VirementSepaController {
       throw new BadRequestException('Erreur lors de la conversion en PDF');
     }
   }
+
+  @Put(":id/update")
+  async updateVirement(
+    @Param("id") id: string,
+    @Body() updateVirementSepaDto: UpdateVirementSepaDto,
+  ) {
+    return this.virementSepaService.updateVirement(+id, updateVirementSepaDto);
+
+  }
+
 }
