@@ -117,4 +117,5 @@ export class Quote {
   @OneToOne(() => Invoice, { eager: true, nullable: true })
   @JoinColumn()
   invoice: Invoice;
+
 }

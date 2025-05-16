@@ -1,18 +1,11 @@
 import { Product } from '@/product/entities/product.entity';
 import { ProductService } from '@/product/product.service';
-import {
-  BadRequestException,
-  forwardRef,
-  Inject,
-  Injectable,
-  Logger,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { DataSource, In, Repository } from 'typeorm';
+import { DataSource, In, LessThan, Repository } from 'typeorm';
 import { ClientsService } from '../clients/clients.service';
 import { CompteGroupeService } from '../compte_groupe/compte_groupe.service';
 import { ComptePrincipalService } from '../compte_principal/compte_principal.service';
@@ -29,8 +22,8 @@ import { ComptePrincipal } from '@/compte_principal/entities/compte_principal.en
 import { AssetsService } from '../services/assets.service';
 import { S3Service } from '@/services/s3/s3.service';
 import * as QRCode from 'qrcode';
-import { LessThan } from 'typeorm';
 import { GlobalCounterService } from '../global-counter/global-counter.service';
+
 
 @Injectable()
 export class InvoiceService {
@@ -63,6 +56,8 @@ export class InvoiceService {
     private assetsService: AssetsService,
     private s3Service: S3Service,
     private globalCounterService: GlobalCounterService,
+
+
   ) {}
 
   async create(
@@ -158,19 +153,116 @@ export class InvoiceService {
     return await this._invoiceRepository.findOneBy({ id: invoiceCreated.id });
   }
 
+
+
+  // Fonction pour créer une facture sans devis
+  async createInvoiceWithoutQuote(
+    quoteObject: any,
+    user: User,
+    params: { account_id: number; type: 'PRINCIPAL' | 'GROUP' },
+  ){
+
+    const quote = new Quote();
+    quote.quote_date = new Date(quoteObject.quote_date);
+    quote.service_date = new Date(quoteObject.service_date);
+    quote.payment_deadline = quoteObject.payment_deadline;
+    quote.validation_deadline = new Date(quoteObject.validation_deadline);
+    quote.price_htva = quoteObject.price_htva;
+    quote.total_vat_6 = quoteObject.total_vat_6;
+    quote.total_vat_21 = quoteObject.total_vat_21;
+    quote.total = quoteObject.total;
+    quote.isVatIncluded = quoteObject.isVatIncluded;
+    quote.comment = quoteObject.comment;
+    quote.attachment_url = quoteObject.attachment_keys ?? [];
+    const clientId = (quoteObject as any).client_id;
+    let account;
+    let userFromDB = await this.usersService.findOne(user.id);
+
+    if (!userFromDB) {
+      throw new BadRequestException('Aucun utilisateur trouvé');
+    }
+
+    let invoice = await this.createInvoiceFromQuote(quoteObject);
+    quote.invoice= invoice;
+    quote.client = await this.clientService.findOne(clientId)
+    const productIds = quoteObject.products_id;
+    quote.products = await this.productService.findProductsByIds(productIds);
+
+
+
+    // Utilisation du compteur global pour obtenir un numéro de facture
+    invoice.invoice_number = await this.globalCounterService.getNextInvoiceNumber();
+
+    if (params.type === 'PRINCIPAL') {
+      account = await this.comptePrincipalService.findOne(params.account_id);
+      invoice.main_account = account;
+      // Ne plus utiliser le compteur local
+      // invoice.invoice_number = account.next_invoice_number;
+      // account.next_invoice_number += 1;
+      await this.comptePrincipalService.save(account);
+    }
+
+    if (params.type === 'GROUP') {
+      account = await this.compteGroupeService.findOne(params.account_id);
+      invoice.group_account = account;
+      // Ne plus utiliser le compteur local
+      // invoice.invoice_number = account.next_invoice_number;
+      // account.next_invoice_number += 1;
+      await this.compteGroupeService.save(account);
+    }
+    const invoiceCreated = await this._invoiceRepository.save(invoice);
+    invoiceCreated.quote = quoteObject;
+    invoiceCreated.client = await this.clientService.findOne(
+      clientId,
+    );
+
+    if (params.type === 'PRINCIPAL') {
+      account = await this.comptePrincipalService.findOne(params.account_id);
+      invoiceCreated.main_account = account;
+    }
+
+    if (params.type === 'GROUP') {
+      account = await this.compteGroupeService.findOne(params.account_id);
+      invoiceCreated.group_account = account;
+    }
+
+    invoiceCreated.quote = quoteObject;
+    if (invoiceCreated.type !== 'credit_note') {
+      invoiceCreated.products = quoteObject.products;
+    }
+
+    console.error(quoteObject);
+    const pdf = await this.generateInvoicePDF(quote);
+    // const pdfBuffer = Buffer.from(pdf);
+    const pdfBuffer = Buffer.from(pdf);
+
+    const pdfKey = await this.s3Service.uploadFileFromBuffer(
+      pdfBuffer,
+      'invoices',
+      invoiceCreated.id,
+    );
+    invoiceCreated.pdfS3Key = pdfKey;
+    const paymentDeadline = new Date(quoteObject.service_date);
+    paymentDeadline.setDate(
+      paymentDeadline.getDate() + quoteObject.payment_deadline,
+    );
+    invoiceCreated.payment_deadline = paymentDeadline;
+    await this._invoiceRepository.save(invoiceCreated);
+
+    this.mailService.sendInvoiceEmail(invoiceCreated, pdfKey);
+
+    return await this._invoiceRepository.findOneBy({ id: invoiceCreated.id });
+  }
+
+
   async save(invoice: Invoice) {
     return await this._invoiceRepository.save(invoice);
   }
 
   async createInvoiceFromQuote(quote: Quote) {
     const currentDate = new Date();
-    let group;
 
-    if (quote.group_account) {
-      group = await this.compteGroupeService.findOne(quote.group_account.id);
-    } else {
-      group = await this.comptePrincipalService.findOne(quote.main_account.id);
-    }
+
 
     let invoice = new Invoice();
     invoice.invoice_date = currentDate;
@@ -573,7 +665,9 @@ export class InvoiceService {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
+
     const invoice = quote.invoice;
+    Logger.error(quote);
 
     // Couleur principale pour le design
     const mainColor = [200, 192, 77] as [number, number, number]; // #C8C04D en RGB - même couleur que dans generateQuotePDF
@@ -1625,4 +1719,6 @@ export class InvoiceService {
 
     return doc.output('arraybuffer');
   }
+
+
 }
