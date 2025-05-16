@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Product } from './entities/product.entity';
 
 @Injectable()
@@ -120,5 +120,14 @@ export class ProductService {
     let productVat = product.price * product.vat;
     let productTotal = +product.price + +productVat;
     return productTotal * product.quantity;
+  }
+
+  // Cette méthode permet de trouver plusieurs produits par leurs IDs
+  async findProductsByIds(ids: number[]) {
+    return this.productRepository.find({
+      where: {
+        id: In(ids),
+      },
+    });
   }
 }

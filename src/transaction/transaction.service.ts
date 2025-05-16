@@ -463,11 +463,11 @@ export class TransactionService {
           this.logger.log(
             `Envoi de la notification à l'expéditeur via NotificationService.create()`,
           );
-          const createdNotif =
-            await this.notificationService.create(notificationData);
-          this.logger.log(
-            `Notification créée avec succès pour l'expéditeur, ID: ${createdNotif?.id || 'non retourné'}`,
-          );
+          // const createdNotif =
+          //   await this.notificationService.create(notificationData);
+          // this.logger.log(
+          //   `Notification créée avec succès pour l'expéditeur, ID: ${createdNotif?.id || 'non retourné'}`,
+          // );
 
           this.logger.log(
             `Notification composant envoyée à l'expéditeur ID: ${senderUserId}`,

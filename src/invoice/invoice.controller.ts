@@ -28,6 +28,15 @@ export class InvoiceController {
   ) {
     return this.invoiceService.create(quote, req.user, params);
   }
+  @Post('/createInvoiceWithoutQuote')
+  createInvoiceWithoutQuote(
+    @Body() quote: Quote,
+    @Req() req,
+    @Query() params: { account_id: number; type: 'PRINCIPAL' | 'GROUP' },
+  ) {
+    return this.invoiceService.createInvoiceWithoutQuote(quote, req.user, params);
+  }
+
 
   @Get('all')
   findAll(@Req() req) {
