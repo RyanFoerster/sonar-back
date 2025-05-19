@@ -22,6 +22,7 @@ import { ConfigService } from '@nestjs/config';
 import * as libre from 'libreoffice-convert';
 import { promisify } from 'util';
 import sharp from 'sharp';
+import { UpdateVirementSepaDto } from '@/virement-sepa/dto/update-virement-sepa.dto';
 
 const libreConvert = promisify(libre.convert);
 
@@ -230,7 +231,7 @@ export class VirementSepaService {
 
       const to = this.configService.get('isProd')
         ? 'achat-0700273583@soligere.clouddemat.be'
-        : 'ryanfoerster@dimagin.be';
+        : '';
 
       // const to = 'ryanfoerster@outlook.be';
 
@@ -385,4 +386,11 @@ export class VirementSepaService {
       throw new BadRequestException('Erreur lors de la conversion en PDF');
     }
   }
+
+
+  async updateVirement(id: number, dto: UpdateVirementSepaDto) {
+    await this.virementSepaRepository.update(id, dto);
+    return this.virementSepaRepository.findOneBy({ id });
+  }
+
 }
