@@ -106,6 +106,9 @@ export class InvoiceService {
       await this.compteGroupeService.save(account);
     }
 
+    const current = new Date();
+
+
     const invoiceCreated = await this._invoiceRepository.save(invoice);
 
     invoiceCreated.quote = quoteFromDB;
@@ -143,7 +146,7 @@ export class InvoiceService {
     invoiceCreated.pdfS3Key = pdfKey;
     const paymentDeadline = new Date(quoteFromDB.service_date);
     paymentDeadline.setDate(
-      paymentDeadline.getDate() + quoteFromDB.payment_deadline,
+      current.getDate() + quoteFromDB.payment_deadline,
     );
     invoiceCreated.payment_deadline = paymentDeadline;
     await this._invoiceRepository.save(invoiceCreated);
@@ -262,17 +265,16 @@ export class InvoiceService {
   async createInvoiceFromQuote(quote: Quote) {
     const currentDate = new Date();
 
-
-
     let invoice = new Invoice();
     invoice.invoice_date = currentDate;
     invoice.service_date = quote.service_date;
 
     // Correction: créer une nouvelle date pour le payment_deadline sans modifier currentDate
     const paymentDeadline = new Date(quote.service_date);
-    paymentDeadline.setDate(paymentDeadline.getDate() + quote.payment_deadline);
+    paymentDeadline.setDate(currentDate.getDate() + quote.payment_deadline);
     invoice.payment_deadline = paymentDeadline;
     invoice.validation_deadline = quote.validation_deadline;
+
 
     invoice.price_htva = quote.price_htva;
     invoice.total = quote.total;
