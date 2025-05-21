@@ -93,8 +93,8 @@ export class CompteGroupeService {
     return compteGroupe;
   }
 
-  findOneByUsername(username: string) {
-    return this.compteGroupeRepository.findOneBy({ username });
+  async findOneByUsername(username: string): Promise<CompteGroupe> {
+    return await this.compteGroupeRepository.findOneBy({ username });
   }
 
   findAllByUser(id: number) {

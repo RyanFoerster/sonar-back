@@ -13,6 +13,7 @@ import { ComptePrincipalModule } from '../compte_principal/compte_principal.modu
 import { HttpModule } from '@nestjs/axios';
 import { MailModule } from '@/mail/mail.module';
 import { User } from '../users/entities/user.entity';
+import { CompteGroupeModule } from '@/compte_groupe/compte_groupe.module';
 
 @Module({
   controllers: [AuthController],
@@ -29,6 +30,7 @@ import { User } from '../users/entities/user.entity';
     TypeOrmModule.forFeature([RefreshToken, ResetToken, User]),
     UsersModule,
     ComptePrincipalModule,
+     CompteGroupeModule,
     HttpModule,
     MailModule,
   ], // Assurez-vous que cela est correct
