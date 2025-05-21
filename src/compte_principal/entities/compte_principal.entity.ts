@@ -34,6 +34,13 @@ export class ComptePrincipal {
   @Column({ default: 1 })
   next_quote_number: number;
 
+  @Column({ default: 5, type: 'double precision' })
+  commissionPourcentage: number;
+
+  @Column({ default: 0, type: 'double precision' })
+  commission: number;
+
+
   @OneToMany(() => Quote, (quote) => quote.main_account, {
     nullable: true,
     eager: true,

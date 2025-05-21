@@ -133,4 +133,13 @@ export class ComptePrincipalService {
   update(updateComptePrincipalDto: UpdateComptePrincipalDto) {
     return this.comptePrincipalRepository.save(updateComptePrincipalDto);
   }
+
+  async updateCommission(id: number, commissionPourcentage: any) {
+    return this.comptePrincipalRepository
+      .createQueryBuilder()
+      .update(ComptePrincipal)
+      .set({ commissionPourcentage })
+      .where('id = :id', { id })
+      .execute();
+  }
 }

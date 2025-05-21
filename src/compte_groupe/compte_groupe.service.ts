@@ -108,6 +108,20 @@ export class CompteGroupeService {
   }
 
   async update(id: number, updateCompteGroupeDto: UpdateCompteGroupeDto) {
+// Vérifie si le username existe déjà dans les groupes
+    const existingCompteGroupe = await this.compteGroupeRepository.findOneBy({
+      username: updateCompteGroupeDto.username,
+    });
+    if (existingCompteGroupe && existingCompteGroupe.id !== id) {
+      throw new ConflictException('Ce nom de compte est déjà utilisé.');
+    }
+
+
+    const existingComptePrincipal = await this.comptePrincipalService.findOneByUsername(updateCompteGroupeDto.username);
+    if (existingComptePrincipal) {
+      throw new ConflictException('Ce nom de compte est déjà utilisé.');
+    }
+
     return this.compteGroupeRepository.update(id, updateCompteGroupeDto);
   }
 
@@ -117,5 +131,14 @@ export class CompteGroupeService {
 
   remove(id: number) {
     return `This action removes a #${id} compteGroupe`;
+  }
+
+  async updateCommission(number: number, commissionPourcentage: any) {
+    return this.compteGroupeRepository
+      .createQueryBuilder()
+      .update(CompteGroupe)
+      .set({ commissionPourcentage })
+      .where('id = :id', { id: number })
+      .execute();
   }
 }
