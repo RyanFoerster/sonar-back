@@ -19,7 +19,7 @@ export class Transaction {
   @Column()
   communication: string;
 
-  @Column({ type: 'double precision', default: 0 })
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   amount: number;
 
   @Column({ nullable: true })

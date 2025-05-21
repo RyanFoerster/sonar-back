@@ -2,19 +2,14 @@ import {
   BadRequestException,
   Injectable,
   Logger,
-  UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as bcrypt from 'bcrypt';
 import { Repository } from 'typeorm';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { User } from './entities/user.entity';
-import { UsernameException } from './exceptions/username.exception';
-import { EmailException } from './exceptions/email.exception';
 import { ComptePrincipalService } from '../compte_principal/compte_principal.service';
 import { UpdateUserDto } from './dtos/update-user.dto';
-import { CompteGroupe } from '../compte_groupe/entities/compte_groupe.entity';
-import { GoogleDriveService } from 'nestjs-googledrive-upload';
 
 @Injectable()
 export class UsersService {
@@ -175,15 +170,55 @@ export class UsersService {
     return await this.usersRepository.save(user);
   }
 
-  async delete(id: number) {
-    const user = await this.usersRepository.findOne({
-      where: {
-        id,
-      },
-      relations: ['comptePrincipal'],
-    });
-    if (user) {
-      return await this.usersRepository.remove(user);
+  async delete(id: number): Promise<void> {
+    this.logger.log(
+      `[delete] Tentative de suppression de l'utilisateur ID: ${id}`,
+    );
+
+    try {
+      // Vérifier si l'utilisateur existe
+      const userExists = await this.usersRepository
+        .createQueryBuilder('user')
+        .where('user.id = :id', { id })
+        .getOne();
+
+      if (!userExists) {
+        this.logger.warn(
+          `[delete] Utilisateur ID: ${id} non trouvé pour suppression.`,
+        );
+        throw new NotFoundException(`Utilisateur avec l'ID ${id} non trouvé.`);
+      }
+
+      // Supprimer les relations userSecondaryAccounts séparément
+      // await this.usersRepository.manager
+      //   .createQueryBuilder()
+      //   .delete()
+      //   .from('user_secondary_account')
+      //   .where('userId = :id', { id })
+      //   .execute();
+
+      await this.usersRepository.manager
+        .createQueryBuilder()
+        .delete()
+        .from('compte_principal')
+        .where('userId = :id', { id })
+        .execute();
+
+      // Supprimer l'utilisateur directement
+      await this.usersRepository
+        .createQueryBuilder()
+        .delete()
+        .from(User)
+        .where('id = :id', { id })
+        .execute();
+
+      this.logger.log(`[delete] Utilisateur ID: ${id} supprimé avec succès`);
+    } catch (error) {
+      this.logger.error(
+        `[delete] Erreur lors de la suppression de l'utilisateur ID: ${id}:`,
+        error.stack,
+      );
+      throw error;
     }
   }
 
