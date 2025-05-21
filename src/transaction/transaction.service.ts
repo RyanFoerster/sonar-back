@@ -66,7 +66,7 @@ export class TransactionService {
       const amount = createTransactionDto.amount * numberRecipients;
 
       if (senderGroup.solde >= amount) {
-        senderGroup.solde -= amount;
+        senderGroup.solde -= +amount;
         this.compteGroupeService.save(senderGroup);
         transaction.senderGroup = await this.compteGroupeService.findOne(
           senderGroup.id,
@@ -92,7 +92,7 @@ export class TransactionService {
       const amount = createTransactionDto.amount * numberRecipients;
 
       if (senderPrincipal.solde >= amount) {
-        senderPrincipal.solde -= amount;
+        senderPrincipal.solde -= +amount;
         await this.comptePrincipalService.save(senderPrincipal);
         transaction.senderPrincipal = await this.comptePrincipalService.findOne(
           senderPrincipal.id,
@@ -115,7 +115,7 @@ export class TransactionService {
       for (const compteGroupeId of createTransactionDto.recipientGroup) {
         let compteGroupe =
           await this.compteGroupeService.findOne(compteGroupeId);
-        compteGroupe.solde += createTransactionDto.amount;
+        compteGroupe.solde += +createTransactionDto.amount;
         recipientGroups.push(compteGroupe);
         await this.compteGroupeService.save(compteGroupe);
       }
@@ -127,7 +127,7 @@ export class TransactionService {
       for (const comptePrincipalId of createTransactionDto.recipientPrincipal) {
         let comptePrincipal =
           await this.comptePrincipalService.findOne(comptePrincipalId);
-        comptePrincipal.solde += createTransactionDto.amount;
+        comptePrincipal.solde += +createTransactionDto.amount;
         await this.comptePrincipalService.save(comptePrincipal);
 
         // Récupérer à nouveau le compte principal après la sauvegarde
