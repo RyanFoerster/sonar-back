@@ -58,4 +58,12 @@ export class ComptePrincipalController {
   remove(@Param('id') id: string) {
     return;
   }
+
+  @Patch(':id/commission')
+  async updateCommission(
+    @Param('id') id: string,
+    @Body('commission') commissionPourcentage: any,
+  ) {
+    return this.comptePrincipalService.updateCommission(+id, commissionPourcentage);
+  }
 }
