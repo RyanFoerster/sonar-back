@@ -14,6 +14,8 @@ import { HttpModule } from '@nestjs/axios';
 import { MailModule } from '@/mail/mail.module';
 import { User } from '../users/entities/user.entity';
 import { CompteGroupeModule } from '@/compte_groupe/compte_groupe.module';
+import { GoogleStrategy } from './strategies/google.strategy';
+import { PassportModule } from '@nestjs/passport';
 
 @Module({
   controllers: [AuthController],
@@ -24,6 +26,7 @@ import { CompteGroupeModule } from '@/compte_groupe/compte_groupe.module';
       useClass: JwtAuthGuard,
     },
     JwtStrategy,
+    GoogleStrategy,
   ],
   exports: [AuthService],
   imports: [
@@ -33,6 +36,7 @@ import { CompteGroupeModule } from '@/compte_groupe/compte_groupe.module';
      CompteGroupeModule,
     HttpModule,
     MailModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
   ], // Assurez-vous que cela est correct
 })
 export class AuthModule {}

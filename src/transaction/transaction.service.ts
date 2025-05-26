@@ -44,7 +44,8 @@ export class TransactionService {
     let senderPrincipal: ComptePrincipal;
     let numberRecipients: number = 0;
     let transaction: Transaction = new Transaction();
-    transaction.amount = createTransactionDto.amount;
+    // S'assurer que le montant est bien converti en nombre et pas en chaîne
+    transaction.amount = Number(createTransactionDto.amount);
     transaction.communication = createTransactionDto.communication;
     transaction.date = new Date();
     transaction.recipientGroup = [];
@@ -64,10 +65,12 @@ export class TransactionService {
         createTransactionDto.senderGroup,
       );
 
-      const amount = createTransactionDto.amount * numberRecipients;
+      const amount = Number(createTransactionDto.amount) * numberRecipients;
 
       if (senderGroup.solde >= amount) {
-        senderGroup.solde -= amount;
+        // Assurer que le solde est traité comme un nombre avant soustraction
+        const currentSolde = Number(senderGroup.solde);
+        senderGroup.solde = currentSolde - Number(amount);
         await this.compteGroupeService.save(senderGroup);
         transaction.senderGroup = await this.compteGroupeService.findOne(
           senderGroup.id,
@@ -90,10 +93,12 @@ export class TransactionService {
         createTransactionDto.senderPrincipal,
       );
 
-      const amount = createTransactionDto.amount * numberRecipients;
+      const amount = Number(createTransactionDto.amount) * numberRecipients;
 
       if (senderPrincipal.solde >= amount) {
-        senderPrincipal.solde -= amount;
+        // Assurer que le solde est traité comme un nombre avant soustraction
+        const currentSolde = Number(senderPrincipal.solde);
+        senderPrincipal.solde = currentSolde - Number(amount);
         await this.comptePrincipalService.save(senderPrincipal);
         transaction.senderPrincipal = await this.comptePrincipalService.findOne(
           senderPrincipal.id,
@@ -116,7 +121,10 @@ export class TransactionService {
       for (const compteGroupeId of createTransactionDto.recipientGroup) {
         let compteGroupe =
           await this.compteGroupeService.findOne(compteGroupeId);
-        compteGroupe.solde += createTransactionDto.amount;
+        // Assurer que le solde est traité comme un nombre avant addition
+        const currentSolde = Number(compteGroupe.solde);
+        const amountToAdd = Number(createTransactionDto.amount);
+        compteGroupe.solde = currentSolde + amountToAdd;
         recipientGroups.push(compteGroupe);
         await this.compteGroupeService.save(compteGroupe);
       }
@@ -128,7 +136,10 @@ export class TransactionService {
       for (const comptePrincipalId of createTransactionDto.recipientPrincipal) {
         let comptePrincipal =
           await this.comptePrincipalService.findOne(comptePrincipalId);
-        comptePrincipal.solde += createTransactionDto.amount;
+        // Assurer que le solde est traité comme un nombre avant addition
+        const currentSolde = Number(comptePrincipal.solde);
+        const amountToAdd = Number(createTransactionDto.amount);
+        comptePrincipal.solde = currentSolde + amountToAdd;
         await this.comptePrincipalService.save(comptePrincipal);
 
         // Récupérer à nouveau le compte principal après la sauvegarde
@@ -143,7 +154,7 @@ export class TransactionService {
     try {
       // Étape 1: Sauvegarder la transaction de base sans les relations many-to-many
       const transactionToSave = new Transaction();
-      transactionToSave.amount = transaction.amount;
+      transactionToSave.amount = Number(transaction.amount);
       transactionToSave.communication = transaction.communication;
       transactionToSave.date = transaction.date;
       transactionToSave.senderGroup = transaction.senderGroup;
@@ -386,7 +397,7 @@ export class TransactionService {
       // Ajouter des logs détaillés pour le débogage
       this.logger.log('=== DÉBUT ENVOI NOTIFICATIONS TRANSACTION ===');
       this.logger.log(`Transaction ID: ${transaction.id}`);
-      this.logger.log(`Montant: ${transaction.amount.toFixed(2)} €`);
+      this.logger.log(`Montant: ${transaction.amount} €`);
       this.logger.log(`Communication: "${transaction.communication}"`);
 
       if (senderPrincipal) {
@@ -425,7 +436,7 @@ export class TransactionService {
       }
 
       // Formater le montant pour l'affichage
-      const formattedAmount = transaction.amount.toFixed(2) + ' €';
+      const formattedAmount = transaction.amount + ' €';
 
       // Notification à l'expéditeur (compte principal) via le système FCM existant
       // Cette partie existe déjà et est commentée dans le code original

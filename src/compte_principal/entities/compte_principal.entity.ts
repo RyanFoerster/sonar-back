@@ -25,7 +25,7 @@ export class ComptePrincipal {
   @Column({ unique: true })
   username: string;
 
-  @Column({ default: 0, type: 'double precision' })
+  @Column({ default: 0, type: 'decimal', precision: 10, scale: 2 })
   solde?: number;
 
   @Column({ default: 1 })

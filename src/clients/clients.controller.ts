@@ -14,6 +14,7 @@ import { CreateClientDto } from './dto/create-client.dto';
 import { UpdateClientDto } from './dto/update-client.dto';
 import { User } from '../users/entities/user.entity';
 import { ParseIntPipe } from '@nestjs/common';
+import { Public } from '@/auth/decorators/public.decorator';
 
 @Controller('clients')
 export class ClientsController {
@@ -42,6 +43,7 @@ export class ClientsController {
   }
 
   @Patch('update-details/:id')
+  @Public()
   updateDetails(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateClientDto: UpdateClientDto,

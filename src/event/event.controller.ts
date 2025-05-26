@@ -127,6 +127,17 @@ export class EventController {
   }
 
   /**
+   * Récupère l'historique des messages du chat d'un événement
+   */
+  @Get(':groupId/events/:eventId/chat')
+  getChatMessages(
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Param('eventId') eventId: string,
+  ) {
+    return this.eventService.getChatMessages(eventId);
+  }
+
+  /**
    * Point d'entrée exact qui correspond à l'URL utilisée par le frontend
    */
   @Post('events/:eventId/response')

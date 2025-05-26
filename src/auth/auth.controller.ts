@@ -12,6 +12,8 @@ import {
   Delete,
   HttpCode,
   HttpStatus,
+  Req,
+  Res,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Public } from './decorators/public.decorator';
@@ -23,6 +25,10 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { SignupDto } from './dto/signup.dto';
 import { ConfigService } from '@nestjs/config';
 import { URLSearchParams } from 'url';
+import { AuthGuard } from '@nestjs/passport';
+import { GoogleAuthDto } from './dto/google-auth.dto';
+import { Response } from 'express';
+import { UnlinkGoogleDto } from './dto/unlink-google.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -87,60 +93,59 @@ export class AuthController {
     return this.authService.resetPassword(newPassword, resetToken);
   }
 
-  @Get('google/get-auth-url')
-  @UseGuards(JwtAuthGuard)
-  getGoogleAuthUrl(@Request() req) {
-    const userId = req.user?.id;
-    if (!userId) {
-      throw new UnauthorizedException('User not found in request');
-    }
-
-    const clientId = this.configService.get<string>('google.clientId');
-    const apiBaseUrl = this.configService.get<string>('google.apiBaseUrl');
-    const callbackUrl = `${apiBaseUrl}/connect/google/callback`;
-
-    const state = Buffer.from(JSON.stringify({ userId })).toString('base64');
-
-    const scopes = [
-      'email',
-      'profile',
-      'https://www.googleapis.com/auth/calendar.readonly',
-      'https://www.googleapis.com/auth/calendar.events',
-    ];
-
-    const params = new URLSearchParams({
-      response_type: 'code',
-      client_id: clientId,
-      redirect_uri: callbackUrl,
-      scope: scopes.join(' '),
-      access_type: 'offline',
-      state: state,
-    });
-
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-
-    return { googleAuthUrl };
+  // Obtenir l'URL pour démarrer le processus de liaison Google
+  @Get('google/link')
+  async getGoogleAuthUrl(@Req() req) {
+    // Obtenir l'URL avec l'ID de l'utilisateur dans le paramètre state
+    const url = await this.authService.getGoogleAuthURLWithState(req.user.id);
+    return { url };
   }
 
+  // Callback de l'authentification Google pour la liaison de compte
+  @Public()
+  @Get('google/callback')
+  async googleCallback(@Req() req, @Res() res) {
+    const code = req.query.code as string;
+    const state = req.query.state as string; // Récupérer l'ID utilisateur du state
+    const frontendUrl = this.configService.get('FRONTEND_URL');
+
+    try {
+      if (!state || isNaN(parseInt(state))) {
+        return res.redirect(`${frontendUrl}/account?error=invalid_state`);
+      }
+
+      const userId = parseInt(state);
+
+      // Lier le compte directement dans le callback
+      await this.authService.linkGoogleAccount(userId, code);
+
+      // Rediriger vers le frontend avec un message de succès
+      return res.redirect(`${frontendUrl}/account?google_linked=success`);
+    } catch (error) {
+      Logger.error(`Échec de la liaison Google: ${error.message}`);
+      return res.redirect(`${frontendUrl}/account?error=google_link_failed`);
+    }
+  }
+
+  // Liaison du compte Google à un compte existant
+  @Post('google/link')
+  async linkGoogleAccount(@Body() googleAuthDto: GoogleAuthDto, @Req() req) {
+    // Lier le compte Google à l'utilisateur actuellement connecté
+    return this.authService.linkGoogleAccount(req.user.id, googleAuthDto.code);
+  }
+
+  // Vérifier si le compte est lié à Google
+  @Get('google/status')
+  async checkGoogleLinkStatus(@Req() req) {
+    const user = await this.authService.findUserById(req.user.id);
+    return {
+      linked: !!user.googleId && !!user.googleRefreshToken,
+    };
+  }
+
+  // Délier un compte Google
   @Delete('google/unlink')
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.OK)
-  async unlinkGoogle(@Request() req): Promise<{ message: string }> {
-    const userId = req.user?.id;
-    if (!userId) {
-      throw new UnauthorizedException('User ID not found in token payload');
-    }
-    await this.authService.unlinkGoogleAccount(userId);
-    return { message: 'Google account unlinked successfully' };
-  }
-
-  @Get('google/calendars')
-  @UseGuards(JwtAuthGuard)
-  async getGoogleCalendars(@Request() req) {
-    const userId = req.user?.id;
-    if (!userId) {
-      throw new UnauthorizedException('User ID not found in token payload');
-    }
-    return this.authService.getGoogleCalendars(userId);
+  async unlinkGoogleAccount(@Req() req) {
+    return this.authService.unlinkGoogleAccount(req.user.id);
   }
 }
