@@ -9,6 +9,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Event, EventStatus, InvitationStatus } from './entities/event.entity';
 import { ChatMessage } from './entities/chat-message.entity';
+import {
+  ScheduledReminder,
+  ReminderStatus,
+} from './entities/scheduled-reminder.entity';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { SendReminderDto } from './dto/send-reminder.dto';
@@ -19,6 +23,7 @@ import { PushNotificationService } from '../push-notification/push-notification.
 import { v4 as uuidv4 } from 'uuid';
 import { ConfigService } from '@nestjs/config';
 import { NotificationService } from '../notification/notification.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class EventService {
@@ -27,10 +32,13 @@ export class EventService {
     private readonly eventRepository: Repository<Event>,
     @InjectRepository(ChatMessage)
     private readonly chatMessageRepository: Repository<ChatMessage>,
+    @InjectRepository(ScheduledReminder)
+    private readonly scheduledReminderRepository: Repository<ScheduledReminder>,
     private readonly mailService: MailService,
     private readonly pushNotificationService: PushNotificationService,
     private readonly configService: ConfigService,
     private readonly notificationService: NotificationService,
+    private readonly usersService: UsersService,
   ) {}
 
   /**
@@ -401,7 +409,7 @@ export class EventService {
   }
 
   /**
-   * Envoie des rappels aux invités n'ayant pas encore répondu
+   * Envoie des rappels aux participants confirmés ou programme l'envoi
    */
   async sendReminders(
     groupId: number,
@@ -410,21 +418,83 @@ export class EventService {
     const { eventId, recipientIds } = sendReminderDto;
     const event = await this.findOne(eventId, groupId);
 
-    // Filtrer les invités en attente de réponse
-    const pendingInvitees = event.invitedPeople.filter(
+    // Filtrer les participants confirmés selon les IDs fournis
+    const confirmedParticipants = event.invitedPeople.filter(
       (person) =>
-        person.status === InvitationStatus.PENDING &&
+        person.status === InvitationStatus.ACCEPTED &&
         recipientIds.includes(person.personId),
     );
 
-    if (pendingInvitees.length === 0) {
+    if (confirmedParticipants.length === 0) {
       throw new BadRequestException(
-        'Aucun invité en attente de réponse parmi les destinataires sélectionnés',
+        'Aucun participant confirmé parmi les destinataires sélectionnés',
       );
     }
 
-    // Envoyer des rappels par email et notifications
-    await this.sendReminderNotifications(event, pendingInvitees);
+    // Si c'est un envoi immédiat
+    if (!sendReminderDto.scheduledDate || sendReminderDto.timing === 'now') {
+      await this.sendReminderNotifications(
+        event,
+        confirmedParticipants,
+        sendReminderDto.customMessage,
+      );
+      return;
+    }
+
+    // Sinon, programmer le rappel
+    await this.scheduleReminder(event, sendReminderDto);
+  }
+
+  /**
+   * Programme un rappel pour plus tard
+   */
+  private async scheduleReminder(
+    event: Event,
+    sendReminderDto: SendReminderDto,
+  ): Promise<void> {
+    const scheduledReminder = this.scheduledReminderRepository.create({
+      eventId: event.id,
+      recipientIds: sendReminderDto.recipientIds,
+      scheduledDate: new Date(sendReminderDto.scheduledDate),
+      customMessage: sendReminderDto.customMessage,
+      status: ReminderStatus.PENDING,
+    });
+
+    await this.scheduledReminderRepository.save(scheduledReminder);
+
+    console.log(
+      `Rappel programmé pour le ${sendReminderDto.scheduledDate} - ID: ${scheduledReminder.id}`,
+    );
+  }
+
+  /**
+   * Récupère les rappels programmés pour un événement
+   */
+  async getScheduledReminders(eventId: string): Promise<ScheduledReminder[]> {
+    return this.scheduledReminderRepository.find({
+      where: { eventId },
+      order: { scheduledDate: 'ASC' },
+    });
+  }
+
+  /**
+   * Annule un rappel programmé
+   */
+  async cancelScheduledReminder(reminderId: string): Promise<void> {
+    const reminder = await this.scheduledReminderRepository.findOne({
+      where: { id: reminderId },
+    });
+
+    if (!reminder) {
+      throw new NotFoundException('Rappel non trouvé');
+    }
+
+    if (reminder.status !== ReminderStatus.PENDING) {
+      throw new BadRequestException('Ce rappel ne peut plus être annulé');
+    }
+
+    reminder.status = ReminderStatus.CANCELLED;
+    await this.scheduledReminderRepository.save(reminder);
   }
 
   /**
@@ -513,6 +583,7 @@ export class EventService {
   private async sendReminderNotifications(
     event: Event,
     recipients: any[],
+    customMessage?: string,
   ): Promise<void> {
     for (const recipient of recipients) {
       if (recipient.isExternal) {
@@ -526,10 +597,15 @@ export class EventService {
           recipient.name || 'Invité',
           event,
           token,
+          customMessage,
         );
       } else {
         // Rappel par notification et email pour les utilisateurs internes
-        await this.sendInternalReminderNotification(event, recipient.personId);
+        await this.sendInternalReminderNotification(
+          event,
+          recipient.personId,
+          customMessage,
+        );
       }
     }
   }
@@ -565,9 +641,16 @@ export class EventService {
     name: string,
     event: Event,
     token: string,
+    customMessage?: string,
   ): Promise<void> {
     try {
-      await this.mailService.sendEventReminderEmail(email, name, event, token);
+      // Utiliser la nouvelle méthode avec détails complets
+      await this.mailService.sendEventReminderWithDetailsEmail(
+        email,
+        name,
+        event,
+        customMessage,
+      );
     } catch (error) {
       console.error(
         `Erreur lors de l'envoi de l'email de rappel: ${error.message}`,
@@ -622,18 +705,39 @@ export class EventService {
   private async sendInternalReminderNotification(
     event: Event,
     userId: number | string,
+    customMessage?: string,
   ): Promise<void> {
     // Envoyer une notification push
+    const notificationBody = customMessage
+      ? `${customMessage}\n\nÉvénement: ${event.title} le ${this.formatDateToFrench(event.startDateTime)}`
+      : `Rappel pour l'événement ${event.title} le ${this.formatDateToFrench(event.startDateTime)}`;
+
     await this.pushNotificationService.sendToUser(Number(userId), {
       title: `Rappel : ${event.title}`,
-      body: `N'oubliez pas de répondre à votre invitation pour l'événement ${event.title} le ${this.formatDateToFrench(event.startDateTime)}`,
+      body: notificationBody,
       data: {
         type: 'EVENT_REMINDER',
         eventId: event.id,
       },
     });
 
-    // TODO: Envoyer également un email si nécessaire
+    // Envoyer également un email avec les détails complets de l'événement
+    try {
+      // Récupérer les informations de l'utilisateur depuis la base de données
+      const user = await this.usersService.findOne(Number(userId));
+      if (user && user.email) {
+        await this.mailService.sendEventReminderWithDetailsEmail(
+          user.email,
+          `${user.firstName} ${user.name}`,
+          event,
+          customMessage,
+        );
+      }
+    } catch (error) {
+      console.error(
+        `Erreur lors de l'envoi de l'email de rappel à l'utilisateur ${userId}: ${error.message}`,
+      );
+    }
   }
 
   /**

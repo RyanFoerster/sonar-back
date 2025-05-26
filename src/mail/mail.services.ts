@@ -1516,4 +1516,164 @@ export class MailService {
 
     return data;
   }
+
+  // Nouvelle méthode pour envoyer des rappels d'événements avec détails complets
+  async sendEventReminderWithDetailsEmail(
+    to: string,
+    name: string,
+    event: Event,
+    customMessage?: string,
+  ) {
+    const baseUrl =
+      this.configService.get('isProd') === true
+        ? 'https://sonarartists.be'
+        : 'http://localhost:4200';
+
+    const logoUrl = 'https://sonarartists.be/logo-SONAR.png';
+
+    // Formater les dates en français
+    const formatDate = (date: Date) => {
+      return new Date(date).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    };
+
+    const { data, error } = await this.resend.emails.send({
+      from: 'info@sonarartists.be',
+      to,
+      subject: `Rappel : ${event.title}`,
+      html: `
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Rappel d'événement</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Montserrat', Arial, sans-serif; background-color: #f4f4f4; color: #333333;">
+          <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-top: 20px; margin-bottom: 20px;">
+            <!-- En-tête avec logo -->
+            <tr>
+              <td align="center" style="padding: 30px 20px; background-color: #000000;">
+                <img src="${logoUrl}" alt="Sonar Artists" style="max-width: 180px; height: auto;">
+              </td>
+            </tr>
+            
+            <!-- Contenu principal -->
+            <tr>
+              <td style="padding: 40px 30px;">
+                <h1 style="color: #333333; font-size: 24px; margin-top: 0; margin-bottom: 20px; font-weight: 600;">Rappel d'événement</h1>
+                
+                <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                  Bonjour ${name},
+                </p>
+                
+                ${
+                  customMessage
+                    ? `
+                <div style="background-color: #e0f2fe; border-left: 4px solid #0288d1; padding: 15px; margin-bottom: 25px;">
+                  <p style="color: #01579b; font-size: 16px; line-height: 1.6; margin: 0;">
+                    <strong>Message personnalisé :</strong><br>
+                    ${customMessage}
+                  </p>
+                </div>
+                `
+                    : ''
+                }
+                
+                <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                  Nous vous rappelons que vous avez confirmé votre participation à l'événement suivant :
+                </p>
+                
+                <div style="background-color: #f8f8f8; border-radius: 6px; padding: 20px; margin-bottom: 25px; border: 2px solid #C8C04D;">
+                  <h2 style="color: #C8C04D; font-size: 20px; margin-top: 0; margin-bottom: 15px;">${event.title}</h2>
+                  
+                  ${
+                    event.description
+                      ? `
+                  <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 15px;">
+                    <strong>Description :</strong><br>
+                    ${event.description}
+                  </p>
+                  `
+                      : ''
+                  }
+                  
+                  <div style="display: grid; gap: 10px;">
+                    <p style="color: #555555; font-size: 16px; line-height: 1.6; margin: 0;">
+                      <strong>📅 Date de début :</strong> ${formatDate(event.startDateTime)}
+                    </p>
+                    
+                    <p style="color: #555555; font-size: 16px; line-height: 1.6; margin: 0;">
+                      <strong>🏁 Date de fin :</strong> ${formatDate(event.endDateTime)}
+                    </p>
+                    
+                    <p style="color: #555555; font-size: 16px; line-height: 1.6; margin: 0;">
+                      <strong>🤝 Rendez-vous à :</strong> ${formatDate(event.meetupDateTime)}
+                    </p>
+                    
+                    ${
+                      event.location
+                        ? `
+                    <p style="color: #555555; font-size: 16px; line-height: 1.6; margin: 0;">
+                      <strong>📍 Lieu :</strong> ${event.location}
+                    </p>
+                    `
+                        : ''
+                    }
+                    
+                    <p style="color: #555555; font-size: 16px; line-height: 1.6; margin: 0;">
+                      <strong>📊 Statut :</strong> 
+                      <span style="background-color: ${event.status === 'CONFIRMED' ? '#10b981' : event.status === 'PENDING' ? '#f59e0b' : '#ef4444'}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 14px;">
+                        ${event.status === 'CONFIRMED' ? 'Confirmé' : event.status === 'PENDING' ? 'En attente' : 'Annulé'}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                
+                <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                  Nous avons hâte de vous voir à cet événement ! Si vous avez des questions ou si vous ne pouvez finalement plus participer, n'hésitez pas à nous contacter.
+                </p>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${baseUrl}/home/home-group/${event.groupId}/agenda?typeOfProjet=GROUP&selectedEventId=${event.id}" 
+                     style="display: inline-block; background-color: #C8C04D; color: #000000; font-weight: 600; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-size: 16px; transition: background-color 0.3s ease;">
+                    Voir l'événement sur la plateforme
+                  </a>
+                </div>
+              </td>
+            </tr>
+            
+            <!-- Pied de page -->
+            <tr>
+              <td style="padding: 20px; background-color: #f8f8f8; border-top: 1px solid #eeeeee; text-align: center;">
+                <p style="color: #888888; font-size: 14px; margin: 0;">
+                  © ${new Date().getFullYear()} Sonar Artists. Tous droits réservés.
+                </p>
+                <p style="color: #888888; font-size: 12px; margin-top: 10px;">
+                  Ce rappel a été envoyé via la plateforme Sonar Artists.
+                </p>
+                <p style="color: #888888; font-size: 12px; margin-top: 5px;">
+                  Si vous avez des questions, contactez-nous à <a href="mailto:info@sonarartists.be" style="color: #C8C04D; text-decoration: none;">info@sonarartists.be</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      Logger.error('Error sending event reminder email:', error.message);
+      throw error;
+    }
+
+    return data;
+  }
 }

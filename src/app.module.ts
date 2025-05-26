@@ -40,6 +40,7 @@ import { GoogleCalendarModule } from './google/google-calendar.module';
       isGlobal: true,
       cache: true,
       load: [config],
+      envFilePath: [`.env.${process.env.NODE_ENV || 'development'}`, '.env'],
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],

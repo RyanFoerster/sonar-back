@@ -116,6 +116,22 @@ export class EventController {
   }
 
   /**
+   * Récupère les rappels programmés pour un événement
+   */
+  @Get(':groupId/events/:eventId/scheduled-reminders')
+  getScheduledReminders(@Param('eventId') eventId: string) {
+    return this.eventService.getScheduledReminders(eventId);
+  }
+
+  /**
+   * Annule un rappel programmé
+   */
+  @Delete(':groupId/events/:eventId/scheduled-reminders/:reminderId')
+  cancelScheduledReminder(@Param('reminderId') reminderId: string) {
+    return this.eventService.cancelScheduledReminder(reminderId);
+  }
+
+  /**
    * Récupère la liste des participants avec leur statut
    */
   @Get(':groupId/events/:eventId/participants')

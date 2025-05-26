@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { CompteGroupe } from '../../compte_groupe/entities/compte_groupe.entity';
 import { ChatMessage } from './chat-message.entity';
+import { ScheduledReminder } from './scheduled-reminder.entity';
 
 export enum EventStatus {
   PENDING = 'PENDING',
@@ -88,4 +89,7 @@ export class Event {
 
   @OneToMany(() => ChatMessage, (chatMessage) => chatMessage.event)
   chatMessages: ChatMessage[];
+
+  @OneToMany(() => ScheduledReminder, (reminder) => reminder.event)
+  scheduledReminders: ScheduledReminder[];
 }

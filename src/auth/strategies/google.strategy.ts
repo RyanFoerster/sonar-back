@@ -6,10 +6,13 @@ import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(private configService: ConfigService) {
+    const callbackURL = `${configService.get('api_url')}/auth/google/callback`;
+    console.log('Google OAuth Callback URL:', callbackURL);
+
     super({
       clientID: configService.get('GOOGLE_CLIENT_ID'),
       clientSecret: configService.get('GOOGLE_CLIENT_SECRET'),
-      callbackURL: `${configService.get('API_URL')}/auth/google/callback`,
+      callbackURL,
       scope: [
         'email',
         'profile',
