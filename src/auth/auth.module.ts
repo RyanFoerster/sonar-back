@@ -13,6 +13,8 @@ import { ComptePrincipalModule } from '../compte_principal/compte_principal.modu
 import { HttpModule } from '@nestjs/axios';
 import { MailModule } from '@/mail/mail.module';
 import { User } from '../users/entities/user.entity';
+import { GoogleStrategy } from './strategies/google.strategy';
+import { PassportModule } from '@nestjs/passport';
 
 @Module({
   controllers: [AuthController],
@@ -23,6 +25,7 @@ import { User } from '../users/entities/user.entity';
       useClass: JwtAuthGuard,
     },
     JwtStrategy,
+    GoogleStrategy,
   ],
   exports: [AuthService],
   imports: [
@@ -31,6 +34,7 @@ import { User } from '../users/entities/user.entity';
     ComptePrincipalModule,
     HttpModule,
     MailModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
   ], // Assurez-vous que cela est correct
 })
 export class AuthModule {}

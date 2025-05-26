@@ -14,7 +14,7 @@ import { UsersModule } from '../users/users.module';
   imports: [
     TypeOrmModule.forFeature([CompteGroupe]),
     forwardRef(() => ComptePrincipalModule),
-    UserSecondaryAccountModule,
+    forwardRef(() => UserSecondaryAccountModule),
     forwardRef(() => UsersModule),
   ],
 })

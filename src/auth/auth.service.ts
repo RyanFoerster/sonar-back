@@ -319,225 +319,165 @@ export class AuthService {
     }
   }
 
-  async linkGoogleAccount(
-    userId: number,
-    googleId: string,
-    refreshToken: string | null,
-  ): Promise<User> {
+  // Récupérer un utilisateur par son ID
+  async findUserById(userId: number) {
     const user = await this.usersService.findOne(userId);
     if (!user) {
-      this.logger.error(
-        `[linkGoogleAccount] User with ID ${userId} not found.`,
-      );
-      throw new UnauthorizedException('User not found');
+      throw new NotFoundException('Utilisateur non trouvé');
     }
-
-    user.googleId = googleId;
-
-    if (refreshToken) {
-      console.log(
-        `[AuthService] linkGoogleAccount: Refresh token provided. Encrypting and setting user.googleRefreshToken.`,
-      ); // LOG LINK 1
-      // Encrypt and store the refresh token only if provided
-      user.googleRefreshToken = this.encryptToken(refreshToken);
-    } else {
-      console.log(
-        `[AuthService] linkGoogleAccount: No refresh token provided. Setting user.googleRefreshToken to null.`,
-      ); // LOG LINK 2
-      // Ensure the field is null if no token is provided
-      user.googleRefreshToken = null;
-    }
-
-    try {
-      // Use repository.save to update the user entity
-      const updatedUser = await this.usersRepository.save(user);
-
-      // It's crucial to return the updated user, especially if subsequent logic depends on it.
-      // However, avoid returning sensitive data like the encrypted token if possible.
-      // Consider creating a sanitized user object if this is returned to the client.
-      // For now, returning the full updated user entity as retrieved from the DB.
-      return updatedUser;
-    } catch (error) {
-      this.logger.error(
-        `[linkGoogleAccount] Failed to update user ID ${userId}: ${error.message}`,
-        error.stack,
-      );
-      // Consider specific error handling or re-throwing a more specific exception
-      throw new Error(`Failed to update user: ${error.message}`);
-    }
+    return user;
   }
 
-  /**
-   * Unlinks a Google account from a Sonar user.
-   * Sets googleId and googleRefreshToken to null.
-   * @param userId The ID of the user to unlink.
-   * @returns The updated User entity.
-   */
-  async unlinkGoogleAccount(userId: number): Promise<User> {
-    const user = await this.usersService.findOne(userId);
-    if (!user) {
-      this.logger.error(
-        `[unlinkGoogleAccount] User with ID ${userId} not found.`,
-      );
-      throw new NotFoundException('User not found');
-    }
+  // Obtenir l'URL d'autorisation Google avec un état contenant l'ID utilisateur
+  async getGoogleAuthURLWithState(userId: number) {
+    const rootUrl = 'https://accounts.google.com/o/oauth2/v2/auth';
+    const options = {
+      redirect_uri: `${this.configService.get('api_url')}/auth/google/callback`,
+      client_id: this.configService.get('GOOGLE_CLIENT_ID'),
+      access_type: 'offline',
+      response_type: 'code',
+      prompt: 'consent',
+      state: userId.toString(), // Inclure l'ID de l'utilisateur dans l'état
+      scope: [
+        'https://www.googleapis.com/auth/userinfo.profile',
+        'https://www.googleapis.com/auth/userinfo.email',
+        'https://www.googleapis.com/auth/calendar',
+        'https://www.googleapis.com/auth/calendar.events',
+      ].join(' '),
+    };
 
-    // 1. Tenter de révoquer le token côté Google si un refresh token existe
-    if (user.googleRefreshToken) {
-      let decryptedRefreshToken: string;
-      try {
-        // Tentative de décryptage
-        decryptedRefreshToken = this.decryptToken(user.googleRefreshToken);
-
-        // Tentative de révocation (dans un try...catch imbriqué ou séparé)
-        try {
-          const revokeUrl = 'https://oauth2.googleapis.com/revoke';
-
-          await firstValueFrom(
-            this.httpService.post(
-              revokeUrl,
-              new URLSearchParams({ token: decryptedRefreshToken }),
-              {
-                headers: {
-                  'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                validateStatus: (status) => status >= 200 && status < 500,
-              },
-            ),
-          );
-        } catch (revokeError) {
-          // Log l'erreur de révocation mais continuer
-          this.logger.error(
-            `[unlinkGoogleAccount] Failed to revoke Google token for user ${userId}: ${revokeError.response?.data?.error || revokeError.message}`,
-            revokeError.stack,
-          );
-        }
-      } catch (decryptError) {
-        // Erreur lors du décryptage, on ne peut pas révoquer, on loggue et on continue
-        this.logger.error(
-          `[unlinkGoogleAccount] Failed to decrypt refresh token for revocation for user ${userId}: ${decryptError.message}`,
-          decryptError.stack,
-        );
-      }
-    } else {
-      this.logger.debug(
-        `[unlinkGoogleAccount] No Google refresh token found for user ${userId}, skipping revocation call.`,
-      );
-    }
-
-    // 2. Effacer les données locales (toujours exécuté)
-    this.logger.debug(
-      `[unlinkGoogleAccount] Clearing local Google data for user ${userId}`,
-    );
-    user.googleId = null;
-    user.googleRefreshToken = null;
-
-    try {
-      const updatedUser = await this.usersRepository.save(user);
-
-      return updatedUser;
-    } catch (error) {
-      this.logger.error(
-        `[unlinkGoogleAccount] Failed to update user ID ${userId} after unlinking: ${error.message}`,
-        error.stack,
-      );
-      throw new InternalServerErrorException(
-        `Failed to update user after unlinking: ${error.message}`,
-      );
-    }
+    const params = new URLSearchParams(options);
+    return `${rootUrl}?${params.toString()}`;
   }
 
-  /**
-   * Fetches the user's Google Calendar list using the stored refresh token.
-   * @param userId The ID of the Sonar user.
-   * @returns A list of Google Calendars.
-   */
-  async getGoogleCalendars(userId: number): Promise<any[]> {
-    const user = await this.usersService.findOne(userId);
-    if (!user) {
-      this.logger.error(`[getGoogleCalendars] User ${userId} not found.`);
-      throw new NotFoundException('User not found');
-    }
-
-    if (!user.googleRefreshToken) {
-      this.logger.warn(
-        `[getGoogleCalendars] No Google refresh token found for user ${userId}.`,
-      );
-      throw new BadRequestException(
-        'Google account not linked or refresh token missing.',
-      );
-    }
-
-    let decryptedRefreshToken: string;
-    try {
-      decryptedRefreshToken = this.decryptToken(user.googleRefreshToken);
-    } catch (error) {
-      this.logger.error(
-        `[getGoogleCalendars] Failed to decrypt refresh token for user ${userId}: ${error.message}`,
-        error.stack,
-      );
-      throw new InternalServerErrorException('Could not process Google token.');
-    }
-
-    // 1. Échanger le refresh token contre un access token
-    const clientId = this.configService.get<string>('google.clientId');
-    const clientSecret = this.configService.get<string>('google.clientSecret');
-    const tokenUrl = 'https://oauth2.googleapis.com/token';
-    let accessToken: string;
+  // Obtenir les tokens Google à partir d'un code d'autorisation
+  async getGoogleTokensFromCode(code: string) {
+    const url = 'https://oauth2.googleapis.com/token';
+    const values = {
+      code,
+      client_id: this.configService.get('GOOGLE_CLIENT_ID'),
+      client_secret: this.configService.get('GOOGLE_CLIENT_SECRET'),
+      redirect_uri: `${this.configService.get('api_url')}/auth/google/callback`,
+      grant_type: 'authorization_code',
+    };
 
     try {
-      const tokenResponse = await firstValueFrom(
-        this.httpService.post(
-          tokenUrl,
-          new URLSearchParams({
-            client_id: clientId,
-            client_secret: clientSecret,
-            refresh_token: decryptedRefreshToken,
-            grant_type: 'refresh_token',
-          }),
-          {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      const response = await firstValueFrom(
+        this.httpService.post(url, new URLSearchParams(values).toString(), {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
           },
-        ),
-      );
-      accessToken = tokenResponse.data.access_token;
-      if (!accessToken) {
-        throw new Error('Access token not found in Google response');
-      }
-    } catch (error) {
-      this.logger.error(
-        `[getGoogleCalendars] Failed to refresh Google token for user ${userId}: ${error.response?.data?.error || error.message}`,
-        error.stack,
-      );
-      // Si le refresh token est invalide (ex: révoqué), on pourrait vouloir délier le compte ici
-      if (error.response?.data?.error === 'invalid_grant') {
-        await this.unlinkGoogleAccount(userId); // Tentative de nettoyage
-        throw new UnauthorizedException(
-          'Google token is invalid or revoked. Please re-link your account.',
-        );
-      }
-      throw new InternalServerErrorException('Could not refresh Google token.');
-    }
-
-    // 2. Utiliser l'access token pour récupérer la liste des calendriers
-    const calendarListUrl =
-      'https://www.googleapis.com/calendar/v3/users/me/calendarList';
-    try {
-      const calendarResponse = await firstValueFrom(
-        this.httpService.get(calendarListUrl, {
-          headers: { Authorization: `Bearer ${accessToken}` },
         }),
       );
 
-      return calendarResponse.data.items || []; // Retourne la liste des calendriers
+      return response.data;
+    } catch (error) {
+      this.logger.error(`Échec d'obtention des tokens: ${error.message}`);
+      throw new UnauthorizedException("Échec d'authentification avec Google");
+    }
+  }
+
+  // Obtenir les informations de l'utilisateur à partir d'un token d'accès
+  async getGoogleUserInfo(accessToken: string) {
+    const url = 'https://www.googleapis.com/oauth2/v3/userinfo';
+    try {
+      const response = await firstValueFrom(
+        this.httpService.get(url, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }),
+      );
+      return response.data;
     } catch (error) {
       this.logger.error(
-        `[getGoogleCalendars] Failed to fetch Google Calendar list for user ${userId}: ${error.response?.data?.error?.message || error.message}`,
-        error.stack,
+        `Échec d'obtention des infos utilisateur: ${error.message}`,
       );
-      throw new InternalServerErrorException(
-        'Could not fetch Google Calendar list.',
+      throw new UnauthorizedException(
+        "Échec d'obtention des informations depuis Google",
       );
     }
+  }
+
+  // Lier un compte Google à un compte utilisateur existant
+  async linkGoogleAccount(userId: number, code: string) {
+    // Vérifier que l'utilisateur existe
+    const user = await this.usersService.findOne(userId);
+    if (!user) {
+      throw new NotFoundException('Utilisateur non trouvé');
+    }
+
+    try {
+      // Échanger le code contre des tokens
+      const { access_token, refresh_token } =
+        await this.getGoogleTokensFromCode(code);
+
+      // Obtenir les informations de l'utilisateur Google
+      const userInfo = await this.getGoogleUserInfo(access_token);
+
+      // Vérifier que l'email Google n'est pas déjà lié à un autre compte
+      if (userInfo.email !== user.email) {
+        const existingUser = await this.usersService.findOneByEmail(
+          userInfo.email,
+        );
+        if (existingUser && existingUser.id !== user.id) {
+          throw new BadRequestException(
+            'Cet email Google est déjà associé à un autre compte',
+          );
+        }
+      }
+
+      // Mettre à jour les informations Google de l'utilisateur
+      user.googleId = userInfo.sub;
+      user.googleRefreshToken = this.encryptToken(refresh_token);
+      // Optionnellement mettre à jour la photo de profil s'il n'en a pas
+      if (!user.profilePicture && userInfo.picture) {
+        user.profilePicture = userInfo.picture;
+      }
+
+      await this.usersService.update(user);
+
+      return {
+        success: true,
+        message: 'Compte Google lié avec succès',
+        user: {
+          id: user.id,
+          email: user.email,
+          googleLinked: true,
+        },
+      };
+    } catch (error) {
+      this.logger.error(`Échec de la liaison Google: ${error.message}`);
+      if (
+        error instanceof BadRequestException ||
+        error instanceof NotFoundException
+      ) {
+        throw error;
+      }
+      throw new UnauthorizedException('Échec de la liaison avec Google');
+    }
+  }
+
+  // Délier un compte Google d'un compte utilisateur
+  async unlinkGoogleAccount(userId: number) {
+    const user = await this.usersService.findOne(userId);
+    if (!user) {
+      throw new NotFoundException('Utilisateur non trouvé');
+    }
+
+    // Vérifier que le compte est bien lié à Google
+    if (!user.googleId || !user.googleRefreshToken) {
+      throw new BadRequestException("Ce compte n'est pas lié à Google");
+    }
+
+    // Supprimer les informations Google
+    user.googleId = null;
+    user.googleRefreshToken = null;
+    await this.usersService.update(user);
+
+    return {
+      success: true,
+      message: 'Compte Google délié avec succès',
+    };
   }
 }

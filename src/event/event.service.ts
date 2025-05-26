@@ -8,10 +8,12 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Event, EventStatus, InvitationStatus } from './entities/event.entity';
+import { ChatMessage } from './entities/chat-message.entity';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { SendReminderDto } from './dto/send-reminder.dto';
 import { DuplicateEventDto } from './dto/duplicate-event.dto';
+import { CreateChatMessageDto } from './dto/create-chat-message.dto';
 import { MailService } from '../mail/mail.services';
 import { PushNotificationService } from '../push-notification/push-notification.service';
 import { v4 as uuidv4 } from 'uuid';
@@ -23,6 +25,8 @@ export class EventService {
   constructor(
     @InjectRepository(Event)
     private readonly eventRepository: Repository<Event>,
+    @InjectRepository(ChatMessage)
+    private readonly chatMessageRepository: Repository<ChatMessage>,
     private readonly mailService: MailService,
     private readonly pushNotificationService: PushNotificationService,
     private readonly configService: ConfigService,
@@ -670,6 +674,99 @@ export class EventService {
       default:
         return 'En attente';
     }
+  }
+
+  /**
+   * Crée un nouveau message dans le chat d'un événement
+   */
+  async createChatMessage(
+    createChatMessageDto: CreateChatMessageDto,
+  ): Promise<ChatMessage> {
+    // Vérifier que l'événement existe
+    const event = await this.eventRepository.findOne({
+      where: { id: createChatMessageDto.eventId },
+    });
+
+    if (!event) {
+      throw new NotFoundException(
+        `Événement avec ID ${createChatMessageDto.eventId} non trouvé`,
+      );
+    }
+
+    // Créer et sauvegarder le message
+    const chatMessage = this.chatMessageRepository.create(createChatMessageDto);
+    return this.chatMessageRepository.save(chatMessage);
+  }
+
+  /**
+   * Récupère les messages d'un événement avec pagination
+   */
+  async getChatMessages(
+    eventId: string,
+    page: number = 1,
+    limit: number = 50,
+  ): Promise<{ messages: ChatMessage[]; total: number; hasMore: boolean }> {
+    // Vérifier que l'événement existe
+    const event = await this.eventRepository.findOne({
+      where: { id: eventId },
+    });
+
+    if (!event) {
+      throw new NotFoundException(`Événement avec ID ${eventId} non trouvé`);
+    }
+
+    // Calculer l'offset pour la pagination
+    const skip = (page - 1) * limit;
+
+    // Récupérer le nombre total de messages
+    const total = await this.chatMessageRepository.count({
+      where: { eventId },
+    });
+
+    // Récupérer les messages paginés triés par date de création (du plus récent au plus ancien)
+    const messages = await this.chatMessageRepository.find({
+      where: { eventId },
+      order: { createdAt: 'DESC' },
+      skip,
+      take: limit,
+    });
+
+    // Inverser l'ordre pour l'affichage chronologique (du plus ancien au plus récent)
+    const orderedMessages = messages.reverse();
+
+    return {
+      messages: orderedMessages,
+      total,
+      hasMore: skip + messages.length < total,
+    };
+  }
+
+  /**
+   * Supprime un message du chat
+   */
+  async deleteChatMessage(messageId: string, userId: number): Promise<void> {
+    const message = await this.chatMessageRepository.findOne({
+      where: { id: messageId },
+    });
+
+    if (!message) {
+      throw new NotFoundException(`Message avec ID ${messageId} non trouvé`);
+    }
+
+    // Vérifier que l'utilisateur est l'auteur du message ou un organisateur de l'événement
+    if (message.senderId !== userId) {
+      const event = await this.eventRepository.findOne({
+        where: { id: message.eventId },
+      });
+
+      if (!event.organizers.includes(userId)) {
+        throw new BadRequestException(
+          "Vous n'êtes pas autorisé à supprimer ce message",
+        );
+      }
+    }
+
+    await this.chatMessageRepository.remove(message);
   }
 
   /**
