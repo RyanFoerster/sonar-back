@@ -149,6 +149,8 @@ export class VirementSepaService {
     let groupAccount: CompteGroupe | undefined = undefined;
     let principalAccount: ComptePrincipal | undefined = undefined;
 
+
+
     // Vérification du type de projet
     if (params.typeOfProjet === 'PRINCIPAL') {
       principalAccount = await this.comptePrincipalService.findOne(params.id);
@@ -168,37 +170,31 @@ export class VirementSepaService {
       createVirementSepaDto,
     );
 
-    // Définir le statut initial en PENDING
-    virementSepa.status = 'PENDING';
+
+    const montant = Number(
+      String(virementSepa.amount_htva).replace(',', '.')
+    );
 
     if (principalAccount) {
+      principalAccount.solde = Number(principalAccount.solde) + montant;
+      await this.comptePrincipalService.update(principalAccount);
       virementSepa.comptePrincipal = principalAccount;
       virementSepa.projet_username = principalAccount.username;
     }
 
     if (groupAccount) {
+      groupAccount.solde = Number(groupAccount.solde) + montant;
+      await this.compteGroupService.save(groupAccount);
       virementSepa.compteGroupe = groupAccount;
       virementSepa.projet_username = groupAccount.username;
     }
 
-    // Sauvegarde initiale du virement
-    await this.virementSepaRepository.save(virementSepa);
 
-    const montant = Number(virementSepa.amount_htva);
-
-    // Mise à jour des soldes après la sauvegarde
-    if (principalAccount) {
-      principalAccount.solde += montant;
-      await this.comptePrincipalService.update(principalAccount);
-    }
-
-    if (groupAccount) {
-      groupAccount.solde += montant;
-      await this.compteGroupService.save(groupAccount);
-    }
-
-    // Mise à jour du statut en PAID après modification des soldes
+    // Définir le statut en PAID
     virementSepa.status = 'PAID';
+
+
+    // Sauvegarde du virement
     return this.virementSepaRepository.save(virementSepa);
   }
 
