@@ -31,6 +31,11 @@ export class ComptePrincipalController {
     return this.comptePrincipalService.findAll();
   }
 
+@Get('commission')
+  async getCommissionAccount() {
+    return this.comptePrincipalService.getCommissionAccount();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.comptePrincipalService.findOne(+id);
@@ -57,5 +62,13 @@ export class ComptePrincipalController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return;
+  }
+
+  @Patch(':id/commission')
+  async updateCommission(
+    @Param('id') id: string,
+    @Body('commission') commissionPourcentage: any,
+  ) {
+    return this.comptePrincipalService.updateCommission(+id, commissionPourcentage);
   }
 }

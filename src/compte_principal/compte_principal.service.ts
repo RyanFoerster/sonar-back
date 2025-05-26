@@ -133,4 +133,28 @@ export class ComptePrincipalService {
   update(updateComptePrincipalDto: UpdateComptePrincipalDto) {
     return this.comptePrincipalRepository.save(updateComptePrincipalDto);
   }
+
+  async updateCommission(id: number, commissionPourcentage: any) {
+    return this.comptePrincipalRepository
+      .createQueryBuilder()
+      .update(ComptePrincipal)
+      .set({ commissionPourcentage })
+      .where('id = :id', { id })
+      .execute();
+  }
+
+  async getCommissionAccount() {
+    const comptePrincipal = await this.comptePrincipalRepository.findOneBy({
+      CommissionRecipientAccount: true,
+    });
+
+    if (!comptePrincipal) {
+      throw new UnauthorizedException(
+        'Aucun compte principal trouvé avec CommissionRecipientAccount à true',
+      );
+    }
+
+    return comptePrincipal.id;
+  }
+
 }

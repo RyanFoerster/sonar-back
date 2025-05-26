@@ -1,6 +1,6 @@
 import {
-  BadRequestException,
-  Get,
+  BadRequestException, forwardRef,
+  Get, Inject,
   Injectable,
   InternalServerErrorException,
   Logger,
@@ -28,6 +28,7 @@ import * as crypto from 'crypto';
 import { User } from '../users/entities/user.entity';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { CompteGroupeService } from '@/compte_groupe/compte_groupe.service';
 
 @Injectable()
 export class AuthService {
@@ -37,6 +38,9 @@ export class AuthService {
   private readonly encryptionIv: Buffer;
 
   constructor(
+    @Inject(forwardRef(() => CompteGroupeService))
+    private readonly compteGroupeService: CompteGroupeService,
+
     private usersService: UsersService,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepository: Repository<RefreshToken>,
@@ -135,6 +139,9 @@ export class AuthService {
     if ((await this.usersService.findOneByUsername(username)) !== null) {
       throw new UsernameException();
     }
+    // if((await this.compteGroupeService.findOneByUsername(username)) !== null) {
+    //   throw new UsernameException();
+    // }
 
     if (password === confirmPassword) {
       let user = await this.usersService.create(signupDto);

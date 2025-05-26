@@ -64,4 +64,12 @@ export class CompteGroupeController {
   remove(@Param('id') id: string) {
     return this.compteGroupeService.remove(+id);
   }
+  @Patch(':id/commission')
+  async updateCommission(
+    @Param('id') id: string,
+    @Body('commission') commissionPourcentage: any,
+  ) {
+    return this.compteGroupeService.updateCommission(+id, commissionPourcentage);
+  }
+
 }

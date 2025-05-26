@@ -929,18 +929,17 @@ export class InvoiceService {
         "Vous n'êtes pas autorisé à accéder à cette ressource",
       );
     }
-    const invoices = await this._invoiceRepository
+    return await this._invoiceRepository
       .createQueryBuilder('invoice')
       .select('invoice')
       .leftJoin('invoice.main_account', 'main_account')
-      .addSelect('main_account.username', 'main_account_username')
+      .addSelect(['main_account.username', 'main_account.commissionPourcentage', 'main_account.commission','main_account.id'])
       .leftJoin('invoice.group_account', 'group_account')
-      .addSelect('group_account.username', 'group_account_username')
+      .addSelect(['group_account.username', 'group_account.commissionPourcentage','group_account.commission','group_account.id'])
       .leftJoinAndSelect('invoice.client', 'client')
       .leftJoinAndSelect('invoice.quote', 'quote')
       .leftJoinAndSelect('invoice.products', 'products')
       .getMany();
-    return invoices;
   }
 
   async findOne(id: number) {

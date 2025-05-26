@@ -13,6 +13,7 @@ import { ComptePrincipalModule } from '../compte_principal/compte_principal.modu
 import { HttpModule } from '@nestjs/axios';
 import { MailModule } from '@/mail/mail.module';
 import { User } from '../users/entities/user.entity';
+import { CompteGroupeModule } from '@/compte_groupe/compte_groupe.module';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { PassportModule } from '@nestjs/passport';
 
@@ -32,6 +33,7 @@ import { PassportModule } from '@nestjs/passport';
     TypeOrmModule.forFeature([RefreshToken, ResetToken, User]),
     UsersModule,
     ComptePrincipalModule,
+     CompteGroupeModule,
     HttpModule,
     MailModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
