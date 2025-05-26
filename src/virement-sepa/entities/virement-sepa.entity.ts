@@ -49,7 +49,7 @@ export class VirementSepa {
   @Column({ nullable: true })
   invoice_key?: string;
 
-  @Column({ type: 'enum', enum: ['INCOMING', 'OUTGOING'] })
+  @Column({ type: 'enum', enum: ['INCOMING', 'OUTGOING'], default: 'OUTGOING' })
   transaction_type: 'INCOMING' | 'OUTGOING';
 
   @ManyToOne(
