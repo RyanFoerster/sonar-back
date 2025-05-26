@@ -49,6 +49,21 @@ export class VirementSepaController {
     );
   }
 
+  @Post("FromBank")
+  @UseInterceptors(FileInterceptor('invoice'))
+  async createFromBank(
+    @Body() createVirementSepaDto: CreateVirementSepaDto,
+    @Request() req,
+    @Query() params: string,
+
+  ) {
+    return this.virementSepaService.createFromBank(
+      createVirementSepaDto,
+      req.id,
+      params,
+    );
+  }
+
   @Get()
   findAll(@Request() req) {
     return this.virementSepaService.findAll(req.user.id);

@@ -50,6 +50,7 @@ export class TransactionService {
     transaction.recipientGroup = [];
     transaction.recipientPrincipal = [];
 
+
     if (createTransactionDto.recipientGroup) {
       numberRecipients += createTransactionDto.recipientGroup.length;
     }
@@ -67,7 +68,7 @@ export class TransactionService {
 
       if (senderGroup.solde >= amount) {
         senderGroup.solde -= amount;
-        this.compteGroupeService.save(senderGroup);
+        await this.compteGroupeService.save(senderGroup);
         transaction.senderGroup = await this.compteGroupeService.findOne(
           senderGroup.id,
         );
@@ -850,4 +851,6 @@ export class TransactionService {
       return `${recipients[0]}, ${recipients[1]} et ${recipients.length - 2} autre(s)`;
     }
   }
+
+
 }

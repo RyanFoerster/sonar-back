@@ -31,6 +31,11 @@ export class ComptePrincipalController {
     return this.comptePrincipalService.findAll();
   }
 
+@Get('commission')
+  async getCommissionAccount() {
+    return this.comptePrincipalService.getCommissionAccount();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.comptePrincipalService.findOne(+id);

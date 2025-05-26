@@ -23,6 +23,7 @@ import * as libre from 'libreoffice-convert';
 import { promisify } from 'util';
 import sharp from 'sharp';
 import { UpdateVirementSepaDto } from '@/virement-sepa/dto/update-virement-sepa.dto';
+import { isNumber } from 'class-validator';
 
 const libreConvert = promisify(libre.convert);
 
@@ -136,6 +137,68 @@ export class VirementSepaService {
       }
     }
 
+    return this.virementSepaRepository.save(virementSepa);
+  }
+
+
+  async createFromBank(
+    createVirementSepaDto: CreateVirementSepaDto,
+    userId: number,
+    params: any,
+  ) {
+    let groupAccount: CompteGroupe | undefined = undefined;
+    let principalAccount: ComptePrincipal | undefined = undefined;
+
+    // Vérification du type de projet
+    if (params.typeOfProjet === 'PRINCIPAL') {
+      principalAccount = await this.comptePrincipalService.findOne(params.id);
+    } else if (params.typeOfProjet === 'GROUP') {
+      groupAccount = await this.compteGroupService.findOne(params.id);
+    } else {
+      throw new BadRequestException('Type de projet invalide');
+    }
+
+    // Vérification qu'au moins un compte a été trouvé
+    if (!groupAccount && !principalAccount) {
+      throw new BadRequestException('Aucun compte trouvé');
+    }
+
+    // Création du virement SEPA
+    const virementSepa: VirementSepa = this.virementSepaRepository.create(
+      createVirementSepaDto,
+    );
+
+    // Définir le statut initial en PENDING
+    virementSepa.status = 'PENDING';
+
+    if (principalAccount) {
+      virementSepa.comptePrincipal = principalAccount;
+      virementSepa.projet_username = principalAccount.username;
+    }
+
+    if (groupAccount) {
+      virementSepa.compteGroupe = groupAccount;
+      virementSepa.projet_username = groupAccount.username;
+    }
+
+    // Sauvegarde initiale du virement
+    await this.virementSepaRepository.save(virementSepa);
+
+    const montant = Number(virementSepa.amount_htva);
+
+    // Mise à jour des soldes après la sauvegarde
+    if (principalAccount) {
+      principalAccount.solde += montant;
+      await this.comptePrincipalService.update(principalAccount);
+    }
+
+    if (groupAccount) {
+      groupAccount.solde += montant;
+      await this.compteGroupService.save(groupAccount);
+    }
+
+    // Mise à jour du statut en PAID après modification des soldes
+    virementSepa.status = 'PAID';
     return this.virementSepaRepository.save(virementSepa);
   }
 
