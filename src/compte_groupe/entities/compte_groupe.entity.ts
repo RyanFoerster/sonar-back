@@ -30,7 +30,6 @@ export class CompteGroupe {
   @Column({ default: 0, type: 'double precision' })
   commission: number;
 
-
   @OneToMany(() => Quote, (quote) => quote.group_account, {
     nullable: true,
     eager: true,

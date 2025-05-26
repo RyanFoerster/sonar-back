@@ -40,10 +40,8 @@ export class ComptePrincipal {
   @Column({ default: 0, type: 'double precision' })
   commission: number;
 
-  @Column({default: false})
-  CommissionRecipientAccount : boolean;
-
-
+  @Column({ default: false })
+  CommissionRecipientAccount: boolean;
 
   @OneToMany(() => Quote, (quote) => quote.main_account, {
     nullable: true,
