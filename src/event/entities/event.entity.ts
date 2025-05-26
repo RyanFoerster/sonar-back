@@ -6,8 +6,10 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   JoinColumn,
+  OneToMany,
 } from 'typeorm';
 import { CompteGroupe } from '../../compte_groupe/entities/compte_groupe.entity';
+import { ChatMessage } from './chat-message.entity';
 
 export enum EventStatus {
   PENDING = 'PENDING',
@@ -83,4 +85,7 @@ export class Event {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @OneToMany(() => ChatMessage, (chatMessage) => chatMessage.event)
+  chatMessages: ChatMessage[];
 }

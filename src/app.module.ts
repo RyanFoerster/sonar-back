@@ -32,8 +32,7 @@ import { PushNotificationModule } from './push-notification/push-notification.mo
 import { EventModule } from './event/event.module';
 import { GroupeInvitationModule } from './groupe-invitation/groupe-invitation.module';
 import { GlobalCounterModule } from './global-counter/global-counter.module';
-import { ConnectModule } from './connect/connect.module';
-import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
+import { GoogleCalendarModule } from './google/google-calendar.module';
 
 @Module({
   imports: [
@@ -107,7 +106,6 @@ import { GoogleCalendarModule } from './google-calendar/google-calendar.module';
     EventModule,
     GroupeInvitationModule,
     GlobalCounterModule,
-    ConnectModule,
     GoogleCalendarModule,
   ],
   controllers: [AppController],
