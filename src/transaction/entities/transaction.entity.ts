@@ -10,6 +10,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { Invoice } from '@/invoice/entities/invoice.entity';
 
 @Entity()
 export class Transaction {
@@ -47,6 +48,9 @@ export class Transaction {
   @ManyToMany(() => ComptePrincipal, { cascade: true, eager: true })
   @JoinTable()
   recipientPrincipal: ComptePrincipal[];
+
+  @ManyToOne(() => Invoice, { nullable: true })
+  invoice: Invoice;
 
   @CreateDateColumn()
   date: Date;

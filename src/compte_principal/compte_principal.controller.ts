@@ -4,7 +4,7 @@ import {
   Delete,
   Get,
   Logger,
-  Param,
+  Param, ParseIntPipe,
   Patch,
   Post,
   Req,
@@ -70,5 +70,14 @@ export class ComptePrincipalController {
     @Body('commission') commissionPourcentage: any,
   ) {
     return this.comptePrincipalService.updateCommission(+id, commissionPourcentage);
+  }
+
+  @Patch(':id/solde')
+  async updatePrincipalSolde(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('amount_htva') amount_htva: number,
+  ) {
+
+    return this.comptePrincipalService.updatePrincipalSolde(id, amount_htva);
   }
 }

@@ -2,8 +2,8 @@ import {
   Body,
   Controller,
   Delete,
-  Get,
-  Param,
+  Get, Logger,
+  Param, ParseIntPipe,
   Patch,
   Post,
   Req,
@@ -71,5 +71,15 @@ export class CompteGroupeController {
   ) {
     return this.compteGroupeService.updateCommission(+id, commissionPourcentage);
   }
+
+  @Patch(':id/solde')
+  async updateGroupeSolde(
+    @Param('id', ParseIntPipe) id: number,
+    @Body('amount_htva') amount_htva: number,
+  ) {
+
+    return this.compteGroupeService.updateGroupeSolde(id, amount_htva);
+  }
+
 
 }

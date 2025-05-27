@@ -55,7 +55,6 @@ export class VirementSepaController {
     @Body() createVirementSepaDto: CreateVirementSepaDto,
     @Request() req,
     @Query() params: string,
-
   ) {
     return this.virementSepaService.createFromBank(
       createVirementSepaDto,
@@ -167,6 +166,12 @@ export class VirementSepaController {
   ) {
     return this.virementSepaService.updateVirement(+id, updateVirementSepaDto);
 
+  }
+
+
+  @Get('invoice/:id')
+  async getVirementSepaByInvoiceId(@Param('id') id: string) {
+    return this.virementSepaService.findByInvoiceId(+id);
   }
 
 }

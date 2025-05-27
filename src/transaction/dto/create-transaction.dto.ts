@@ -1,4 +1,4 @@
-import { IsNumber, IsString } from 'class-validator';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateTransactionDto {
   @IsString()
@@ -18,4 +18,9 @@ export class CreateTransactionDto {
 
   @IsNumber()
   recipientPrincipal?: number[];
+
+  @IsOptional()
+  @IsNumber()
+  invoice_id?: number;
+
 }

@@ -157,4 +157,17 @@ export class ComptePrincipalService {
     return comptePrincipal.id;
   }
 
+  /**
+   * Met à jour le solde du compte principal
+   * @param id
+   * @param amount_htva
+   */
+  updatePrincipalSolde(id: number, amount_htva: number) {
+    return this.comptePrincipalRepository
+      .createQueryBuilder()
+      .update(ComptePrincipal)
+      .set({ solde: () => `solde + ${amount_htva}` })
+      .where('id = :id', { id })
+      .execute();
+  }
 }

@@ -23,4 +23,8 @@ export class CreateVirementSepaDto {
   @IsString()
   @IsOptional()
   structured_communication?: string;
+
+  @IsOptional()
+  @IsNumber()
+  invoice_id?: number;
 }

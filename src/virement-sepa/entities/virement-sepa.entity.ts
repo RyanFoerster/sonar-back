@@ -2,11 +2,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  ManyToOne,
+  ManyToOne, OneToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { CompteGroupe } from '../../compte_groupe/entities/compte_groupe.entity';
 import { ComptePrincipal } from '../../compte_principal/entities/compte_principal.entity';
+import { Invoice } from '@/invoice/entities/invoice.entity';
 
 @Entity()
 export class VirementSepa {
@@ -64,6 +65,10 @@ export class VirementSepa {
   })
   compteGroupe?: CompteGroupe;
 
+  @ManyToOne(() => Invoice, { nullable: true })
+  invoice: Invoice;
+
   @CreateDateColumn()
   created_at: Date;
 }
+
