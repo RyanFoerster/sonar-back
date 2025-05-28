@@ -150,8 +150,6 @@ export class VirementSepaService {
     let groupAccount: CompteGroupe | undefined;
     let principalAccount: ComptePrincipal | undefined;
 
-    Logger.error(createVirementSepaDto)
-
 
     // Vérification du type de projet
     switch (params.typeOfProjet) {

@@ -154,8 +154,6 @@ export class CompteGroupeService {
   * @throws ConflictException si le montant est inférieur ou égal à zéro
   */
   updateGroupeSolde(id: number, amount_htva: number) {
-    Logger.error(id);
-    Logger.error(amount_htva);
 
     if (amount_htva === 0) {
       throw new ConflictException('Le montant ne peut pas être nul.');
