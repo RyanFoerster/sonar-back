@@ -55,12 +55,12 @@ export class CreateEventDto {
   startDateTime: string;
 
   @IsDateString()
-  @IsNotEmpty()
-  endDateTime: string;
+  @IsOptional()
+  endDateTime?: string;
 
   @IsDateString()
-  @IsNotEmpty()
-  meetupDateTime: string;
+  @IsOptional()
+  meetupDateTime?: string;
 
   @IsEnum(EventStatus)
   @IsOptional()

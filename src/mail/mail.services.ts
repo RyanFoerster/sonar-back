@@ -1001,7 +1001,7 @@ export class MailService {
     return data;
   }
 
-  async sendEventReminderEmail(
+  async sendEventResponseReminderEmail(
     to: string,
     name: string,
     event: Event,
@@ -1017,14 +1017,14 @@ export class MailService {
     const { data, error } = await this.resend.emails.send({
       from: 'info@sonarartists.be',
       to,
-      subject: `Rappel : Invitation à l'événement ${event.title}`,
+      subject: `Rappel : Merci de répondre à l'invitation pour ${event.title}`,
       html: `
         <!DOCTYPE html>
         <html lang="fr">
         <head>
           <meta charset="UTF-8">
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Rappel d'invitation à un événement</title>
+          <title>Rappel - Réponse à l'invitation</title>
         </head>
         <body style="margin: 0; padding: 0; font-family: 'Montserrat', Arial, sans-serif; background-color: #f4f4f4; color: #333333;">
           <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-top: 20px; margin-bottom: 20px;">
@@ -1038,53 +1038,67 @@ export class MailService {
             <!-- Contenu principal -->
             <tr>
               <td style="padding: 40px 30px;">
-                <h1 style="color: #333333; font-size: 24px; margin-top: 0; margin-bottom: 20px; font-weight: 600;">Rappel : Invitation à un événement</h1>
+                <h1 style="color: #333333; font-size: 24px; margin-top: 0; margin-bottom: 20px; font-weight: 600;">Rappel : Réponse attendue</h1>
                 
                 <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
                   Bonjour ${name},
                 </p>
                 
+                <div style="background-color: #fff3cd; border: 1px solid #ffeaa7; padding: 15px; border-radius: 6px; margin-bottom: 25px;">
+                  <p style="color: #856404; font-size: 16px; line-height: 1.6; margin: 0; font-weight: 600;">
+                    ⏰ Nous n'avons pas encore reçu votre réponse pour cet événement.
+                  </p>
+                </div>
+                
                 <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
-                  Nous n'avons pas encore reçu votre réponse concernant l'événement suivant :
+                  Pour nous aider à mieux organiser l'événement, merci de nous indiquer si vous pourrez participer :
                 </p>
                 
-                <div style="background-color: #f8f8f8; border-radius: 6px; padding: 20px; margin-bottom: 25px;">
+                <div style="background-color: #f8f8f8; border-radius: 6px; padding: 20px; margin-bottom: 25px; border-left: 4px solid #C8C04D;">
                   <h2 style="color: #C8C04D; font-size: 20px; margin-top: 0; margin-bottom: 15px;">${event.title}</h2>
                   
                   <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 10px;">
-                    <strong>Date de début :</strong> ${new Date(event.startDateTime).toLocaleString('fr-FR')}
+                    <strong>📅 Date de début :</strong> ${new Date(event.startDateTime).toLocaleString('fr-FR')}
                   </p>
                   
                   <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 10px;">
-                    <strong>Date de fin :</strong> ${new Date(event.endDateTime).toLocaleString('fr-FR')}
+                    <strong>🏁 Date de fin :</strong> ${new Date(event.endDateTime).toLocaleString('fr-FR')}
                   </p>
                   
                   <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 10px;">
-                    <strong>Rendez-vous à :</strong> ${new Date(event.meetupDateTime).toLocaleString('fr-FR')}
+                    <strong>🤝 Rendez-vous à :</strong> ${new Date(event.meetupDateTime).toLocaleString('fr-FR')}
                   </p>
                   
                   ${
                     event.location
                       ? `<p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 10px;">
-                    <strong>Lieu :</strong> ${event.location}
+                    <strong>📍 Lieu :</strong> ${event.location}
+                  </p>`
+                      : ''
+                  }
+                  
+                  ${
+                    event.description
+                      ? `<p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 0;">
+                    <strong>📝 Description :</strong> ${event.description}
                   </p>`
                       : ''
                   }
                 </div>
                 
                 <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
-                  Merci de nous indiquer si vous pourrez y participer en cliquant sur le bouton ci-dessous :
+                  Votre réponse nous permettra de finaliser l'organisation. Merci de cliquer sur le bouton ci-dessous :
                 </p>
                 
                 <div style="text-align: center; margin: 30px 0;">
                   <a href="${invitationLink}" 
-                     style="display: inline-block; background-color: #C8C04D; color: #000000; font-weight: 600; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-size: 16px; transition: background-color 0.3s ease;">
-                    Répondre à l'invitation
+                     style="display: inline-block; background-color: #f39c12; color: #ffffff; font-weight: 600; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-size: 16px; transition: background-color 0.3s ease;">
+                    ✅ Répondre maintenant
                   </a>
                 </div>
                 
-                <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
-                  Si vous avez des questions concernant cet événement, n'hésitez pas à contacter les organisateurs.
+                <p style="color: #555555; font-size: 14px; line-height: 1.6; margin-bottom: 25px; text-align: center; font-style: italic;">
+                  Vous pourrez choisir "Accepter", "Refuser" ou "Peut-être" selon votre disponibilité.
                 </p>
               </td>
             </tr>
@@ -1096,7 +1110,7 @@ export class MailService {
                   © ${new Date().getFullYear()} Sonar Artists. Tous droits réservés.
                 </p>
                 <p style="color: #888888; font-size: 12px; margin-top: 10px;">
-                  Ce message a été envoyé via la plateforme Sonar Artists.
+                  Ce rappel a été envoyé via la plateforme Sonar Artists.
                 </p>
               </td>
             </tr>
@@ -1108,6 +1122,169 @@ export class MailService {
 
     if (error) {
       Logger.error('Error:', error.message);
+      throw error;
+    }
+
+    return data;
+  }
+
+  async sendEventMemoEmail(
+    to: string,
+    name: string,
+    event: Event,
+    customMessage?: string,
+  ) {
+    const baseUrl =
+      this.configService.get('isProd') === true
+        ? 'https://sonarartists.be'
+        : 'http://localhost:4200';
+
+    // Formater les dates en français
+    const formatDate = (date: Date) => {
+      return new Date(date).toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    };
+
+    const { data, error } = await this.resend.emails.send({
+      from: 'info@sonarartists.be',
+      to,
+      subject: `Mémo : ${event.title}`,
+      html: `
+        <!DOCTYPE html>
+        <html lang="fr">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Mémo - Événement</title>
+        </head>
+        <body style="margin: 0; padding: 0; font-family: 'Montserrat', Arial, sans-serif; background-color: #f4f4f4; color: #333333;">
+          <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); margin-top: 20px; margin-bottom: 20px;">
+            <!-- En-tête avec logo -->
+            <tr>
+              <td align="center" style="padding: 30px 20px; background-color: #000000;">
+                <img src="https://sonarartists.be/logo-SONAR.png" alt="Sonar Artists" style="max-width: 180px; height: auto;">
+              </td>
+            </tr>
+            
+            <!-- Contenu principal -->
+            <tr>
+              <td style="padding: 40px 30px;">
+                <h1 style="color: #333333; font-size: 24px; margin-top: 0; margin-bottom: 20px; font-weight: 600;">📝 Mémo : Événement</h1>
+                
+                <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                  Bonjour ${name},
+                </p>
+                
+                ${
+                  customMessage
+                    ? `
+                <div style="background-color: #e8f4fd; border-left: 4px solid #2196f3; padding: 20px; margin-bottom: 25px; border-radius: 0 6px 6px 0;">
+                  <h3 style="color: #1976d2; font-size: 18px; margin-top: 0; margin-bottom: 15px; font-weight: 600;">💬 Message des organisateurs</h3>
+                  <p style="color: #1565c0; font-size: 16px; line-height: 1.6; margin: 0; font-style: italic;">
+                    "${customMessage}"
+                  </p>
+                </div>
+                `
+                    : ''
+                }
+                
+                <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 25px;">
+                  Voici un mémo concernant l'événement auquel vous participez :
+                </p>
+                
+                <div style="background-color: #f8f8f8; border-radius: 6px; padding: 20px; margin-bottom: 25px; border: 2px solid #C8C04D;">
+                  <h2 style="color: #C8C04D; font-size: 20px; margin-top: 0; margin-bottom: 15px;">🎯 ${event.title}</h2>
+                  
+                  ${
+                    event.description
+                      ? `
+                  <p style="color: #555555; font-size: 16px; line-height: 1.6; margin-bottom: 15px;">
+                    <strong>📋 Description :</strong><br>
+                    ${event.description}
+                  </p>
+                  `
+                      : ''
+                  }
+                  
+                  <div style="display: grid; gap: 10px;">
+                    <p style="color: #555555; font-size: 16px; line-height: 1.6; margin: 0;">
+                      <strong>📅 Début :</strong> ${formatDate(event.startDateTime)}
+                    </p>
+                    
+                    <p style="color: #555555; font-size: 16px; line-height: 1.6; margin: 0;">
+                      <strong>🏁 Fin :</strong> ${formatDate(event.endDateTime)}
+                    </p>
+                    
+                    <p style="color: #555555; font-size: 16px; line-height: 1.6; margin: 0;">
+                      <strong>🤝 Rendez-vous :</strong> ${formatDate(event.meetupDateTime)}
+                    </p>
+                    
+                    ${
+                      event.location
+                        ? `
+                    <p style="color: #555555; font-size: 16px; line-height: 1.6; margin: 0;">
+                      <strong>📍 Lieu :</strong> ${event.location}
+                    </p>
+                    `
+                        : ''
+                    }
+                    
+                    <p style="color: #555555; font-size: 16px; line-height: 1.6; margin: 0;">
+                      <strong>📊 Statut :</strong> 
+                      <span style="background-color: ${event.status === 'CONFIRMED' ? '#10b981' : event.status === 'PENDING' ? '#f59e0b' : '#ef4444'}; color: white; padding: 4px 12px; border-radius: 20px; font-size: 14px; font-weight: 600;">
+                        ${event.status === 'CONFIRMED' ? '✅ Confirmé' : event.status === 'PENDING' ? '⏳ En attente' : '❌ Annulé'}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                
+                <div style="background-color: #f0f9ff; border: 1px solid #0ea5e9; padding: 16px; border-radius: 8px; margin-bottom: 25px;">
+                  <p style="color: #0c4a6e; font-size: 16px; line-height: 1.6; margin: 0; font-weight: 500;">
+                    💡 <strong>Information :</strong> Ce mémo vous est envoyé pour vous tenir informé(e) des détails importants de l'événement.
+                  </p>
+                </div>
+                
+                <div style="text-align: center; margin: 30px 0;">
+                  <a href="${baseUrl}/home/home-group/${event.groupId}/agenda?typeOfProjet=GROUP&selectedEventId=${event.id}" 
+                     style="display: inline-block; background-color: #C8C04D; color: #000000; font-weight: 600; padding: 12px 24px; border-radius: 4px; text-decoration: none; font-size: 16px; transition: background-color 0.3s ease;">
+                    📱 Voir sur la plateforme
+                  </a>
+                </div>
+                
+                <p style="color: #555555; font-size: 14px; line-height: 1.6; margin-bottom: 25px; text-align: center; font-style: italic;">
+                  Si vous avez des questions, n'hésitez pas à contacter les organisateurs via la plateforme.
+                </p>
+              </td>
+            </tr>
+            
+            <!-- Pied de page -->
+            <tr>
+              <td style="padding: 20px; background-color: #f8f8f8; border-top: 1px solid #eeeeee; text-align: center;">
+                <p style="color: #888888; font-size: 14px; margin: 0;">
+                  © ${new Date().getFullYear()} Sonar Artists. Tous droits réservés.
+                </p>
+                <p style="color: #888888; font-size: 12px; margin-top: 10px;">
+                  Ce mémo a été envoyé via la plateforme Sonar Artists.
+                </p>
+                <p style="color: #888888; font-size: 12px; margin-top: 5px;">
+                  Si vous avez des questions, contactez-nous à <a href="mailto:info@sonarartists.be" style="color: #C8C04D; text-decoration: none;">info@sonarartists.be</a>
+                </p>
+              </td>
+            </tr>
+          </table>
+        </body>
+        </html>
+      `,
+    });
+
+    if (error) {
+      Logger.error('Error sending event memo email:', error.message);
       throw error;
     }
 

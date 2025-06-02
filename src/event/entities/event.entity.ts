@@ -49,11 +49,11 @@ export class Event {
   @Column({ type: 'timestamp' })
   startDateTime: Date;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'timestamp', nullable: true })
   endDateTime: Date;
 
-  @Column({ type: 'timestamp' })
-  meetupDateTime: Date;
+  @Column({ type: 'timestamp', nullable: true })
+  meetupDateTime: Date | null;
 
   @Column({
     type: 'enum',

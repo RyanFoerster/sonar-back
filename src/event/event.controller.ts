@@ -102,7 +102,7 @@ export class EventController {
   }
 
   /**
-   * Envoie des rappels aux invités sélectionnés
+   * Envoie des rappels aux invités sélectionnés qui n'ont pas encore répondu
    */
   @Post(':groupId/events/:eventId/reminders')
   sendReminders(
@@ -113,6 +113,20 @@ export class EventController {
     // S'assurer que l'eventId du DTO correspond au paramètre de route
     sendReminderDto.eventId = eventId;
     return this.eventService.sendReminders(groupId, sendReminderDto);
+  }
+
+  /**
+   * Envoie des mémos à tous les participants sélectionnés
+   */
+  @Post(':groupId/events/:eventId/memo')
+  sendMemo(
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Param('eventId') eventId: string,
+    @Body() sendMemoDto: SendReminderDto,
+  ) {
+    // S'assurer que l'eventId du DTO correspond au paramètre de route
+    sendMemoDto.eventId = eventId;
+    return this.eventService.sendMemo(groupId, sendMemoDto);
   }
 
   /**

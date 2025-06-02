@@ -47,19 +47,32 @@ export class EventService {
   async create(createEventDto: CreateEventDto): Promise<Event> {
     // Validation des dates
     const startDateTime = new Date(createEventDto.startDateTime);
-    const endDateTime = new Date(createEventDto.endDateTime);
-    const meetupDateTime = new Date(createEventDto.meetupDateTime);
 
-    if (endDateTime <= startDateTime) {
-      throw new BadRequestException(
-        'La date de fin doit être postérieure à la date de début',
-      );
+    // Gérer le cas où endDateTime est optionnel
+    let endDateTime: Date;
+    if (createEventDto.endDateTime) {
+      endDateTime = new Date(createEventDto.endDateTime);
+      // Vérifier que la date de fin est après la date de début
+      if (endDateTime <= startDateTime) {
+        throw new BadRequestException(
+          'La date de fin doit être postérieure à la date de début',
+        );
+      }
+    } else {
+      // Valeur par défaut: 3 heures après la date de début
+      endDateTime = new Date(startDateTime.getTime() + 3 * 60 * 60 * 1000);
     }
 
-    if (meetupDateTime >= startDateTime) {
-      throw new BadRequestException(
-        'La date de rendez-vous doit être antérieure à la date de début',
-      );
+    // Gérer le cas où meetupDateTime est optionnel
+    let meetupDateTime: Date | null = null;
+    if (createEventDto.meetupDateTime) {
+      meetupDateTime = new Date(createEventDto.meetupDateTime);
+      // Vérifier que la date de rendez-vous est avant la date de début
+      if (meetupDateTime >= startDateTime) {
+        throw new BadRequestException(
+          'La date de rendez-vous doit être antérieure à la date de début',
+        );
+      }
     }
 
     // Validation de la raison d'annulation si statut cancellé
@@ -72,18 +85,29 @@ export class EventService {
       );
     }
 
-    // Création de l'événement
-    const event = this.eventRepository.create({
-      ...createEventDto,
-      startDateTime,
-      endDateTime,
-      meetupDateTime,
-      participants: [], // Initialement vide, mis à jour quand les invités acceptent
-    });
+    // Créer un nouvel événement avec les données de base
+    const event = new Event();
+    event.title = createEventDto.title;
+    event.description = createEventDto.description;
+    event.location = createEventDto.location;
+    event.startDateTime = startDateTime;
+    event.endDateTime = endDateTime;
+    event.status = createEventDto.status || EventStatus.PENDING;
+    event.cancellationReason = createEventDto.cancellationReason;
+    event.invitedPeople = createEventDto.invitedPeople || [];
+    event.groupId = createEventDto.groupId;
+    event.organizers = createEventDto.organizers;
+    event.participants = [];
 
+    // Ajouter meetupDateTime seulement si défini
+    if (meetupDateTime) {
+      event.meetupDateTime = meetupDateTime;
+    }
+
+    // Sauvegarder l'événement
     const savedEvent = await this.eventRepository.save(event);
 
-    // Envoyer des invitations aux personnes
+    // Envoyer des invitations aux personnes invitées
     if (
       createEventDto.invitedPeople &&
       createEventDto.invitedPeople.length > 0
@@ -174,66 +198,91 @@ export class EventService {
   ): Promise<Event> {
     const event = await this.findOne(id, groupId);
 
-    // Validation des dates si fournies
-    if (updateEventDto.startDateTime || updateEventDto.endDateTime) {
-      const startDateTime = updateEventDto.startDateTime
-        ? new Date(updateEventDto.startDateTime)
-        : event.startDateTime;
-      const endDateTime = updateEventDto.endDateTime
-        ? new Date(updateEventDto.endDateTime)
-        : event.endDateTime;
+    // Traiter les dates si elles sont fournies
+    if (updateEventDto.startDateTime) {
+      event.startDateTime = new Date(updateEventDto.startDateTime);
+    }
 
-      if (endDateTime <= startDateTime) {
+    // Traiter endDateTime
+    if (updateEventDto.endDateTime) {
+      event.endDateTime = new Date(updateEventDto.endDateTime);
+
+      // Vérifier que la date de fin est après la date de début
+      if (event.endDateTime <= event.startDateTime) {
         throw new BadRequestException(
           'La date de fin doit être postérieure à la date de début',
         );
       }
     }
 
-    // Validation de la date de rendez-vous si fournie
-    if (updateEventDto.meetupDateTime || updateEventDto.startDateTime) {
-      const meetupDateTime = updateEventDto.meetupDateTime
-        ? new Date(updateEventDto.meetupDateTime)
-        : event.meetupDateTime;
-      const startDateTime = updateEventDto.startDateTime
-        ? new Date(updateEventDto.startDateTime)
-        : event.startDateTime;
+    // Traitement spécial pour meetupDateTime
+    if (updateEventDto.hasOwnProperty('meetupDateTime')) {
+      if (
+        updateEventDto.meetupDateTime === null ||
+        updateEventDto.meetupDateTime === undefined
+      ) {
+        // Si explicitement défini à null ou undefined, supprimer la date de rendez-vous
+        event.meetupDateTime = null;
+      } else {
+        // Si une valeur est fournie, la valider
+        const meetupDateTime = new Date(updateEventDto.meetupDateTime);
 
-      if (meetupDateTime >= startDateTime) {
-        throw new BadRequestException(
-          'La date de rendez-vous doit être antérieure à la date de début',
-        );
+        if (meetupDateTime >= event.startDateTime) {
+          throw new BadRequestException(
+            'La date de rendez-vous doit être antérieure à la date de début',
+          );
+        }
+
+        event.meetupDateTime = meetupDateTime;
       }
+    }
+
+    // Gérer le statut et la raison d'annulation
+    if (updateEventDto.status) {
+      event.status = updateEventDto.status;
     }
 
     // Validation de la raison d'annulation si le statut change à cancelled
     if (
-      updateEventDto.status === EventStatus.CANCELLED &&
-      !updateEventDto.cancellationReason &&
-      !event.cancellationReason
+      event.status === EventStatus.CANCELLED &&
+      !event.cancellationReason &&
+      !updateEventDto.cancellationReason
     ) {
       throw new BadRequestException(
         'Une raison d\'annulation est requise lorsque le statut est "CANCELLED"',
       );
     }
 
-    // Mise à jour de l'événement
-    const updatedEvent = {
-      ...event,
-      ...updateEventDto,
-      startDateTime: updateEventDto.startDateTime
-        ? new Date(updateEventDto.startDateTime)
-        : event.startDateTime,
-      endDateTime: updateEventDto.endDateTime
-        ? new Date(updateEventDto.endDateTime)
-        : event.endDateTime,
-      meetupDateTime: updateEventDto.meetupDateTime
-        ? new Date(updateEventDto.meetupDateTime)
-        : event.meetupDateTime,
-    };
+    if (updateEventDto.cancellationReason) {
+      event.cancellationReason = updateEventDto.cancellationReason;
+    }
+
+    // Mettre à jour les autres champs
+    if (updateEventDto.title) {
+      event.title = updateEventDto.title;
+    }
+
+    if (updateEventDto.description !== undefined) {
+      event.description = updateEventDto.description;
+    }
+
+    if (updateEventDto.location !== undefined) {
+      event.location = updateEventDto.location;
+    }
+
+    if (updateEventDto.organizers) {
+      event.organizers = updateEventDto.organizers;
+    }
+
+    if (updateEventDto.invitedPeople) {
+      event.invitedPeople = updateEventDto.invitedPeople;
+    }
 
     // Générer le message détaillé des modifications
     const changeMessage = this.generateChangeMessage(event, updateEventDto);
+
+    // Enregistrer les modifications
+    const updatedEvent = await this.eventRepository.save(event);
 
     // Gérer les notifications de changement de statut
     if (updateEventDto.status && updateEventDto.status !== event.status) {
@@ -305,17 +354,16 @@ export class EventService {
     );
 
     if (newInvitedPeople && newInvitedPeople.length > 0) {
-      const eventWithNewInvites = {
-        ...updatedEvent,
-        invitedPeople: [...event.invitedPeople, ...newInvitedPeople],
-      };
-
-      await this.eventRepository.save(eventWithNewInvites);
-      await this.sendInvitations(eventWithNewInvites, newInvitedPeople);
-      return eventWithNewInvites;
+      updatedEvent.invitedPeople = [
+        ...event.invitedPeople,
+        ...newInvitedPeople,
+      ];
+      await this.eventRepository.save(updatedEvent);
+      await this.sendInvitations(updatedEvent, newInvitedPeople);
+      return updatedEvent;
     }
 
-    return this.eventRepository.save(updatedEvent);
+    return updatedEvent;
   }
 
   /**
@@ -409,13 +457,47 @@ export class EventService {
   }
 
   /**
-   * Envoie des rappels aux participants confirmés ou programme l'envoi
+   * Envoie des rappels aux participants qui n'ont pas encore répondu ou programme l'envoi
    */
   async sendReminders(
     groupId: number,
     sendReminderDto: SendReminderDto,
   ): Promise<void> {
     const { eventId, recipientIds } = sendReminderDto;
+    const event = await this.findOne(eventId, groupId);
+
+    // Filtrer les participants qui n'ont pas encore répondu (PENDING) selon les IDs fournis
+    const pendingParticipants = event.invitedPeople.filter(
+      (person) =>
+        person.status === InvitationStatus.PENDING &&
+        recipientIds.includes(person.personId),
+    );
+
+    if (pendingParticipants.length === 0) {
+      throw new BadRequestException(
+        'Aucun participant en attente de réponse parmi les destinataires sélectionnés',
+      );
+    }
+
+    // Si c'est un envoi immédiat
+    if (!sendReminderDto.scheduledDate || sendReminderDto.timing === 'now') {
+      await this.sendResponseReminderNotifications(
+        event,
+        pendingParticipants,
+        sendReminderDto.customMessage,
+      );
+      return;
+    }
+
+    // Sinon, programmer le rappel
+    await this.scheduleReminder(event, sendReminderDto);
+  }
+
+  /**
+   * Envoie des mémos programmés aux participants confirmés
+   */
+  async sendMemo(groupId: number, sendMemoDto: SendReminderDto): Promise<void> {
+    const { eventId, recipientIds } = sendMemoDto;
     const event = await this.findOne(eventId, groupId);
 
     // Filtrer les participants confirmés selon les IDs fournis
@@ -427,22 +509,22 @@ export class EventService {
 
     if (confirmedParticipants.length === 0) {
       throw new BadRequestException(
-        'Aucun participant confirmé parmi les destinataires sélectionnés',
+        'Aucun participant confirmé trouvé parmi les destinataires sélectionnés',
       );
     }
 
     // Si c'est un envoi immédiat
-    if (!sendReminderDto.scheduledDate || sendReminderDto.timing === 'now') {
-      await this.sendReminderNotifications(
+    if (!sendMemoDto.scheduledDate || sendMemoDto.timing === 'now') {
+      await this.sendMemoNotifications(
         event,
         confirmedParticipants,
-        sendReminderDto.customMessage,
+        sendMemoDto.customMessage,
       );
       return;
     }
 
-    // Sinon, programmer le rappel
-    await this.scheduleReminder(event, sendReminderDto);
+    // Sinon, programmer le mémo
+    await this.scheduleMemo(event, sendMemoDto);
   }
 
   /**
@@ -465,6 +547,94 @@ export class EventService {
     console.log(
       `Rappel programmé pour le ${sendReminderDto.scheduledDate} - ID: ${scheduledReminder.id}`,
     );
+  }
+
+  /**
+   * Programme un mémo pour plus tard
+   */
+  private async scheduleMemo(
+    event: Event,
+    sendMemoDto: SendReminderDto,
+  ): Promise<void> {
+    const scheduledMemo = this.scheduledReminderRepository.create({
+      eventId: event.id,
+      recipientIds: sendMemoDto.recipientIds,
+      scheduledDate: new Date(sendMemoDto.scheduledDate),
+      customMessage: sendMemoDto.customMessage,
+      status: ReminderStatus.PENDING,
+    });
+
+    await this.scheduledReminderRepository.save(scheduledMemo);
+
+    console.log(
+      `Mémo programmé pour le ${sendMemoDto.scheduledDate} - ID: ${scheduledMemo.id}`,
+    );
+  }
+
+  /**
+   * Envoie des rappels aux participants qui n'ont pas encore répondu
+   */
+  private async sendResponseReminderNotifications(
+    event: Event,
+    recipients: any[],
+    customMessage?: string,
+  ): Promise<void> {
+    for (const recipient of recipients) {
+      if (recipient.isExternal) {
+        // Rappel par email pour les invités externes
+        const token = this.generateInvitationToken(
+          event.id,
+          recipient.personId,
+        );
+        await this.sendExternalResponseReminderEmail(
+          recipient.email,
+          recipient.name || 'Invité',
+          event,
+          token,
+          customMessage,
+        );
+      } else {
+        // Rappel par notification et email pour les utilisateurs internes
+        await this.sendInternalResponseReminderNotification(
+          event,
+          recipient.personId,
+          customMessage,
+        );
+      }
+    }
+  }
+
+  /**
+   * Envoie des mémos à tous les participants
+   */
+  private async sendMemoNotifications(
+    event: Event,
+    recipients: any[],
+    customMessage?: string,
+  ): Promise<void> {
+    for (const recipient of recipients) {
+      if (recipient.isExternal) {
+        // Mémo par email pour les invités externes
+        const token = this.generateInvitationToken(
+          event.id,
+          recipient.personId,
+        );
+        await this.sendExternalMemoEmail(
+          recipient.email,
+          recipient.name || 'Invité',
+          event,
+          token,
+          customMessage,
+        );
+      } else {
+        // Mémo par notification et email pour les utilisateurs internes
+        await this.sendInternalMemoNotification(
+          event,
+          recipient.personId,
+          customMessage,
+        );
+      }
+    }
   }
 
   /**
@@ -736,6 +906,150 @@ export class EventService {
     } catch (error) {
       console.error(
         `Erreur lors de l'envoi de l'email de rappel à l'utilisateur ${userId}: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Envoie un email de rappel de réponse à un invité externe
+   */
+  private async sendExternalResponseReminderEmail(
+    email: string,
+    name: string,
+    event: Event,
+    token: string,
+    customMessage?: string,
+  ): Promise<void> {
+    try {
+      await this.mailService.sendEventResponseReminderEmail(
+        email,
+        name,
+        event,
+        token,
+      );
+    } catch (error) {
+      console.error(
+        `Erreur lors de l'envoi de l'email de rappel de réponse: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Envoie une notification de rappel de réponse à un utilisateur de la plateforme
+   */
+  private async sendInternalResponseReminderNotification(
+    event: Event,
+    userId: number | string,
+    customMessage?: string,
+  ): Promise<void> {
+    console.log(
+      `[DEBUG] Envoi de notification push à l'utilisateur ${userId} pour l'événement ${event.id}`,
+    );
+
+    // Envoyer une notification push
+    const notificationBody = customMessage
+      ? `${customMessage}\n\nMerci de répondre à l'invitation pour l'événement ${event.title} le ${this.formatDateToFrench(event.startDateTime)}`
+      : `Merci de répondre à l'invitation pour l'événement ${event.title} le ${this.formatDateToFrench(event.startDateTime)}`;
+
+    try {
+      await this.pushNotificationService.sendToUser(Number(userId), {
+        title: `Rappel de réponse : ${event.title}`,
+        body: notificationBody,
+        data: {
+          type: 'EVENT_RESPONSE_REMINDER',
+          eventId: event.id,
+        },
+      });
+      console.log(
+        `[DEBUG] Notification push envoyée avec succès à l'utilisateur ${userId}`,
+      );
+    } catch (error) {
+      console.error(
+        `[ERROR] Erreur lors de l'envoi de la notification push à l'utilisateur ${userId}:`,
+        error,
+      );
+    }
+
+    // Envoyer également un email
+    try {
+      const user = await this.usersService.findOne(Number(userId));
+      if (user && user.email) {
+        const token = this.generateInvitationToken(event.id, userId);
+        await this.mailService.sendEventResponseReminderEmail(
+          user.email,
+          `${user.firstName} ${user.name}`,
+          event,
+          token,
+        );
+      }
+    } catch (error) {
+      console.error(
+        `Erreur lors de l'envoi de l'email de rappel de réponse à l'utilisateur ${userId}: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Envoie un email de mémo à un invité externe
+   */
+  private async sendExternalMemoEmail(
+    email: string,
+    name: string,
+    event: Event,
+    token: string,
+    customMessage?: string,
+  ): Promise<void> {
+    try {
+      await this.mailService.sendEventMemoEmail(
+        email,
+        name,
+        event,
+        customMessage,
+      );
+    } catch (error) {
+      console.error(
+        `Erreur lors de l'envoi de l'email de mémo: ${error.message}`,
+      );
+    }
+  }
+
+  /**
+   * Envoie une notification de mémo à un utilisateur de la plateforme
+   */
+  private async sendInternalMemoNotification(
+    event: Event,
+    userId: number | string,
+    customMessage?: string,
+  ): Promise<void> {
+    // Envoyer une notification push
+    const notificationBody = customMessage
+      ? `${customMessage}\n\nÉvénement: ${event.title} le ${this.formatDateToFrench(event.startDateTime)}`
+      : `Mémo concernant l'événement ${event.title} le ${this.formatDateToFrench(event.startDateTime)}`;
+
+    await this.pushNotificationService.sendToUser(Number(userId), {
+      title: `Mémo : ${event.title}`,
+      body: notificationBody,
+      data: {
+        type: 'EVENT_MEMO',
+        eventId: event.id,
+      },
+    });
+
+    // Envoyer également un email
+    try {
+      const user = await this.usersService.findOne(Number(userId));
+      if (user && user.email) {
+        const token = this.generateInvitationToken(event.id, userId);
+        await this.mailService.sendEventMemoEmail(
+          user.email,
+          `${user.firstName} ${user.name}`,
+          event,
+          customMessage,
+        );
+      }
+    } catch (error) {
+      console.error(
+        `Erreur lors de l'envoi de l'email de mémo à l'utilisateur ${userId}: ${error.message}`,
       );
     }
   }
