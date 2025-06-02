@@ -6,7 +6,7 @@ import {
   Patch,
   Param,
   Delete,
-  Query,
+  Query, Logger,
 } from '@nestjs/common';
 import { TransactionService } from './transaction.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
@@ -128,4 +128,10 @@ export class TransactionController {
   remove(@Param('id') id: string) {
     return this.transactionService.remove(+id);
   }
+
+  @Get('invoice/:id')
+  async getTransactionByInvoiceId(@Param('id') id: string) {
+    return this.transactionService.getTransactionByInvoiceId(+id);
+  }
+
 }

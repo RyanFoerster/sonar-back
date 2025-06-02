@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   HttpException,
   HttpStatus,
   Injectable,
@@ -18,6 +19,7 @@ import { PaginationDto } from './dto/pagination.dto';
 import { PushNotificationService } from '../push-notification/push-notification.service';
 import { NotificationService } from '../notification/notification.service';
 import { UserSecondaryAccountService } from '../user-secondary-account/user-secondary-account.service';
+import { Invoice } from '@/invoice/entities/invoice.entity';
 
 @Injectable()
 export class TransactionService {
@@ -59,6 +61,7 @@ export class TransactionService {
     if (createTransactionDto.recipientPrincipal) {
       numberRecipients += createTransactionDto.recipientPrincipal.length;
     }
+
 
     if (createTransactionDto.senderGroup) {
       senderGroup = await this.compteGroupeService.findOne(
@@ -159,6 +162,22 @@ export class TransactionService {
       transactionToSave.date = transaction.date;
       transactionToSave.senderGroup = transaction.senderGroup;
       transactionToSave.senderPrincipal = transaction.senderPrincipal;
+
+
+
+      if (createTransactionDto.invoice_id) {
+        const invoiceRepo = this.transactionRepository.manager.getRepository(Invoice);
+        const invoice = await invoiceRepo.findOne({
+          where: { id: createTransactionDto.invoice_id },
+        });
+
+        if (!invoice) {
+          throw new BadRequestException('Facture non trouvée');
+        }
+
+        transactionToSave.invoice = invoice;
+      }
+
 
       const savedTransaction =
         await this.transactionRepository.save(transactionToSave);
@@ -380,7 +399,15 @@ export class TransactionService {
   }
 
   remove(id: number) {
-    return `This action removes a #${id} transaction`;
+    return this.transactionRepository.delete(id).then((result) => {
+      if (result.affected === 0) {
+        throw new HttpException(
+          'Transaction non trouvée ou déjà supprimée',
+          HttpStatus.NOT_FOUND,
+        );
+      }
+      return { message: 'Transaction supprimée avec succès' };
+    });
   }
 
   /**
@@ -864,4 +891,20 @@ export class TransactionService {
   }
 
 
+  getTransactionByInvoiceId(number: number) {
+    return this.transactionRepository
+      .createQueryBuilder('transaction')
+      .leftJoinAndSelect('transaction.invoice', 'invoice')
+      .where('invoice.id = :id', { id: number })
+      .getOne()
+      .then((transaction) => {
+        if (!transaction) {
+          throw new HttpException(
+            'Transaction non trouvée pour cette facture',
+            HttpStatus.NOT_FOUND,
+          );
+        }
+        return transaction;
+      });
+  }
 }

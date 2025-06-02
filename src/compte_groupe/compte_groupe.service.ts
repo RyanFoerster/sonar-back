@@ -133,12 +133,40 @@ export class CompteGroupeService {
     return `This action removes a #${id} compteGroupe`;
   }
 
+  /**
+   * Met à jour le pourcentage de commission d'un compte groupe
+   * @param number
+   * @param commissionPourcentage
+   */
   async updateCommission(number: number, commissionPourcentage: any) {
     return this.compteGroupeRepository
       .createQueryBuilder()
       .update(CompteGroupe)
       .set({ commissionPourcentage })
       .where('id = :id', { id: number })
+      .execute();
+  }
+
+  /**
+  * Met à jour le solde du compte groupe en soustrayant le montant HTVA
+  * @param id - L'identifiant du compte groupe
+  * @param amount_htva - Le montant HTVA à soustraire
+  * @throws ConflictException si le montant est inférieur ou égal à zéro
+  */
+  updateGroupeSolde(id: number, amount_htva: number) {
+
+    if (amount_htva === 0) {
+      throw new ConflictException('Le montant ne peut pas être nul.');
+    }
+
+    const operation = amount_htva > 0 ? '+' : '-';
+    const absAmount = Math.abs(amount_htva);
+
+    return this.compteGroupeRepository
+      .createQueryBuilder()
+      .update(CompteGroupe)
+      .set({ solde: () => `solde ${operation} ${absAmount}` })
+      .where('id = :id', { id })
       .execute();
   }
 }

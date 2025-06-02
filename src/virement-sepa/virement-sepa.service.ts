@@ -24,6 +24,7 @@ import { promisify } from 'util';
 import sharp from 'sharp';
 import { UpdateVirementSepaDto } from '@/virement-sepa/dto/update-virement-sepa.dto';
 import { isNumber } from 'class-validator';
+import { Invoice } from '@/invoice/entities/invoice.entity';
 
 const libreConvert = promisify(libre.convert);
 
@@ -146,30 +147,27 @@ export class VirementSepaService {
     userId: number,
     params: any,
   ) {
-    let groupAccount: CompteGroupe | undefined = undefined;
-    let principalAccount: ComptePrincipal | undefined = undefined;
-
+    let groupAccount: CompteGroupe | undefined;
+    let principalAccount: ComptePrincipal | undefined;
 
 
     // Vérification du type de projet
-    if (params.typeOfProjet === 'PRINCIPAL') {
-      principalAccount = await this.comptePrincipalService.findOne(params.id);
-    } else if (params.typeOfProjet === 'GROUP') {
-      groupAccount = await this.compteGroupService.findOne(params.id);
-    } else {
-      throw new BadRequestException('Type de projet invalide');
+    switch (params.typeOfProjet) {
+      case 'PRINCIPAL':
+        principalAccount = await this.comptePrincipalService.findOne(params.id);
+        break;
+      case 'GROUP':
+        groupAccount = await this.compteGroupService.findOne(params.id);
+        break;
+      default:
+        throw new BadRequestException('Type de projet invalide');
     }
 
-    // Vérification qu'au moins un compte a été trouvé
     if (!groupAccount && !principalAccount) {
       throw new BadRequestException('Aucun compte trouvé');
     }
 
-    // Création du virement SEPA
-    const virementSepa: VirementSepa = this.virementSepaRepository.create(
-      createVirementSepaDto,
-    );
-
+    const virementSepa = this.virementSepaRepository.create(createVirementSepaDto);
 
     const montant = Number(
       String(virementSepa.amount_htva).replace(',', '.')
@@ -189,14 +187,25 @@ export class VirementSepaService {
       virementSepa.projet_username = groupAccount.username;
     }
 
+    // Association à la facture si invoiceId présent
+    if (createVirementSepaDto.invoice_id) {
+      const invoiceRepo = this.virementSepaRepository.manager.getRepository(Invoice);
+      const invoice = await invoiceRepo.findOne({
+        where: { id: Number(createVirementSepaDto.invoice_id) }
+      });
 
-    // Définir le statut en PAID
+      if (!invoice) {
+        throw new BadRequestException('Facture non trouvée');
+      }
+
+      virementSepa.invoice = invoice;
+    }
+
     virementSepa.status = 'PAID';
 
-
-    // Sauvegarde du virement
     return this.virementSepaRepository.save(virementSepa);
   }
+
 
   async findAll(userId: number) {
     const user = await this.usersService.findOne(userId);
@@ -275,7 +284,13 @@ export class VirementSepaService {
   }
 
   remove(id: number) {
-    return `This action removes a #${id} virementSepa`;
+  const virement = this.virementSepaRepository.findOneBy({ id });
+  if (!virement) {
+    throw new BadRequestException(`Virement with id ${id} not found`);
+  }
+  this.virementSepaRepository.delete(id);
+
+
   }
 
   async initiateValidatedTransfers() {
@@ -452,4 +467,16 @@ export class VirementSepaService {
     return this.virementSepaRepository.findOneBy({ id });
   }
 
+
+
+  findByInvoiceId(number: number) {
+    if (isNumber(number)) {
+      return this.virementSepaRepository
+        .createQueryBuilder('virement')
+        .where('virement.invoiceId = :invoiceId', { invoiceId: number })
+        .getOne();
+    } else {
+      throw new BadRequestException('Invoice ID must be a number');
+    }
+  }
 }
