@@ -52,4 +52,7 @@ export class CreateQuoteDto {
 
   @IsString()
   created_by_project_name?: string;
+
+  @IsString()
+  message?: string;
 }

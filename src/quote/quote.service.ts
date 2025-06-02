@@ -385,6 +385,7 @@ export class QuoteService {
           quote.created_by_project_name,
           false, // isUpdate
           needsClientInfo, // needsClientInfo
+          createQuoteDto.message,
         );
         return;
       }
@@ -411,6 +412,7 @@ export class QuoteService {
         quote.created_by_project_name,
         false, // isUpdate
         needsClientInfo, // needsClientInfo
+        createQuoteDto.message,
       );
     };
 
@@ -680,6 +682,7 @@ export class QuoteService {
           quote.created_by_project_name,
           true, // isUpdate
           needsClientInfo, // needsClientInfo
+          updateQuoteDto.message,
         );
         return;
       }
@@ -706,6 +709,7 @@ export class QuoteService {
         quote.created_by_project_name,
         true, // isUpdate
         needsClientInfo, // needsClientInfo
+        updateQuoteDto.message,
       );
     };
 

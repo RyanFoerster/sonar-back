@@ -122,6 +122,7 @@ export class MailService {
     project?: string,
     isUpdate?: boolean,
     needsClientInfo?: boolean, // Ajouter le paramètre ici
+    message?: string,
   ) {
     // Déterminer l'environnement pour les liens
     const config = this.configService.get('isProd') === true ? 'PROD' : 'DEV';
@@ -138,7 +139,9 @@ export class MailService {
       to,
       subject: 'Acceptation de devis',
       // attachments: attachmentsToSend,
+
       html: `
+        <p>${message || ''}</p>
         <!DOCTYPE html>
         <html lang="fr">
         <head>
