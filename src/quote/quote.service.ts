@@ -1072,6 +1072,13 @@ export class QuoteService {
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async checkExpiredQuotes() {
     Logger.log('[QuoteService] Checking for expired quotes...');
+    Logger.log('[QuoteService] Current date: ' + new Date().toISOString());
+
+    // Log the query parameters
+    const currentDate = new Date();
+    Logger.log('[QuoteService] Query parameters:');
+    Logger.log('- status: pending');
+    Logger.log('- validation_deadline < ' + currentDate.toISOString());
 
     const quotes = await this.quoteRepository.find({
       where: {
@@ -1082,59 +1089,14 @@ export class QuoteService {
     });
 
     Logger.log(`[QuoteService] Found ${quotes.length} expired quotes`);
-    Logger.log('[QuoteService] Current date: ' + new Date().toISOString());
-
-    // Log details of all pending quotes
-    const allPendingQuotes = await this.quoteRepository.find({
-      where: { status: 'pending' },
-      relations: ['client'],
-    });
-
-    Logger.log(
-      `[QuoteService] Total pending quotes: ${allPendingQuotes.length}`,
-    );
-    for (const quote of allPendingQuotes) {
-      Logger.log(
-        `[QuoteService] Quote #${quote.id}: validation_deadline=${quote.validation_deadline?.toISOString() || 'null'}, status=${quote.status}`,
-      );
-    }
 
     for (const quote of quotes) {
       Logger.log(`[QuoteService] Marking quote #${quote.id} as expired`);
       quote.status = 'expired';
       await this.quoteRepository.save(quote);
-
-      // Envoyer une notification au client et au groupe
-      if (quote.client?.email) {
-        await this.mailService.sendQuoteStatusUpdateEmail(
-          quote.client.email,
-          quote.client.name,
-          quote.id,
-          quote.quote_number.toString(),
-          'expired',
-          'CLIENT',
-          quote.created_by_project_name,
-          quote.price_htva,
-          this.formatDate(quote.service_date),
-          quote.client.name,
-        );
-      }
-
-      if (quote.created_by_mail) {
-        await this.mailService.sendQuoteStatusUpdateEmail(
-          quote.created_by_mail,
-          quote.created_by_project_name,
-          quote.id,
-          quote.quote_number.toString(),
-          'expired',
-          'GROUP',
-          quote.created_by_project_name,
-          quote.price_htva,
-          this.formatDate(quote.service_date),
-          quote.client.name,
-        );
-      }
     }
+
+    return quotes;
   }
 
   private async sendReminderEmails(
