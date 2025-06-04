@@ -6,21 +6,23 @@ import {
   Patch,
   Param,
   Delete,
-  Req,
   UseInterceptors,
   UploadedFiles,
-  Logger,
-  Res,
-  NotFoundException,
   Query,
   ParseBoolPipe,
+  UseGuards,
+  Req,
+  Res,
+  Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { QuoteService } from './quote.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { UpdateQuoteDto } from './dto/update-quote.dto';
 import { FilesInterceptor } from '@nestjs/platform-express';
-import { Public } from '@/auth/decorators/public.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { Response } from 'express';
+import { JwtAuthGuard } from '@/guards/auth.guard';
 
 @Controller('quote')
 export class QuoteController {
@@ -185,6 +187,16 @@ export class QuoteController {
   @Public()
   checkExpiredQuotes() {
     return this.quoteService.checkExpiredQuotes();
+  }
+
+  @Post('admin/check-expired')
+  @UseGuards(JwtAuthGuard)
+  async adminCheckExpiredQuotes() {
+    const quotes = await this.quoteService.checkExpiredQuotes();
+    return {
+      message: `${quotes.length} devis ont été marqués comme expirés`,
+      quotes: quotes,
+    };
   }
 
   @Patch(':id/set-validation-date')
