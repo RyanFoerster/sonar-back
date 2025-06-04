@@ -260,7 +260,7 @@ export class MailService {
     firstName: string,
     quote_id: number,
     quote_number: string,
-    status: 'accepted' | 'refused',
+    status: 'accepted' | 'refused' | 'expired',
     role: 'GROUP' | 'CLIENT',
     project?: string,
     amount?: number,
@@ -272,8 +272,18 @@ export class MailService {
     const baseUrl =
       config === 'PROD' ? 'https://sonarartists.be' : 'http://localhost:4200';
 
-    const statusText = status === 'accepted' ? 'accepté' : 'refusé';
-    const statusColor = status === 'accepted' ? '#10b981' : '#ef4444';
+    const statusText =
+      status === 'accepted'
+        ? 'accepté'
+        : status === 'expired'
+          ? 'expiré'
+          : 'refusé';
+    const statusColor =
+      status === 'accepted'
+        ? '#10b981'
+        : status === 'expired'
+          ? '#f59e0b'
+          : '#ef4444';
     const roleText = role === 'GROUP' ? 'Le projet' : 'Le client';
     const otherRoleParam = role === 'GROUP' ? 'CLIENT' : 'GROUP';
 
@@ -356,12 +366,14 @@ export class MailService {
                 </div>
 
                 <!-- Message de statut -->
-                <div style="background-color: ${status === 'accepted' ? '#f0fdf4' : '#fef2f2'}; border: 1px solid ${statusColor}; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
+                <div style="background-color: ${status === 'accepted' ? '#f0fdf4' : status === 'expired' ? '#fef2f2' : '#fef2f2'}; border: 1px solid ${statusColor}; padding: 16px; border-radius: 8px; margin-bottom: 24px;">
                   <p style="color: ${statusColor}; font-weight: 600; margin: 0;">
                     ${
                       status === 'accepted'
                         ? 'Le devis a été accepté. Nous vous remercions pour votre confiance.'
-                        : "Le devis a été refusé. Si vous avez des questions, n'hésitez pas à nous contacter."
+                        : status === 'expired'
+                          ? "Le devis a expiré. Si vous avez des questions, n'hésitez pas à nous contacter."
+                          : "Le devis a été refusé. Si vous avez des questions, n'hésitez pas à nous contacter."
                     }
                   </p>
                 </div>

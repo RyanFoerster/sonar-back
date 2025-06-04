@@ -57,6 +57,7 @@ export class Quote {
       'cancelled',
       'pending',
       'pending_cancellation',
+      'expired',
     ],
     default: 'pending',
   })
@@ -117,5 +118,4 @@ export class Quote {
   @OneToOne(() => Invoice, { eager: true, nullable: true })
   @JoinColumn()
   invoice: Invoice;
-
 }

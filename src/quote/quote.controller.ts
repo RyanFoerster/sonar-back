@@ -180,4 +180,18 @@ export class QuoteController {
 
     return mimeTypes[extension] || 'application/octet-stream';
   }
+
+  @Post('check-expired')
+  @Public()
+  checkExpiredQuotes() {
+    return this.quoteService.checkExpiredQuotes();
+  }
+
+  @Patch(':id/set-validation-date')
+  @Public()
+  async setValidationDate(@Param('id') id: string, @Body('date') date: string) {
+    const quote = await this.quoteService.findOne(+id);
+    quote.validation_deadline = new Date(date);
+    return this.quoteService.save(quote);
+  }
 }
